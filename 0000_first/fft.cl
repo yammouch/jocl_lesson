@@ -22,20 +22,14 @@ __kernel void make_w(
 }
 
 __kernel void step_1st(
- __global const uchar *src,
+ __global const float *src,
  __global       float *dst,
- int                   n) {
+ int                   n_half) {
   unsigned int i = get_global_id(0);
-  unsigned int i_2, i_2_n, i_4;
+  unsigned int i_4;
   float src0, src1;
-  i_2 = i << 1;
-  i_2_n = i_2 + n;
-  src0 = (short)(   (ushort)(src[i_2  ])
-                | (((ushort)(src[i_2+1])) << 8)
-                );
-  src1 = (short)(   (ushort)(src[i_2_n  ])
-                | (((ushort)(src[i_2_n+1])) << 8)
-                );
+  src0 = src[i       ];
+  src1 = src[i+n_half];
 
   i_4 = i << 2;
   dst[i_4    ] = src0 + src1;

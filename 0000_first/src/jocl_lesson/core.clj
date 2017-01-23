@@ -7,7 +7,14 @@
 (require 'clojure.pprint)
 
 (defn -main [& args]
+  (dosync (ref-set fft/exp2 4))
   (fft/init)
-  (clojure.pprint/pprint
-   (fft/fft-mag-norm (byte-array [0 0 1 0 0 0 -1 -1]) 0 1.0))
+  (let [n (bit-shift-left 1 @fft/exp2)
+        phase (/ (* 2 Math/PI) n)
+        swing-0db (bit-shift-left 1 14)]
+    (clojure.pprint/pprint
+     (fft/fft-mag-norm
+      (float-array (map #(Math/cos (* phase %)) 
+                        (range n)))
+      0 1.0)))
   (fft/finalize))

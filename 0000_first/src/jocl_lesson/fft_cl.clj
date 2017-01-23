@@ -25,10 +25,8 @@
         w-mem (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
                (* len Sizeof/cl_float) nil err)
         _ (handle-cl-error (first err))
-        wave-array (float-array (map #(Math/cos (* 2 Math/PI % len-inv))
-                                     (range (bit-shift-left 1 exp2))))
-        wave-mem (CL/clCreateBuffer context CL/CL_MEM_COPY_HOST_PTR
-                  (* len Sizeof/cl_float) (Pointer/to wave-array) err)
+        wave-mem (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
+                  (* len Sizeof/cl_float) nil err)
         _ (handle-cl-error (first err))
         buf0 (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
               (* len 2 Sizeof/cl_float) nil err)
@@ -148,7 +146,7 @@
         events (into-array cl_event [event])
         local-work-size (min (bit-shift-left 1 exp2) 128)
         _ (call-make-w queue make-w w exp2 local-work-size events)
-        _ (call-step-1st queue step-1st wave buf0 n events)
+        _ (call-step-1st queue step-1st wave buf0 n-half events)
         butterflied
         (loop [i 1, src buf0, dst buf1, w-mask (int 1)]
           (if (<= exp2 i)
@@ -189,11 +187,13 @@
                                      ))))
 
 (defn fft-mag-norm [bytes ofs swing-0db]
-  (handle-cl-error
-   (CL/clEnqueueWriteBuffer (:queue @cl-env) (:wave @cl-mem) CL/CL_TRUE
-    0 (* 4096 2 Sizeof/cl_uchar)
-    (.withByteOffset (Pointer/to bytes) ofs)
-    0 nil nil))
-  (engine (:context @cl-env) (:queue @cl-env) @cl-prg @cl-mem @exp2
-          (/ 2.0 swing-0db 4096))
-  (read-float (:queue @cl-env) (:result @cl-mem) (bit-shift-left 1 @exp2)))
+  (let [n (bit-shift-left 1 @exp2)]
+    (handle-cl-error
+     (CL/clEnqueueWriteBuffer (:queue @cl-env) (:wave @cl-mem) CL/CL_TRUE
+      0 (* n Sizeof/cl_float)
+      (.withByteOffset (Pointer/to bytes) ofs)
+      0 nil nil))
+    (engine (:context @cl-env) (:queue @cl-env) @cl-prg @cl-mem @exp2
+            (/ 2.0 swing-0db n))
+    (read-float (:queue @cl-env) (:result @cl-mem) (bit-shift-left 1 @exp2))
+    ))
