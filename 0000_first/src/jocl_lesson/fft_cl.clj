@@ -63,29 +63,37 @@
                  (* (bit-shift-left 1 exp2) Sizeof/cl_float factor))])
              [:w :wave :buf0 :buf1 :result]
              [ 1     1     2     2       1])))
-    
+
+(defn compile-kernel-source [context devices source]
+  (let [err (int-array 1)
+        program (CL/clCreateProgramWithSource
+                 context 1 (into-array String [source])
+                 (long-array [(count source)]) err)
+        er (CL/clBuildProgram
+            program 1 (into-array cl_device_id devices)
+            nil ;(if simd "-D SIMD=1" nil)
+            nil nil)]
+    (doseq [d devices]
+      (println (cl/parse-str-info
+                (cl/clGetProgramBuildInfo program d
+                 'CL_PROGRAM_BUILD_LOG))))
+    (handle-cl-error er)
+    program))
+
+(defn create-kernel [p name]
+  (let [err (int-array 1)
+        ret (CL/clCreateKernel p name err)]
+    (handle-cl-error (first err))
+    ret))
+
 (def kernel-source-code (slurp "fft.cl"))
 
 (defn prepare-kernels [context devices]
-  (let-err err
-   [program (let [p (CL/clCreateProgramWithSource
-                     context 1 (into-array String [kernel-source-code])
-                     (long-array [(count kernel-source-code)]) err)
-                  er (CL/clBuildProgram
-                      p 1 (into-array cl_device_id devices)
-                      nil ;(if simd "-D SIMD=1" nil)
-                      nil nil)]
-              (doseq [d devices]
-                (println (cl/parse-str-info
-                          (cl/clGetProgramBuildInfo p d
-                           'CL_PROGRAM_BUILD_LOG))))
-              p)
-    make-w       (CL/clCreateKernel program "make_w" err) 
-    step-1st     (CL/clCreateKernel program "step_1st" err) 
-    step1        (CL/clCreateKernel program "step1" err) 
-    post-process (CL/clCreateKernel program "post_process" err)]
-     {:program program :make-w make-w :step-1st step-1st :step1 step1
-      :post-process post-process}))
+  (let [program (compile-kernel-source context devices kernel-source-code)]
+    (into {:program program}
+          (map (fn [k name] [k (create-kernel program name)])
+               [:make-w  :step-1st  :step1  :post-process ]
+               ["make_w" "step_1st" "step1" "post_process"]))))
 
 (defn call-make-w [q k w exp2 local-work-size events]
   (let [n-half (bit-shift-left 1 (dec exp2))
