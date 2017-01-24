@@ -23,7 +23,9 @@
     (let [[size pt-src] (case type
                           :f [Sizeof/cl_float (float-array [arg])]
                           :i [Sizeof/cl_int   (int-array   [arg])]
-                          :m [Sizeof/cl_mem                 arg  ])]
+                          :m [Sizeof/cl_mem                 arg  ]
+                          (throw (Exception. "Illegal type in 'set-args'"))
+                          )]
       (handle-cl-error
         (CL/clSetKernelArg kernel i size (Pointer/to pt-src))
         ))))
@@ -79,10 +81,7 @@
 (defn call-make-w [q k w exp2 local-work-size events]
   (let [n-half (bit-shift-left 1 (dec exp2))
         local-work-size (min n-half 128)]
-    (handle-cl-error
-     (CL/clSetKernelArg k 0 Sizeof/cl_mem (Pointer/to w)))
-    (handle-cl-error
-     (CL/clSetKernelArg k 1 Sizeof/cl_int (Pointer/to (int-array [exp2]))))
+    (set-args k :m w :i exp2)
     (handle-cl-error
      (CL/clEnqueueNDRangeKernel q k 1
       nil (long-array [n-half]) (long-array [local-work-size])
@@ -92,12 +91,7 @@
 
 (defn call-step-1st [q k src dst n-half events]
   (let [local-work-size (min n-half 128)]
-    (handle-cl-error
-     (CL/clSetKernelArg k 0 Sizeof/cl_mem (Pointer/to src)))
-    (handle-cl-error
-     (CL/clSetKernelArg k 1 Sizeof/cl_mem (Pointer/to dst)))
-    (handle-cl-error
-     (CL/clSetKernelArg k 2 Sizeof/cl_int (Pointer/to (int-array [n-half]))))
+    (set-args k :m src :m dst :i n-half)
     (handle-cl-error
      (CL/clEnqueueNDRangeKernel q k 1
       nil (long-array [n-half]) (long-array [local-work-size])
@@ -107,16 +101,7 @@
 
 (defn call-step1 [q k src w dst n-half w-mask events]
   (let [local-work-size (min n-half 128)]
-    (handle-cl-error
-     (CL/clSetKernelArg k 0 Sizeof/cl_mem (Pointer/to src)))
-    (handle-cl-error
-     (CL/clSetKernelArg k 1 Sizeof/cl_mem (Pointer/to w)))
-    (handle-cl-error
-     (CL/clSetKernelArg k 2 Sizeof/cl_mem (Pointer/to dst)))
-    (handle-cl-error
-     (CL/clSetKernelArg k 3 Sizeof/cl_int (Pointer/to (int-array [n-half]))))
-    (handle-cl-error
-     (CL/clSetKernelArg k 4 Sizeof/cl_int (Pointer/to (int-array [w-mask]))))
+    (set-args k :m src :m w :m dst :i n-half :i w-mask)
     (handle-cl-error
      (CL/clEnqueueNDRangeKernel q k 1
       nil (long-array [n-half]) (long-array [local-work-size])
@@ -127,15 +112,7 @@
 (defn call-post-process [q k src dst mag-0db-inv exp2 events]
   (let [n (bit-shift-left 1 exp2)
         local-work-size (min n 128)]
-    (handle-cl-error
-     (CL/clSetKernelArg k 0 Sizeof/cl_mem (Pointer/to src)))
-    (handle-cl-error
-     (CL/clSetKernelArg k 1 Sizeof/cl_mem (Pointer/to dst)))
-    (handle-cl-error
-     (CL/clSetKernelArg k 2 Sizeof/cl_float
-      (Pointer/to (float-array [mag-0db-inv]))))
-    (handle-cl-error
-     (CL/clSetKernelArg k 3 Sizeof/cl_int (Pointer/to (int-array [exp2]))))
+    (set-args k :m src :m dst :f mag-0db-inv :i exp2)
     (handle-cl-error
      (CL/clEnqueueNDRangeKernel q k 1
       nil (long-array [n]) (long-array [local-work-size])
