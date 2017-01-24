@@ -9,7 +9,18 @@
 
 (require 'clojure.pprint)
 
+(defn let-err-test []
+  (macroexpand-1
+   `(fft-cl/let-err err
+      [len (bit-shift-left 1 exp2)
+       w-mem (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
+              (* len Sizeof/cl_float) nil err)
+       buf0 (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
+             (* len 2 Sizeof/cl_float) nil err)]
+      {:w w-mem :buf0 buf0})))
+
 (defn -main [& args]
+  (clojure.pprint/pprint (let-err-test))
   (dosync (ref-set fft-cl/exp2 4))
   (fft-cl/init)
   (let [n (bit-shift-left 1 @fft-cl/exp2)

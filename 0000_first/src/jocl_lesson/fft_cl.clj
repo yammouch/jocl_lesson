@@ -20,19 +20,21 @@
 
 (defn find-symbol [s x]
   (if (coll? x)
-    (or (find-symbol (first x))
-        (find-symbol (next  x)))
+    (or (find-symbol s (first x))
+        (find-symbol s (next  x)))
     (= x s)))
 
 (defmacro let-err [err-name binds & body]
   `(let [~err-name (int-array 1)
-         ~@(map (fn [[var clause]]
-                  (if (find-symbol err-name clause)
-                    `(~var (let [ret# ~clause]
-                             (handle-cl-error ~err-name)
-                             ret#))
-                    `(~var ~clause)
-                    )))]
+         ~@(apply concat
+            (map (fn [[var clause]]
+                   (if (find-symbol err-name clause)
+                     `(~var (let [ret# ~clause]
+                              (handle-cl-error ~err-name)
+                              ret#))
+                     `(~var ~clause)
+                     ))
+                 (partition 2 binds)))]
      ~@body))
 
 (defn set-args [kernel & args]
