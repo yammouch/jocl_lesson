@@ -37,6 +37,12 @@
                  (partition 2 binds)))]
      ~@body))
 
+(defn create-buffer [context size]
+  (let [err (int-array 1)
+        ret (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE size nil err)]
+    (handle-cl-error (first err))
+    ret))
+
 (defn set-args [kernel & args]
   (doseq [[i type arg] (map cons (range) (partition 2 args))]
     (let [[size pt-src] (case type
@@ -50,21 +56,14 @@
         ))))
 
 (defn prepare-mem [context exp2]
-  (let-err err
-   [len (bit-shift-left 1 exp2)
-    len-inv (float (/ 1.0 len))
-    w-mem      (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
-                (* len   Sizeof/cl_float) nil err)
-    wave-mem   (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
-                (* len   Sizeof/cl_float) nil err)
-    buf0       (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
-                (* len 2 Sizeof/cl_float) nil err)
-    buf1       (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
-                (* len 2 Sizeof/cl_float) nil err)
-    result-mem (CL/clCreateBuffer context CL/CL_MEM_WRITE_ONLY
-                (* len   Sizeof/cl_float) nil err)]
-    {:w w-mem :wave wave-mem :buf0 buf0 :buf1 buf1 :result result-mem}))
-
+  (into {}
+        (map (fn [k factor]
+               [k
+                (create-buffer context
+                 (* (bit-shift-left 1 exp2) Sizeof/cl_float factor))])
+             [:w :wave :buf0 :buf1 :result]
+             [ 1     1     2     2       1])))
+    
 (def kernel-source-code (slurp "fft.cl"))
 
 (defn prepare-kernels [context devices]
