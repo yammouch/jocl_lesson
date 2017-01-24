@@ -30,7 +30,7 @@
             (map (fn [[var clause]]
                    (if (find-symbol err-name clause)
                      `(~var (let [ret# ~clause]
-                              (handle-cl-error ~err-name)
+                              (handle-cl-error (first ~err-name))
                               ret#))
                      `(~var ~clause)
                      ))
@@ -50,52 +50,43 @@
         ))))
 
 (defn prepare-mem [context exp2]
-  (let [len (bit-shift-left 1 exp2)
-        len-inv (float (/ 1.0 len))
-        err (int-array 1)
-        w-mem (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
-               (* len Sizeof/cl_float) nil err)
-        _ (handle-cl-error (first err))
-        wave-mem (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
-                  (* len Sizeof/cl_float) nil err)
-        _ (handle-cl-error (first err))
-        buf0 (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
-              (* len 2 Sizeof/cl_float) nil err)
-        _ (handle-cl-error (first err))
-        buf1 (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
-              (* len 2 Sizeof/cl_float) nil err)
-        _ (handle-cl-error (first err))
-        result-mem (CL/clCreateBuffer context CL/CL_MEM_WRITE_ONLY
-                    (* len Sizeof/cl_float) nil err)
-        _ (handle-cl-error (first err))]
+  (let-err err
+   [len (bit-shift-left 1 exp2)
+    len-inv (float (/ 1.0 len))
+    w-mem      (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
+                (* len   Sizeof/cl_float) nil err)
+    wave-mem   (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
+                (* len   Sizeof/cl_float) nil err)
+    buf0       (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
+                (* len 2 Sizeof/cl_float) nil err)
+    buf1       (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
+                (* len 2 Sizeof/cl_float) nil err)
+    result-mem (CL/clCreateBuffer context CL/CL_MEM_WRITE_ONLY
+                (* len   Sizeof/cl_float) nil err)]
     {:w w-mem :wave wave-mem :buf0 buf0 :buf1 buf1 :result result-mem}))
 
+(def kernel-source-code (slurp "fft.cl"))
+
 (defn prepare-kernels [context devices]
-  (let [src (slurp "fft.cl")
-        err (int-array 1)
-        program (CL/clCreateProgramWithSource
-                 context 1 (into-array String [src])
-                 (long-array [(count src)]) err)
-        _ (handle-cl-error (first err))
-        er (CL/clBuildProgram
-            program 1 (into-array cl_device_id devices)
-            nil ;(if simd "-D SIMD=1" nil)
-            nil nil)
-        _ (doseq [d devices]
-            (println (cl/parse-str-info
-                      (cl/clGetProgramBuildInfo program d
-                       'CL_PROGRAM_BUILD_LOG))))
-        _ (handle-cl-error er)
-        make-w       (CL/clCreateKernel program "make_w" err) 
-        _ (handle-cl-error (first err))
-        step-1st     (CL/clCreateKernel program "step_1st" err) 
-        _ (handle-cl-error (first err))
-        step1        (CL/clCreateKernel program "step1" err) 
-        _ (handle-cl-error (first err))
-        post-process (CL/clCreateKernel program "post_process" err) 
-        _ (handle-cl-error (first err))]
-    {:program program :make-w make-w :step-1st step-1st :step1 step1
-     :post-process post-process}))
+  (let-err err
+   [program (let [p (CL/clCreateProgramWithSource
+                     context 1 (into-array String [kernel-source-code])
+                     (long-array [(count kernel-source-code)]) err)
+                  er (CL/clBuildProgram
+                      p 1 (into-array cl_device_id devices)
+                      nil ;(if simd "-D SIMD=1" nil)
+                      nil nil)]
+              (doseq [d devices]
+                (println (cl/parse-str-info
+                          (cl/clGetProgramBuildInfo p d
+                           'CL_PROGRAM_BUILD_LOG))))
+              p)
+    make-w       (CL/clCreateKernel program "make_w" err) 
+    step-1st     (CL/clCreateKernel program "step_1st" err) 
+    step1        (CL/clCreateKernel program "step1" err) 
+    post-process (CL/clCreateKernel program "post_process" err)]
+     {:program program :make-w make-w :step-1st step-1st :step1 step1
+      :post-process post-process}))
 
 (defn call-make-w [q k w exp2 local-work-size events]
   (let [n-half (bit-shift-left 1 (dec exp2))
