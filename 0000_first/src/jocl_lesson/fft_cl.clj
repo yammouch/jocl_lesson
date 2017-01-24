@@ -18,6 +18,23 @@
       0 nil nil))
     dbg-array))
 
+(defn find-symbol [s x]
+  (if (coll? x)
+    (or (find-symbol (first x))
+        (find-symbol (next  x)))
+    (= x s)))
+
+(defmacro let-err [err-name binds & body]
+  `(let [~err-name (int-array 1)
+         ~@(map (fn [[var clause]]
+                  (if (find-symbol err-name clause)
+                    `(~var (let [ret# ~clause]
+                             (handle-cl-error ~err-name)
+                             ret#))
+                    `(~var ~clause)
+                    )))]
+     ~@body))
+
 (defn set-args [kernel & args]
   (doseq [[i type arg] (map cons (range) (partition 2 args))]
     (let [[size pt-src] (case type
