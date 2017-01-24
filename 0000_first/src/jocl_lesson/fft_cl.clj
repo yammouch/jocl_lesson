@@ -18,6 +18,16 @@
       0 nil nil))
     dbg-array))
 
+(defn set-args [kernel & args]
+  (doseq [[i type arg] (map cons (range) (partition 2 args))]
+    (let [[size pt-src] (case type
+                          :f [Sizeof/cl_float (float-array [arg])]
+                          :i [Sizeof/cl_int   (int-array   [arg])]
+                          :m [Sizeof/cl_mem                 arg  ])]
+      (handle-cl-error
+        (CL/clSetKernelArg kernel i size (Pointer/to pt-src))
+        ))))
+
 (defn prepare-mem [context exp2]
   (let [len (bit-shift-left 1 exp2)
         len-inv (float (/ 1.0 len))
