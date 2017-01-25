@@ -8,70 +8,70 @@
   (let [num-entries 256
         platforms (make-array org.jocl.cl_platform_id num-entries)
         num-platforms (int-array 1)
-        errcode-ret (org.jocl.CL/clGetPlatformIDs
+        errcode-ret (CL/clGetPlatformIDs
                      num-entries platforms num-platforms)]
-    (if (= errcode-ret org.jocl.CL/CL_SUCCESS)
+    (if (= errcode-ret CL/CL_SUCCESS)
       (take (nth num-platforms 0) platforms)
-      (throw (Exception. (org.jocl.CL/stringFor_errorCode errcode-ret)))
+      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
 (defn clGetPlatformInfo [platform param-name]
   (let [param-value-size 65536
         errcode-ret (int-array 1)
         param-value-body (byte-array param-value-size)
-        param-value (org.jocl.Pointer/to param-value-body)
+        param-value (Pointer/to param-value-body)
         param-value-size-ret (long-array 1)]
-    (org.jocl.CL/clGetPlatformInfo
+    (CL/clGetPlatformInfo
      platform    
-     (.get (.getField org.jocl.CL (str param-name)) nil)
+     (.get (.getField CL (str param-name)) nil)
      param-value-size
      param-value
      param-value-size-ret)
-    (if (= (nth errcode-ret 0) org.jocl.CL/CL_SUCCESS)
+    (if (= (nth errcode-ret 0) CL/CL_SUCCESS)
       (take (nth param-value-size-ret 0)
             param-value-body)
-      (throw (Exception. (org.jocl.CL/stringFor_errorCode errcode-ret)))
+      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
 (defn clGetDeviceIDs [platform]
   (let [num-devices (int-array 1)
-        _ (org.jocl.CL/clGetDeviceIDs
-           platform org.jocl.CL/CL_DEVICE_TYPE_ALL 0 nil num-devices)
-        devices (make-array org.jocl.cl_device_id (nth num-devices 0))
-        errcode-ret (org.jocl.CL/clGetDeviceIDs
+        _ (CL/clGetDeviceIDs
+           platform CL/CL_DEVICE_TYPE_ALL 0 nil num-devices)
+        devices (make-array cl_device_id (nth num-devices 0))
+        errcode-ret (CL/clGetDeviceIDs
                      platform
-                     org.jocl.CL/CL_DEVICE_TYPE_ALL
+                     CL/CL_DEVICE_TYPE_ALL
                      (nth num-devices 0)
                      devices
                      num-devices)]
-    (if (= errcode-ret org.jocl.CL/CL_SUCCESS)
+    (if (= errcode-ret CL/CL_SUCCESS)
       (seq devices)
-      (throw (Exception. (org.jocl.CL/stringFor_errorCode errcode-ret)))
+      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
 (defn clGetDeviceInfo [device param-name]
   (let [param-value-size 65536
         param-value-body (byte-array param-value-size)
-        param-value (org.jocl.Pointer/to param-value-body)
+        param-value (Pointer/to param-value-body)
         param-value-size-ret (long-array 1)
-        errcode-ret (org.jocl.CL/clGetDeviceInfo
+        errcode-ret (CL/clGetDeviceInfo
                      device
-                     (.get (.getField org.jocl.CL (str param-name)) nil)
+                     (.get (.getField CL (str param-name)) nil)
                      param-value-size
                      param-value
                      param-value-size-ret)]
-    (if (= errcode-ret org.jocl.CL/CL_SUCCESS)
+    (if (= errcode-ret CL/CL_SUCCESS)
       (take (nth param-value-size-ret 0) param-value-body)
-      (throw (Exception. (org.jocl.CL/stringFor_errorCode errcode-ret)))
+      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
 (defn clCreateContext [devices]
   (let [errcode-ret (int-array 1)
         context
-        (org.jocl.CL/clCreateContext
+        (CL/clCreateContext
           nil             ; const cl_context_properties *properties
           (count devices) ; cl_uint num_devices
-          (into-array org.jocl.cl_device_id devices)
+          (into-array cl_device_id devices)
           ; const cl_device_id *devices
           nil             ; (void CL_CALLBACK *pfn_notiry) (
                           ;   const char *errinfo,
@@ -81,53 +81,53 @@
           nil             ; void *user_data
           errcode-ret     ; cl_int *errcode_ret
           )]
-    (if (= (nth errcode-ret 0) org.jocl.CL/CL_SUCCESS)
+    (if (= (nth errcode-ret 0) CL/CL_SUCCESS)
       context
-      (throw (Exception. (org.jocl.CL/stringFor_errorCode errcode-ret)))
+      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
 (defn clCreateCommandQueue [context device]
   (let [errcode-ret (int-array 1)
-        queue (org.jocl.CL/clCreateCommandQueue
+        queue (CL/clCreateCommandQueue
                context device
                0  ; const cl_queue_properties *properties
                errcode-ret)]
-    (if (= (nth errcode-ret 0) org.jocl.CL/CL_SUCCESS)
+    (if (= (nth errcode-ret 0) CL/CL_SUCCESS)
       queue
-      (throw (Exception. (org.jocl.CL/stringFor_errorCode errcode-ret)))
+      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
 (defn clGetProgramInfo [program param-name]
   (let [param-value-size 65536
         param-value-body (byte-array param-value-size)
-        param-value (org.jocl.Pointer/to param-value-body)
+        param-value (Pointer/to param-value-body)
         param-value-size-ret (long-array 1)
-        errcode-ret (org.jocl.CL/clGetProgramInfo
+        errcode-ret (CL/clGetProgramInfo
                      program
-                     (.get (.getField org.jocl.CL (str param-name)) nil)
+                     (.get (.getField CL (str param-name)) nil)
                      param-value-size
                      param-value
                      param-value-size-ret)]
-    (if (= errcode-ret org.jocl.CL/CL_SUCCESS)
+    (if (= errcode-ret CL/CL_SUCCESS)
       (take (nth param-value-size-ret 0) param-value-body)
-      (throw (Exception. (org.jocl.CL/stringFor_errorCode errcode-ret)))
+      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
 (defn clGetProgramBuildInfo [program device param-name]
   (let [param-value-size 65536
         param-value-body (byte-array param-value-size)
-        param-value (org.jocl.Pointer/to param-value-body)
+        param-value (Pointer/to param-value-body)
         param-value-size-ret (long-array 1)
-        errcode-ret (org.jocl.CL/clGetProgramBuildInfo
+        errcode-ret (CL/clGetProgramBuildInfo
                      program
                      device
-                     (.get (.getField org.jocl.CL (str param-name)) nil)
+                     (.get (.getField CL (str param-name)) nil)
                      param-value-size
                      param-value
                      param-value-size-ret)]
-    (if (= errcode-ret org.jocl.CL/CL_SUCCESS)
+    (if (= errcode-ret CL/CL_SUCCESS)
       (take (nth param-value-size-ret 0) param-value-body)
-      (throw (Exception. (org.jocl.CL/stringFor_errorCode errcode-ret)))
+      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
 ; subroutines for get bunch of OpenCL infomation
@@ -189,7 +189,7 @@
 (defn parse-device-type [array]
   (let [types (map #(symbol (str "CL_DEVICE_TYPE_" %))
                    '[DEFAULT CPU GPU ACCELERATOR])
-        type-vals (map #(.get (.getField org.jocl.CL (str %)) nil)
+        type-vals (map #(.get (.getField CL (str %)) nil)
                        types)
         u (parse-unsigned-info array)]
     (vec (map first
@@ -198,7 +198,7 @@
                       )))))
 (defn parse-size-t-array [array]
   (vec (map parse-unsigned-info
-            (partition org.jocl.Sizeof/size_t array)
+            (partition Sizeof/size_t array)
             )))
 
 (defn get-device [device]
