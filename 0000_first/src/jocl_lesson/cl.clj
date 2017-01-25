@@ -1,5 +1,7 @@
 (ns jocl-lesson.cl)
 
+(import '(org.jocl CL Sizeof Pointer cl_device_id cl_event))
+
 ; very thin wrapper of OpenCL API
 
 (defn clGetPlatformIDs []
@@ -199,22 +201,6 @@
             (partition org.jocl.Sizeof/size_t array)
             )))
 
-;(defn device-info [device]
-;  (let [long-info (map #(clGetDeviceInfo device %)
-;                       long-props)
-;        str-info (map #(clGetDeviceInfo device %)
-;                      str-props)
-;        hex-info (map #(clGetDeviceInfo device %)
-;                      hex-props)]
-;    (concat (map vector long-props (map parse-unsigned-info long-info))
-;            (map vector str-props (map parse-str-info str-info))
-;            (map vector hex-props (map parse-unsigned-info hex-info))
-;            [['CL_DEVICE_TYPE
-;              (parse-device-type (clGetDeviceInfo device 'CL_DEVICE_TYPE))]
-;             ['CL_DEVICE_MAX_WORK_ITEM_SIZES
-;              (parse-size-t-array
-;               (clGetDeviceInfo device 'CL_DEVICE_MAX_WORK_ITEM_SIZES))]])))
-
 (defn get-device [device]
   (let [long-info (map #(clGetDeviceInfo device %)
                        long-props)
@@ -273,3 +259,82 @@
              :queue    queue})
           (recur (next pfs))
           )))))
+
+(defn handle-cl-error [err-code]
+  (when (not= err-code CL/CL_SUCCESS)
+    (throw (Exception. (CL/stringFor_errorCode err-code)))))
+
+(defn read-float [q mem n]
+  (let [dbg-array (float-array n)]
+    (handle-cl-error
+     (CL/clEnqueueReadBuffer q mem CL/CL_TRUE
+      0 (* (count dbg-array) Sizeof/cl_float) (Pointer/to dbg-array)
+      0 nil nil))
+    dbg-array))
+
+(defn find-symbol [s x]
+  (if (coll? x)
+    (or (find-symbol s (first x))
+        (find-symbol s (next  x)))
+    (= x s)))
+
+(defmacro let-err [err-name binds & body]
+  `(let [~err-name (int-array 1)
+         ~@(apply concat
+            (map (fn [[var clause]]
+                   (if (find-symbol err-name clause)
+                     `(~var (let [ret# ~clause]
+                              (handle-cl-error (first ~err-name))
+                              ret#))
+                     `(~var ~clause)
+                     ))
+                 (partition 2 binds)))]
+     ~@body))
+
+(defn create-buffer [context size]
+  (let [err (int-array 1)
+        ret (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE size nil err)]
+    (handle-cl-error (first err))
+    ret))
+
+(defn set-args [kernel & args]
+  (doseq [[i type arg] (map cons (range) (partition 2 args))]
+    (let [[size pt-src] (case type
+                          :f [Sizeof/cl_float (float-array [arg])]
+                          :i [Sizeof/cl_int   (int-array   [arg])]
+                          :m [Sizeof/cl_mem                 arg  ]
+                          (throw (Exception. "Illegal type in 'set-args'"))
+                          )]
+      (handle-cl-error
+        (CL/clSetKernelArg kernel i size (Pointer/to pt-src))
+        ))))
+
+(defn compile-kernel-source [context devices source]
+  (let [err (int-array 1)
+        program (CL/clCreateProgramWithSource
+                 context 1 (into-array String [source])
+                 (long-array [(count source)]) err)
+        er (CL/clBuildProgram
+            program 1 (into-array cl_device_id devices)
+            nil ;(if simd "-D SIMD=1" nil)
+            nil nil)]
+    (doseq [d devices]
+      (println (parse-str-info
+                (clGetProgramBuildInfo program d
+                 'CL_PROGRAM_BUILD_LOG))))
+    (handle-cl-error er)
+    program))
+
+(defn create-kernel [p name]
+  (let [err (int-array 1)
+        ret (CL/clCreateKernel p name err)]
+    (handle-cl-error (first err))
+    ret))
+
+(defn callk [q k global-work-offset global-work-size & args]
+  (apply set-args k args)
+  (handle-cl-error
+   (CL/clEnqueueNDRangeKernel q k (count global-work-size)
+    (if global-work-offset (long-array global-work-offset) nil)
+    (long-array global-work-size) nil
+    0 nil nil)))
