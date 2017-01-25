@@ -95,11 +95,7 @@
                [:make-w  :step-1st  :step1  :post-process ]
                ["make_w" "step_1st" "step1" "post_process"]))))
 
-(require 'clojure.pprint)
-
-(defn call-kernel [q k global-work-offset global-work-size & args]
-  (clojure.pprint/pprint (long-array global-work-size))
-  (clojure.pprint/pprint args)
+(defn callk [q k global-work-offset global-work-size & args]
   (apply set-args k args)
   (handle-cl-error
    (CL/clEnqueueNDRangeKernel q k (count global-work-size)
@@ -107,57 +103,25 @@
     (long-array global-work-size) nil
     0 nil nil)))
 
-(defn call-make-w [q k w exp2 local-work-size]
-  (let [n-half (bit-shift-left 1 (dec exp2))]
-    (set-args k :m w :i exp2)
-    (handle-cl-error
-     (CL/clEnqueueNDRangeKernel q k 1
-      nil (long-array [n-half]) nil
-      0 nil nil))))
-
-(defn call-step-1st [q k src dst n-half]
-  (set-args k :m src :m dst :i n-half)
-  (handle-cl-error
-   (CL/clEnqueueNDRangeKernel q k 1
-    nil (long-array [n-half]) nil
-    0 nil nil)))
-
-(defn call-step1 [q k src w dst n-half w-mask]
-  (set-args k :m src :m w :m dst :i n-half :i w-mask)
-  (handle-cl-error
-   (CL/clEnqueueNDRangeKernel q k 1
-    nil (long-array [n-half]) nil
-    0 nil nil)))
-
-(defn call-post-process [q k src dst mag-0db-inv exp2]
-  (let [n (bit-shift-left 1 exp2)]
-    (set-args k :m src :m dst :f mag-0db-inv :i exp2)
-    (handle-cl-error
-     (CL/clEnqueueNDRangeKernel q k 1
-      nil (long-array [n]) nil
-      0 nil nil))))
-
-(defn engine [ctx queue
+(defn engine [ctx q
               {make-w :make-w step-1st :step-1st step1 :step1
                post-process :post-process}
               {w :w wave :wave buf0 :buf0 buf1 :buf1 result :result}
               exp2 factor]
   (let [n      (bit-shift-left 1      exp2 )
         n-half (bit-shift-left 1 (dec exp2))
-        err (int-array 1)
-        local-work-size (min (bit-shift-left 1 exp2) 128)
-        _ (call-kernel queue make-w nil [n-half] :m w :i exp2)
-        ;_ (call-make-w queue make-w w exp2 local-work-size)
-        _ (clojure.pprint/pprint (read-float queue w n))
-        _ (call-step-1st queue step-1st wave buf0 n-half)
+        _ (do (callk q make-w   nil [n-half] :m w :i exp2)
+              (callk q step-1st nil [n-half] :m wave :m buf0 :i n-half))
         butterflied
         (loop [i 1, src buf0, dst buf1, w-mask (int 1)]
           (if (<= exp2 i)
             src
-            (do (call-step1 queue step1 src w dst n-half w-mask)
+            (do (callk q step1 nil [n-half]
+                 :m src :m w :m dst :i n-half :i w-mask)
                 (recur (inc i) dst src (bit-or (bit-shift-left w-mask 1) 1))
                 )))]
-    (call-post-process queue post-process butterflied result factor exp2)))
+    (callk q post-process nil [n]
+     :m butterflied :m result :f factor :i exp2)))
 
 (def cl-env (ref nil))
 (def cl-mem (ref nil))
