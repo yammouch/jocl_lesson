@@ -95,6 +95,18 @@
                [:make-w  :step-1st  :step1  :post-process ]
                ["make_w" "step_1st" "step1" "post_process"]))))
 
+(require 'clojure.pprint)
+
+(defn call-kernel [q k global-work-offset global-work-size & args]
+  (clojure.pprint/pprint (long-array global-work-size))
+  (clojure.pprint/pprint args)
+  (apply set-args k args)
+  (handle-cl-error
+   (CL/clEnqueueNDRangeKernel q k (count global-work-size)
+    (if global-work-offset (long-array global-work-offset) nil)
+    (long-array global-work-size) nil
+    0 nil nil)))
+
 (defn call-make-w [q k w exp2 local-work-size]
   (let [n-half (bit-shift-left 1 (dec exp2))]
     (set-args k :m w :i exp2)
@@ -134,7 +146,9 @@
         n-half (bit-shift-left 1 (dec exp2))
         err (int-array 1)
         local-work-size (min (bit-shift-left 1 exp2) 128)
-        _ (call-make-w queue make-w w exp2 local-work-size)
+        _ (call-kernel queue make-w nil [n-half] :m w :i exp2)
+        ;_ (call-make-w queue make-w w exp2 local-work-size)
+        _ (clojure.pprint/pprint (read-float queue w n))
         _ (call-step-1st queue step-1st wave buf0 n-half)
         butterflied
         (loop [i 1, src buf0, dst buf1, w-mask (int 1)]
