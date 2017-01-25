@@ -96,37 +96,33 @@
                ["make_w" "step_1st" "step1" "post_process"]))))
 
 (defn call-make-w [q k w exp2 local-work-size]
-  (let [n-half (bit-shift-left 1 (dec exp2))
-        local-work-size (min n-half 128)]
+  (let [n-half (bit-shift-left 1 (dec exp2))]
     (set-args k :m w :i exp2)
     (handle-cl-error
      (CL/clEnqueueNDRangeKernel q k 1
-      nil (long-array [n-half]) (long-array [local-work-size])
+      nil (long-array [n-half]) nil
       0 nil nil))))
 
 (defn call-step-1st [q k src dst n-half]
-  (let [local-work-size (min n-half 128)]
-    (set-args k :m src :m dst :i n-half)
-    (handle-cl-error
-     (CL/clEnqueueNDRangeKernel q k 1
-      nil (long-array [n-half]) (long-array [local-work-size])
-      0 nil nil))))
+  (set-args k :m src :m dst :i n-half)
+  (handle-cl-error
+   (CL/clEnqueueNDRangeKernel q k 1
+    nil (long-array [n-half]) nil
+    0 nil nil)))
 
 (defn call-step1 [q k src w dst n-half w-mask]
-  (let [local-work-size (min n-half 128)]
-    (set-args k :m src :m w :m dst :i n-half :i w-mask)
-    (handle-cl-error
-     (CL/clEnqueueNDRangeKernel q k 1
-      nil (long-array [n-half]) (long-array [local-work-size])
-      0 nil nil))))
+  (set-args k :m src :m w :m dst :i n-half :i w-mask)
+  (handle-cl-error
+   (CL/clEnqueueNDRangeKernel q k 1
+    nil (long-array [n-half]) nil
+    0 nil nil)))
 
 (defn call-post-process [q k src dst mag-0db-inv exp2]
-  (let [n (bit-shift-left 1 exp2)
-        local-work-size (min n 128)]
+  (let [n (bit-shift-left 1 exp2)]
     (set-args k :m src :m dst :f mag-0db-inv :i exp2)
     (handle-cl-error
      (CL/clEnqueueNDRangeKernel q k 1
-      nil (long-array [n]) (long-array [local-work-size])
+      nil (long-array [n]) nil
       0 nil nil))))
 
 (defn engine [ctx queue
