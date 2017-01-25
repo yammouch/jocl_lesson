@@ -95,47 +95,39 @@
                [:make-w  :step-1st  :step1  :post-process ]
                ["make_w" "step_1st" "step1" "post_process"]))))
 
-(defn call-make-w [q k w exp2 local-work-size events]
+(defn call-make-w [q k w exp2 local-work-size]
   (let [n-half (bit-shift-left 1 (dec exp2))
         local-work-size (min n-half 128)]
     (set-args k :m w :i exp2)
     (handle-cl-error
      (CL/clEnqueueNDRangeKernel q k 1
       nil (long-array [n-half]) (long-array [local-work-size])
-      0 nil (first events)))
-    (handle-cl-error (CL/clWaitForEvents 1 events))
-    ))
+      0 nil nil))))
 
-(defn call-step-1st [q k src dst n-half events]
+(defn call-step-1st [q k src dst n-half]
   (let [local-work-size (min n-half 128)]
     (set-args k :m src :m dst :i n-half)
     (handle-cl-error
      (CL/clEnqueueNDRangeKernel q k 1
       nil (long-array [n-half]) (long-array [local-work-size])
-      0 nil (first events)))
-    (handle-cl-error (CL/clWaitForEvents 1 events))
-    ))
+      0 nil nil))))
 
-(defn call-step1 [q k src w dst n-half w-mask events]
+(defn call-step1 [q k src w dst n-half w-mask]
   (let [local-work-size (min n-half 128)]
     (set-args k :m src :m w :m dst :i n-half :i w-mask)
     (handle-cl-error
      (CL/clEnqueueNDRangeKernel q k 1
       nil (long-array [n-half]) (long-array [local-work-size])
-      0 nil (first events)))
-    (handle-cl-error (CL/clWaitForEvents 1 events))
-    ))
+      0 nil nil))))
 
-(defn call-post-process [q k src dst mag-0db-inv exp2 events]
+(defn call-post-process [q k src dst mag-0db-inv exp2]
   (let [n (bit-shift-left 1 exp2)
         local-work-size (min n 128)]
     (set-args k :m src :m dst :f mag-0db-inv :i exp2)
     (handle-cl-error
      (CL/clEnqueueNDRangeKernel q k 1
       nil (long-array [n]) (long-array [local-work-size])
-      0 nil (first events)))
-    (handle-cl-error (CL/clWaitForEvents 1 events))
-    ))
+      0 nil nil))))
 
 (defn engine [ctx queue
               {make-w :make-w step-1st :step-1st step1 :step1
@@ -145,21 +137,17 @@
   (let [n      (bit-shift-left 1      exp2 )
         n-half (bit-shift-left 1 (dec exp2))
         err (int-array 1)
-        event (CL/clCreateUserEvent ctx err)
-        _ (handle-cl-error (nth err 0))
-        events (into-array cl_event [event])
         local-work-size (min (bit-shift-left 1 exp2) 128)
-        _ (call-make-w queue make-w w exp2 local-work-size events)
-        _ (call-step-1st queue step-1st wave buf0 n-half events)
+        _ (call-make-w queue make-w w exp2 local-work-size)
+        _ (call-step-1st queue step-1st wave buf0 n-half)
         butterflied
         (loop [i 1, src buf0, dst buf1, w-mask (int 1)]
           (if (<= exp2 i)
             src
-            (do (call-step1 queue step1 src w dst n-half w-mask events)
+            (do (call-step1 queue step1 src w dst n-half w-mask)
                 (recur (inc i) dst src (bit-or (bit-shift-left w-mask 1) 1))
                 )))]
-    (call-post-process queue post-process butterflied result factor exp2
-                       events)))
+    (call-post-process queue post-process butterflied result factor exp2)))
 
 (def cl-env (ref nil))
 (def cl-mem (ref nil))
