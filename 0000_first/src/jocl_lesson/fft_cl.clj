@@ -90,10 +90,11 @@
 
 (defn prepare-kernels [context devices]
   (let [program (compile-kernel-source context devices kernel-source-code)]
-    (into {:program program}
-          (map (fn [k name] [k (create-kernel program name)])
-               [:make-w  :step-1st  :step1  :post-process ]
-               ["make_w" "step_1st" "step1" "post_process"]))))
+    {:program program
+     :kernels (into {}
+                    (map (fn [k name] [k (create-kernel program name)])
+                         [:make-w  :step-1st  :step1  :post-process ]
+                         ["make_w" "step_1st" "step1" "post_process"]))}))
 
 (defn callk [q k global-work-offset global-work-size & args]
   (apply set-args k args)
@@ -103,7 +104,7 @@
     (long-array global-work-size) nil
     0 nil nil)))
 
-(defn engine [ctx q
+(defn engine [q
               {make-w :make-w step-1st :step-1st step1 :step1
                post-process :post-process}
               {w :w wave :wave buf0 :buf0 buf1 :buf1 result :result}
@@ -126,19 +127,14 @@
 (def cl-env (ref nil))
 (def cl-mem (ref nil))
 (def cl-prg (ref nil))
+(def cl-ker (ref nil))
 
 (defn finalize []
   (CL/clFlush (@cl-env :queue))
   (CL/clFinish (@cl-env :queue))
-  (CL/clReleaseKernel (@cl-prg :make-w))
-  (CL/clReleaseKernel (@cl-prg :step-1st))
-  (CL/clReleaseKernel (@cl-prg :step1))
-  (CL/clReleaseKernel (@cl-prg :post-process))
-  (CL/clReleaseProgram (@cl-prg :program))
-  (CL/clReleaseMemObject (@cl-mem :w))
-  (CL/clReleaseMemObject (@cl-mem :wave))
-  (CL/clReleaseMemObject (@cl-mem :buf0))
-  (CL/clReleaseMemObject (@cl-mem :buf1))
+  (doseq [[_ v] @cl-ker] (CL/clReleaseKernel v))
+  (CL/clReleaseProgram @cl-prg)
+  (doseq [[_ v] @cl-mem] (CL/clReleaseMemObject v))
   (CL/clReleaseCommandQueue (@cl-env :queue))
   (CL/clReleaseContext (@cl-env :context)))
 
@@ -148,9 +144,11 @@
   (dosync
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
     (ref-set cl-mem (prepare-mem (@cl-env :context) @exp2))
-    (ref-set cl-prg (prepare-kernels (@cl-env :context)
-                                     [(get-in @cl-env [:device :id])]
-                                     ))))
+    (let [{p :program k :kernels}
+          (prepare-kernels (@cl-env :context)
+                           [(get-in @cl-env [:device :id])])]
+      (ref-set cl-prg p)
+      (ref-set cl-ker k))))
 
 (defn fft-mag-norm [bytes ofs swing-0db]
   (let [n (bit-shift-left 1 @exp2)]
@@ -159,7 +157,7 @@
       0 (* n Sizeof/cl_float)
       (.withByteOffset (Pointer/to bytes) ofs)
       0 nil nil))
-    (engine (:context @cl-env) (:queue @cl-env) @cl-prg @cl-mem @exp2
+    (engine (:queue @cl-env) @cl-ker @cl-mem @exp2
             (/ 2.0 swing-0db n))
     (read-float (:queue @cl-env) (:result @cl-mem) (bit-shift-left 1 @exp2))
     ))
