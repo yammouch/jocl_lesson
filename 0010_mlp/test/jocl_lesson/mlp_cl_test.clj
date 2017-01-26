@@ -88,12 +88,32 @@
         {k :sigmoid-bw} @mlp-cl/cl-ker
         in (range 0.1 0.91 0.1)
         n (count in)
-        [mem-in mem-out :as mems] (map (partial cl/create-buffer ctx :f)
-                                       [n in])]
+        [mem-in mem-out :as mems]
+        (map (partial cl/create-buffer ctx :f) [n in])]
     (cl/callk q k nil [n] :m mem-in :m mem-out)
     (is (every? #(< -0.01 % 0.01)
                 (map #(- %1 (* %2 (- 1.0 %2)))
                      (cl/read-float q mem-in n)
                      in)))
+    (doseq [m mems] (CL/clReleaseMemObject m)))
+  (mlp-cl/finalize))
+
+(deftest softmax-test
+  (mlp-cl/init)
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k1 :softmax-step1 k2 :softmax-step2 k3 :softmax-step3} @mlp-cl/cl-ker
+        in [1 2 3 4]
+        n (count in)
+        [mem-in mem-out :as mems]
+        (map (partial cl/create-buffer ctx :f) [in (inc n)])]
+    (cl/callk q k1 nil [n] :m mem-out :m mem-in)
+    (cl/callk q k2 nil [1] :m mem-out :i n)
+    (cl/callk q k3 nil [n] :m mem-out :i n)
+    (let [exp-in (map #(Math/exp %) in)
+          sum (apply + exp-in)]
+      (is (every? #(< -0.01 % 0.01)
+                  (map #(- %1 (/ %2 sum))
+                       (cl/read-float q mem-out n)
+                       exp-in))))
     (doseq [m mems] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))

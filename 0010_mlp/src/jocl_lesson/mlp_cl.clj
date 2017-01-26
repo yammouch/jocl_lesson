@@ -20,12 +20,15 @@
     {:program program
      :kernels (into {}
                     (map (fn [[k name]] [k (cl/create-kernel program name)])
-                         [[:set0       "set0"      ]
-                          [:dense-fw   "dense_fw"  ]
-                          [:dense-bw-m "dense_bw_m"]
-                          [:dense-bw-v "dense_bw_v"]
-                          [:sigmoid-fw "sigmoid_fw"]
-                          [:sigmoid-bw "sigmoid_bw"]
+                         [[:set0          "set0"         ]
+                          [:dense-fw      "dense_fw"     ]
+                          [:dense-bw-m    "dense_bw_m"   ]
+                          [:dense-bw-v    "dense_bw_v"   ]
+                          [:sigmoid-fw    "sigmoid_fw"   ]
+                          [:sigmoid-bw    "sigmoid_bw"   ]
+                          [:softmax-step1 "softmax_step1"]
+                          [:softmax-step2 "softmax_step2"]
+                          [:softmax-step3 "softmax_step3"]
                           ]))}))
 
 (def cl-env (ref nil))

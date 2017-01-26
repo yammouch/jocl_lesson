@@ -55,3 +55,28 @@ __kernel void sigmoid_bw(
   float x = out[i];
   in[i] = x*(1.0f - x);
 }
+
+__kernel void softmax_step1(
+ __global       float *out,
+ __global const float *in) {
+  uint i = get_global_id(0);
+  out[i] = exp(in[i]);
+}
+
+__kernel void softmax_step2(
+ __global float *out,
+          int    len) {
+  int i;
+  float acc = 0.0f;
+  for (i = 0; i < len; i++) {
+    acc += out[i];
+  }
+  out[len] = acc;
+}
+
+__kernel void softmax_step3(
+ __global       float *out,
+                int    len) {
+  uint i = get_global_id(0);
+  out[i] = out[i] / out[len];
+}
