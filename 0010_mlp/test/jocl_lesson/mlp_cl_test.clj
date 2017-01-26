@@ -23,17 +23,18 @@
         {k :dense-fw} @mlp-cl/cl-ker
         w 4, h 3
         in [3 2 1]
+        ofs [1 3 5 7]
         m  [ 1  2  3  4
              2  4  6  8
              3  6  9 12]
-        [mem-m mem-in mem-out :as mems]
+        [mem-m mem-ofs mem-in mem-out :as mems]
         (map (fn [n]
                (cl/create-buffer ctx :f n))
-             [m in w])]
-    (cl/callk q k nil [w] :m mem-out :m mem-in :m mem-m :i w :i h)
+             [m ofs in w])]
+    (cl/callk q k nil [w] :m mem-out :m mem-in :m mem-ofs :m mem-m :i w :i h)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-out w)
-                       [10 20 30 40])))
+                       [11 23 35 47])))
     (doseq [m mems] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
 
@@ -49,6 +50,22 @@
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-m 12)
                        [2 3 4 5, 3 5 7 9, 4 7 10 13])))
+    (doseq [m mems] (CL/clReleaseMemObject m)))
+  (mlp-cl/finalize))
+
+(deftest dense-bw-ofs-test
+  (mlp-cl/init)
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k :dense-bw-ofs} @mlp-cl/cl-ker
+        out [1 2 3 4]
+        ofs [1 1 2 2]
+        n (count out)
+        [mem-ofs mem-out :as mems]
+        (map (partial cl/create-buffer ctx :f) [ofs out])]
+    (cl/callk q k nil [n] :m mem-ofs :m mem-out)
+    (is (every? #(< -0.01 % 0.01)
+                (map - (cl/read-float q mem-ofs n)
+                       [2 3 5 6])))
     (doseq [m mems] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
 
@@ -101,7 +118,8 @@
 (deftest softmax-test
   (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k1 :softmax-step1 k2 :softmax-step2 k3 :softmax-step3} @mlp-cl/cl-ker
+        {k1 :softmax-fw-step1 k2 :softmax-fw-step2 k3 :softmax-fw-step3}
+        @mlp-cl/cl-ker
         in [1 2 3 4]
         n (count in)
         [mem-in mem-out :as mems]
@@ -115,5 +133,23 @@
                   (map #(- %1 (/ %2 sum))
                        (cl/read-float q mem-out n)
                        exp-in))))
+    (doseq [m mems] (CL/clReleaseMemObject m)))
+  (mlp-cl/finalize))
+
+(deftest quadratic-test
+  (mlp-cl/init)
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k :quadratic-bw} @mlp-cl/cl-ker
+        out  [0.5 0.5 0.5 0.5]
+        expc [0   0   1   1  ]
+        n (count out)
+        learning-rate 0.1
+        [mem-out mem-expc mem-in :as mems]
+        (map (partial cl/create-buffer ctx :f)
+             [out expc n])]
+    (cl/callk q k nil [n] :m mem-in :m mem-out :m mem-expc :f learning-rate)
+    (is (every? #(< -0.01 % 0.01)
+                (map - (cl/read-float q mem-in n)
+                       [0.05 0.05 -0.05 -0.05])))
     (doseq [m mems] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))

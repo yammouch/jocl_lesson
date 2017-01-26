@@ -7,6 +7,7 @@ __kernel void set0(
 __kernel void dense_fw(
  __global       float *out,
  __global const float *in,
+ __global const float *ofs,
  __global const float *m,
                 int    m_w,
                 int    m_h) {
@@ -16,7 +17,7 @@ __kernel void dense_fw(
   for (i = 0; i < m_h; i++) {
     acc += in[i] * m[i*m_w+j];
   }
-  out[j] = acc;
+  out[j] = acc + ofs[j];
 }
 
 __kernel void dense_bw_m(
@@ -26,6 +27,13 @@ __kernel void dense_bw_m(
                 int    m_w) {
   uint i = get_global_id(0), j = get_global_id(1);
   m[i*m_w+j] += in[i]*out[j];
+}
+
+__kernel void dense_bw_ofs(
+ __global       float *ofs,
+ __global const float *out) {
+  uint i = get_global_id(0);
+  ofs[i] += out[i];
 }
 
 __kernel void dense_bw_v(
@@ -56,14 +64,14 @@ __kernel void sigmoid_bw(
   in[i] = x*(1.0f - x);
 }
 
-__kernel void softmax_step1(
+__kernel void softmax_fw_step1(
  __global       float *out,
  __global const float *in) {
   uint i = get_global_id(0);
   out[i] = exp(in[i]);
 }
 
-__kernel void softmax_step2(
+__kernel void softmax_fw_step2(
  __global float *out,
           int    len) {
   int i;
@@ -74,9 +82,18 @@ __kernel void softmax_step2(
   out[len] = acc;
 }
 
-__kernel void softmax_step3(
+__kernel void softmax_fw_step3(
  __global       float *out,
                 int    len) {
   uint i = get_global_id(0);
   out[i] = out[i] / out[len];
+}
+
+__kernel void quadratic_bw(
+ __global       float *in,
+ __global const float *out,
+ __global const float *expc,
+                float  learning_rate) {
+  uint i = get_global_id(0);
+  in[i] = (out[i] - expc[i])*learning_rate;
 }
