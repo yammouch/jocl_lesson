@@ -20,8 +20,8 @@
     {:program program
      :kernels (into {}
                     (map (fn [k name] [k (cl/create-kernel program name)])
-                         [:set0 ]
-                         ["set0"]))}))
+                         [:set0  :dense-fw ]
+                         ["set0" "dense_fw"]))}))
 
 (def cl-env (ref nil))
 (def cl-mem (ref nil))

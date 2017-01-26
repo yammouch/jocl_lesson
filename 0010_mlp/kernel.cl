@@ -4,13 +4,17 @@ __kernel void set0(
   out[i] = 0.0f;
 }
 
-/*
 __kernel void dense_fw(
  __global       float *out,
  __global const float *in,
  __global const float *m,
-                int    m_width
-) {
-  uint i = get_global_id(0);
+                int    m_w,
+                int    m_h) {
+  uint i, j = get_global_id(0);
+  float acc = 0.0f;
+
+  for (i = 0; i < m_h; i++) {
+    acc += in[i] * m[i*m_w+j];
+  }
+  out[j] = acc;
 }
-*/
