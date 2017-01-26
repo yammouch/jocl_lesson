@@ -19,9 +19,12 @@
   (let [program (cl/compile-kernel-source context devices kernel-source-code)]
     {:program program
      :kernels (into {}
-                    (map (fn [k name] [k (cl/create-kernel program name)])
-                         [:set0  :dense-fw  :sigmoid-fw ]
-                         ["set0" "dense_fw" "sigmoid_fw"]))}))
+                    (map (fn [[k name]] [k (cl/create-kernel program name)])
+                         [[:set0       "set0"      ]
+                          [:dense-fw   "dense_fw"  ]
+                          [:dense-bw-m "dense_bw_m"]
+                          [:sigmoid-fw "sigmoid_fw"]
+                          ]))}))
 
 (def cl-env (ref nil))
 (def cl-mem (ref nil))

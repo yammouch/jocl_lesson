@@ -19,6 +19,15 @@ __kernel void dense_fw(
   out[j] = acc;
 }
 
+__kernel void dense_bw_m(
+ __global       float *m,
+ __global const float *in,
+ __global const float *out,
+                int    m_w) {
+  uint i = get_global_id(0), j = get_global_id(1);
+  m[i*m_w+j] += in[i]*out[j];
+}
+
 __kernel void sigmoid_fw(
  __global       float *out,
  __global const float *in) {
