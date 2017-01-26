@@ -291,11 +291,38 @@
                  (partition 2 binds)))]
      ~@body))
 
-(defn create-buffer [context size]
+(defn create-buffer [context type src]
+;  (let [err (int-array 1)
+;        ret (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE size nil err)]
+;    (handle-cl-error (first err))
+;    ret))
+;
   (let [err (int-array 1)
-        ret (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE size nil err)]
+        [unit-size ar-fn]
+        (case type
+          :f [Sizeof/cl_float float-array]
+          (throw (Exception. "Illegal type in 'create-buffer'")))
+        [ptr size flag]
+        (if (coll? src)
+          [(ar-fn src) (count src) CL/CL_MEM_COPY_HOST_PTR]
+          [nil         src         CL/CL_MEM_READ_WRITE   ])
+        ret (CL/clCreateBuffer context flag (* unit-size size) ptr err)]
     (handle-cl-error (first err))
     ret))
+
+;(if (coll? src)
+;  (CL/clCreateBuffer context CL/CL_MEM_COPY_HOST_PTR 
+;   (* (count src)
+;      (case type
+;        :f Sizeof/cl_float
+;        (throw (Exception. "Illegal type in 'create-buffer'"))))
+;   (case type
+;     :f (float-array src)
+;     (throw (Exception. "Illegal type in 'create-buffer'"))))
+;   err)
+;  (CL/clCreateBuffer context CL/CL_MEM_READ_WRITE
+;   (* src
+;      (case type
 
 (defn set-args [kernel & args]
   (doseq [[i type arg] (map cons (range) (partition 2 args))]

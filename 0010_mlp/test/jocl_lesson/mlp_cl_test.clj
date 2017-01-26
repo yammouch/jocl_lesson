@@ -10,8 +10,7 @@
   (let [n 4
         {q :queue} @mlp-cl/cl-env
         {set0 :set0} @mlp-cl/cl-ker
-        mem (cl/create-buffer (@mlp-cl/cl-env :context)
-                              (* n Sizeof/cl_float))]
+        mem (cl/create-buffer (@mlp-cl/cl-env :context) :f n)]
     (cl/callk q set0 nil [n] :m mem)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem n) (repeat n 0))))
@@ -25,8 +24,7 @@
         w 4, h 3
         [mem-m mem-in mem-out :as mems]
         (map (fn [n]
-               (cl/create-buffer (@mlp-cl/cl-env :context)
-                                 (* n Sizeof/cl_float)))
+               (cl/create-buffer (@mlp-cl/cl-env :context) :f n))
              [(* w h) h w])
         in [3 2 1]
         m  [ 1  2  3  4
