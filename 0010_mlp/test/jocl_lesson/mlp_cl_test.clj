@@ -81,3 +81,19 @@
                      in)))
     (doseq [m mems] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
+
+(deftest sigmoid-bw-test
+  (mlp-cl/init)
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k :sigmoid-bw} @mlp-cl/cl-ker
+        in (range 0.1 0.91 0.1)
+        n (count in)
+        [mem-in mem-out :as mems] (map (partial cl/create-buffer ctx :f)
+                                       [n in])]
+    (cl/callk q k nil [n] :m mem-in :m mem-out)
+    (is (every? #(< -0.01 % 0.01)
+                (map #(- %1 (* %2 (- 1.0 %2)))
+                     (cl/read-float q mem-in n)
+                     in)))
+    (doseq [m mems] (CL/clReleaseMemObject m)))
+  (mlp-cl/finalize))

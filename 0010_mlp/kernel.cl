@@ -47,3 +47,11 @@ __kernel void sigmoid_fw(
   uint i = get_global_id(0);
   out[i] = 1.0f/(1.0f + exp(-in[i]));
 }
+
+__kernel void sigmoid_bw(
+ __global       float *in,
+ __global const float *out) {
+  uint i = get_global_id(0);
+  float x = out[i];
+  in[i] = x*(1.0f - x);
+}

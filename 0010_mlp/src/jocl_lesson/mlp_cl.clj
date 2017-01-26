@@ -25,6 +25,7 @@
                           [:dense-bw-m "dense_bw_m"]
                           [:dense-bw-v "dense_bw_v"]
                           [:sigmoid-fw "sigmoid_fw"]
+                          [:sigmoid-bw "sigmoid_bw"]
                           ]))}))
 
 (def cl-env (ref nil))
