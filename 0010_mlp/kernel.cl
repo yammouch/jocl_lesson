@@ -18,3 +18,10 @@ __kernel void dense_fw(
   }
   out[j] = acc;
 }
+
+__kernel void sigmoid_fw(
+ __global       float *out,
+ __global const float *in) {
+  uint i = get_global_id(0);
+  out[i] = 1.0f/(1.0f + exp(-in[i]));
+}

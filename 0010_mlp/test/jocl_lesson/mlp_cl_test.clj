@@ -19,26 +19,36 @@
 
 (deftest dense-fw-test
   (mlp-cl/init)
-  (let [{q :queue} @mlp-cl/cl-env
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :dense-fw} @mlp-cl/cl-ker
         w 4, h 3
-        [mem-m mem-in mem-out :as mems]
-        (map (fn [n]
-               (cl/create-buffer (@mlp-cl/cl-env :context) :f n))
-             [(* w h) h w])
         in [3 2 1]
         m  [ 1  2  3  4
              2  4  6  8
-             3  6  9 12]]
-    (CL/clEnqueueWriteBuffer q mem-in CL/CL_TRUE
-     0 (* h Sizeof/cl_float) (Pointer/to (float-array in))
-     0 nil nil)
-    (CL/clEnqueueWriteBuffer q mem-m CL/CL_TRUE
-     0 (* h w Sizeof/cl_float) (Pointer/to (float-array m))
-     0 nil nil)
+             3  6  9 12]
+        [mem-m mem-in mem-out :as mems]
+        (map (fn [n]
+               (cl/create-buffer ctx :f n))
+             [m in w])]
     (cl/callk q k nil [w] :m mem-out :m mem-in :m mem-m :i w :i h)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-out w)
                        [10 20 30 40])))
+    (doseq [m mems] (CL/clReleaseMemObject m)))
+  (mlp-cl/finalize))
+
+(deftest sigmoid-fw-test
+  (mlp-cl/init)
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k :sigmoid-fw} @mlp-cl/cl-ker
+        n 11
+        in (range -5 (+ -5 n))
+        [mem-in mem-out :as mems]
+        (map (partial cl/create-buffer ctx :f) [in n])]
+    (cl/callk q k nil [n] :m mem-out :m mem-in)
+    (is (every? #(< -0.01 % 0.01)
+                (map #(- %1 (/ 1.0 (+ 1.0 (Math/exp (- %2)))))
+                     (cl/read-float q mem-out n)
+                     in)))
     (doseq [m mems] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
