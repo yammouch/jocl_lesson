@@ -52,6 +52,20 @@
     (doseq [m mems] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
 
+(deftest dense-bw-v-test
+  (mlp-cl/init)
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k :dense-bw-v} @mlp-cl/cl-ker
+        [mem-in mem-out mem-m :as mems]
+        (map (partial cl/create-buffer ctx :f)
+             [3 [4 3 2 1] [1 2 3 4, 2 4 6 8, 3 6 9 12]])]
+    (cl/callk q k nil [3] :m mem-in :m mem-out :m mem-m :i 4)
+    (is (every? #(< -0.01 % 0.01)
+                (map - (cl/read-float q mem-in 3)
+                       [20 40 60])))
+    (doseq [m mems] (CL/clReleaseMemObject m)))
+  (mlp-cl/finalize))
+
 (deftest sigmoid-fw-test
   (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
