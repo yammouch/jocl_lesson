@@ -136,7 +136,7 @@
     (doseq [m mems] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
 
-(deftest quadratic-test
+(deftest quadratic-bw-test
   (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :quadratic-bw} @mlp-cl/cl-ker
@@ -151,5 +151,23 @@
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-in n)
                        [0.0125 0.0125 -0.0125 -0.0125])))
+    (doseq [m mems] (CL/clReleaseMemObject m)))
+  (mlp-cl/finalize))
+
+(deftest cross-entropy-bw-test
+  (mlp-cl/init)
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k :cross-entropy-bw} @mlp-cl/cl-ker
+        out  [0.5 0.5 0.5 0.5]
+        expc [0   0   1   1  ]
+        n (count out)
+        learning-rate 0.1
+        [mem-out mem-expc mem-in :as mems]
+        (map (partial cl/create-buffer ctx :f)
+             [out expc n])]
+    (cl/callk q k nil [n] :m mem-in :m mem-out :m mem-expc :f learning-rate)
+    (is (every? #(< -0.01 % 0.01)
+                (map - (cl/read-float q mem-in n)
+                       [0.05 0.05 -0.05 -0.05])))
     (doseq [m mems] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))

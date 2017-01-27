@@ -31,6 +31,7 @@
                           [:softmax-fw-step2 "softmax_fw_step2"]
                           [:softmax-fw-step3 "softmax_fw_step3"]
                           [:quadratic-bw     "quadratic_bw"    ]
+                          [:cross-entropy-bw "cross_entropy_bw"]
                           ]))}))
 
 (def cl-env (ref nil))

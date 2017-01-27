@@ -99,3 +99,12 @@ __kernel void quadratic_bw(
   x = out[i];
   in[i] = (x - expc[i])*learning_rate*x*(1.0f - x);
 }
+
+__kernel void cross_entropy_bw(
+ __global       float *in,
+ __global const float *out,
+ __global const float *expc,
+                float  learning_rate) {
+  uint i = get_global_id(0);
+  in[i] = (out[i] - expc[i])*learning_rate;
+}
