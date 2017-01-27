@@ -95,5 +95,7 @@ __kernel void quadratic_bw(
  __global const float *expc,
                 float  learning_rate) {
   uint i = get_global_id(0);
-  in[i] = (out[i] - expc[i])*learning_rate;
+  float x;
+  x = out[i];
+  in[i] = (x - expc[i])*learning_rate*x*(1.0f - x);
 }

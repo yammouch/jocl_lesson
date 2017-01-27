@@ -150,6 +150,6 @@
     (cl/callk q k nil [n] :m mem-in :m mem-out :m mem-expc :f learning-rate)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-in n)
-                       [0.05 0.05 -0.05 -0.05])))
+                       [0.0125 0.0125 -0.0125 -0.0125])))
     (doseq [m mems] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
