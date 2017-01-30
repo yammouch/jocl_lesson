@@ -5,8 +5,13 @@
             [clojure.pprint               ])
   (:import  [org.jocl CL Sizeof Pointer]))
 
+(use-fixtures :once
+  (fn [f]
+    (mlp-cl/init)
+    (f)
+    (mlp-cl/finalize)))
+
 (deftest set0-test
-  (mlp-cl/init)
   (let [n 4
         {q :queue} @mlp-cl/cl-env
         {set0 :set0} @mlp-cl/cl-ker
@@ -14,11 +19,9 @@
     (cl/callk q set0 nil [n] :m mem)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem n) (repeat n 0))))
-    (CL/clReleaseMemObject mem))
-  (mlp-cl/finalize))
+    (CL/clReleaseMemObject mem)))
 
 (deftest dense-fw-test
-  (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :dense-fw} @mlp-cl/cl-ker
         w 4, h 3
@@ -35,11 +38,9 @@
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-out w)
                        [11 23 35 47])))
-    (doseq [m mems] (CL/clReleaseMemObject m)))
-  (mlp-cl/finalize))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest dense-bw-m-test
-  (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :dense-bw-m} @mlp-cl/cl-ker
         [mem-in mem-out mem-m :as mems]
@@ -50,11 +51,9 @@
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-m 12)
                        [2 3 4 5, 3 5 7 9, 4 7 10 13])))
-    (doseq [m mems] (CL/clReleaseMemObject m)))
-  (mlp-cl/finalize))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest dense-bw-ofs-test
-  (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :dense-bw-ofs} @mlp-cl/cl-ker
         out [1 2 3 4]
@@ -66,11 +65,9 @@
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-ofs n)
                        [2 3 5 6])))
-    (doseq [m mems] (CL/clReleaseMemObject m)))
-  (mlp-cl/finalize))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest dense-bw-v-test
-  (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :dense-bw-v} @mlp-cl/cl-ker
         [mem-in mem-out mem-m :as mems]
@@ -80,11 +77,9 @@
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-in 3)
                        [20 40 60])))
-    (doseq [m mems] (CL/clReleaseMemObject m)))
-  (mlp-cl/finalize))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest sigmoid-fw-test
-  (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :sigmoid-fw} @mlp-cl/cl-ker
         n 11
@@ -96,11 +91,9 @@
                 (map #(- %1 (/ 1.0 (+ 1.0 (Math/exp (- %2)))))
                      (cl/read-float q mem-out n)
                      in)))
-    (doseq [m mems] (CL/clReleaseMemObject m)))
-  (mlp-cl/finalize))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest sigmoid-bw-test
-  (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :sigmoid-bw} @mlp-cl/cl-ker
         in (range 0.1 0.91 0.1)
@@ -112,11 +105,9 @@
                 (map #(- %1 (* %2 (- 1.0 %2)))
                      (cl/read-float q mem-in n)
                      in)))
-    (doseq [m mems] (CL/clReleaseMemObject m)))
-  (mlp-cl/finalize))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest softmax-test
-  (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k1 :softmax-fw-step1 k2 :softmax-fw-step2 k3 :softmax-fw-step3}
         @mlp-cl/cl-ker
@@ -133,11 +124,9 @@
                   (map #(- %1 (/ %2 sum))
                        (cl/read-float q mem-out n)
                        exp-in))))
-    (doseq [m mems] (CL/clReleaseMemObject m)))
-  (mlp-cl/finalize))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest quadratic-bw-test
-  (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :quadratic-bw} @mlp-cl/cl-ker
         out  [0.5 0.5 0.5 0.5]
@@ -151,11 +140,9 @@
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-in n)
                        [0.0125 0.0125 -0.0125 -0.0125])))
-    (doseq [m mems] (CL/clReleaseMemObject m)))
-  (mlp-cl/finalize))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest cross-entropy-bw-test
-  (mlp-cl/init)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :cross-entropy-bw} @mlp-cl/cl-ker
         out  [0.5 0.5 0.5 0.5]
@@ -169,5 +156,4 @@
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-in n)
                        [0.05 0.05 -0.05 -0.05])))
-    (doseq [m mems] (CL/clReleaseMemObject m)))
-  (mlp-cl/finalize))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
