@@ -8,10 +8,22 @@
 
 (defn prepare-mem [context]
   (into {}
-        (map (fn [k size]
-               [k (cl/create-buffer context (* size Sizeof/cl_float))])
-             []
-             [])))
+        (map (fn [[k size]]
+               [k (cl/create-buffer context :f size)])
+             [[:i0 [0.0 ]]
+              [:l0 [0.0 ]]
+              [:i1 [0.25]]
+              [:l1 [0.0 ]]
+              [:i2 [0.75]]
+              [:l2 [1.0 ]]
+              [:i3 [1.0 ]]
+              [:l3 [1.0 ]]
+              [:w  [1.0 ]]
+              [:b  [0.0 ]]
+              [:z   1    ]
+              [:a   1    ]
+              [:acc 1    ]
+              ])))
 
 (def kernel-source-code (slurp "kernel.cl"))
 
@@ -57,3 +69,11 @@
                            [(get-in @cl-env [:device :id])])]
       (ref-set cl-prg p)
       (ref-set cl-ker k))))
+
+(defn fw [in]
+  (let [{q :queue} @cl-env
+        {dense-fw :dense-fw sigmoid-fw :sigmoid-fw} @cl-ker
+        {w :w b :b z :z a :a} @cl-mem]
+    (cl/callk q dense-fw   nil [1] :m z :m in :m b :m w :i 1 :i 1)
+    (cl/callk q sigmoid-fw nil [1] :m a :m z)
+    ))
