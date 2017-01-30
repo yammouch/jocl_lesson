@@ -29,11 +29,27 @@ __kernel void dense_bw_m(
   m[i*m_w+j] += in[i]*out[j];
 }
 
+__kernel void dense_bw_m_ov(
+ __global       float *m,
+ __global const float *in,
+ __global const float *out,
+                int    m_w) {
+  uint i = get_global_id(0), j = get_global_id(1);
+  m[i*m_w+j] = in[i]*out[j];
+}
+
 __kernel void dense_bw_ofs(
  __global       float *ofs,
  __global const float *out) {
   uint i = get_global_id(0);
   ofs[i] += out[i];
+}
+
+__kernel void dense_bw_ofs_ov(
+ __global       float *ofs,
+ __global const float *out) {
+  uint i = get_global_id(0);
+  ofs[i] = out[i];
 }
 
 __kernel void dense_bw_v(

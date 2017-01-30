@@ -22,6 +22,7 @@
               [:b  [0.0 ]]
               [:z   1    ]
               [:a   1    ]
+              [:v   1    ]
               [:acc 1    ]
               ])))
 
@@ -35,7 +36,9 @@
                          [[:set0             "set0"            ]
                           [:dense-fw         "dense_fw"        ]
                           [:dense-bw-m       "dense_bw_m"      ]
+                          [:dense-bw-m-ov    "dense_bw_m_ov"   ]
                           [:dense-bw-ofs     "dense_bw_ofs"    ]
+                          [:dense-bw-ofs-ov  "dense_bw_ofs_ov" ]
                           [:dense-bw-v       "dense_bw_v"      ]
                           [:sigmoid-fw       "sigmoid_fw"      ]
                           [:sigmoid-bw       "sigmoid_bw"      ]
@@ -76,4 +79,11 @@
         {w :w b :b z :z a :a} @cl-mem]
     (cl/callk q dense-fw   nil [1] :m z :m in :m b :m w :i 1 :i 1)
     (cl/callk q sigmoid-fw nil [1] :m a :m z)
+    ))
+
+(defn bw [label]
+  (let [{q :queue} @cl-env
+        {cross-entropy-bw :cross-entropy-bw} @cl-ker
+        {a :a v :v} @cl-mem]
+    (cl/callk q cross-entropy-bw nil [1] :m v :m a :m label :f 0.1)
     ))
