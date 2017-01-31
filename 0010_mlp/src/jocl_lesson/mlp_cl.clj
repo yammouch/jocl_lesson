@@ -91,5 +91,5 @@
         {a :a v :v w :w b :b} @cl-mem]
     (cl/callk q cross-entropy-bw nil [1] :m v :m a :m label :f 0.1)
     (cl/callk q dense-bw-m-ov    nil [1] :m w :m in :m v :i 1)
-    (cl/callk q dense-bw-ofs-ov  nil [1] :m b :m v)
+    (CL/clEnqueueCopyBuffer q v b 0 0 Sizeof/cl_float 0 nil nil)
     ))
