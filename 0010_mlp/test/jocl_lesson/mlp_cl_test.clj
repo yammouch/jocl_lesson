@@ -21,6 +21,24 @@
                 (map - (cl/read-float q mem n) (repeat n 0))))
     (CL/clReleaseMemObject mem)))
 
+(deftest add-test
+  (let [in  [1 2 3 4]
+        out [2 3 4 5]
+        n (count in)
+        {q :queue} @mlp-cl/cl-env
+        {add :add sub :sub} @mlp-cl/cl-ker
+        [mem-out mem-in]
+        (map (partial cl/create-buffer (@mlp-cl/cl-env :context) :f)
+             [out in])]
+    (cl/callk q add nil [n] :m mem-out :m mem-in)
+    (is (every? #(< -0.01 % 0.01)
+                (map - (cl/read-float q mem-out n)
+                       [3 5 7 9])))
+    (cl/callk q sub nil [n] :m mem-out :m mem-in)
+    (is (every? #(< -0.01 % 0.01)
+                (map - (cl/read-float q mem-out n)
+                       [2 3 4 5])))))
+
 (deftest dense-fw-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k :dense-fw} @mlp-cl/cl-ker

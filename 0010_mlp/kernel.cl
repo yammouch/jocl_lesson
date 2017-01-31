@@ -4,6 +4,20 @@ __kernel void set0(
   out[i] = 0.0f;
 }
 
+__kernel void add(
+ __global       float *out,
+ __global const float *in) {
+  uint i = get_global_id(0);
+  out[i] += in[i];
+}
+
+__kernel void sub(
+ __global       float *out,
+ __global const float *in) {
+  uint i = get_global_id(0);
+  out[i] -= in[i];
+}
+
 __kernel void dense_fw(
  __global       float *out,
  __global const float *in,

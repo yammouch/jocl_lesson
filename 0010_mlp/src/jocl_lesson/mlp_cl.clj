@@ -34,6 +34,8 @@
      :kernels (into {}
                     (map (fn [[k name]] [k (cl/create-kernel program name)])
                          [[:set0             "set0"            ]
+                          [:add              "add"             ]
+                          [:sub              "sub"             ]
                           [:dense-fw         "dense_fw"        ]
                           [:dense-bw-m       "dense_bw_m"      ]
                           [:dense-bw-m-ov    "dense_bw_m_ov"   ]
