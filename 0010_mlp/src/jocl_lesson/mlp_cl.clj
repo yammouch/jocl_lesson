@@ -10,20 +10,21 @@
   (into {}
         (map (fn [[k size]]
                [k (cl/create-buffer context :f size)])
-             [[:i0 [0.0 ]]
-              [:l0 [0.0 ]]
-              [:i1 [0.25]]
-              [:l1 [0.0 ]]
-              [:i2 [0.75]]
-              [:l2 [1.0 ]]
-              [:i3 [1.0 ]]
-              [:l3 [1.0 ]]
-              [:w  [1.0 ]]
-              [:b  [0.0 ]]
-              [:z   1    ]
-              [:a   1    ]
-              [:v   1    ]
-              [:acc 1    ]
+             [[:i0  [0.0 ]]
+              [:l0  [0.0 ]]
+              [:i1  [0.25]]
+              [:l1  [0.0 ]]
+              [:i2  [0.75]]
+              [:l2  [1.0 ]]
+              [:i3  [1.0 ]]
+              [:l3  [1.0 ]]
+              [:w   [1.0 ]]
+              [:b   [0.0 ]]
+              [:z    1    ]
+              [:a    1    ]
+              [:v    1    ]
+              [:wacc 1    ]
+              [:bacc 1    ]
               ])))
 
 (def kernel-source-code (slurp "kernel.cl"))
@@ -83,13 +84,25 @@
     (cl/callk q sigmoid-fw nil [1] :m a :m z)
     ))
 
-(defn bw [in label]
+(defn bw
+ ([in label] (bw in label false))
+ ([in label is-1st?]
   (let [{q :queue} @cl-env
-        {cross-entropy-bw :cross-entropy-bw
-         dense-bw-m-ov    :dense-bw-m-ov
-         dense-bw-ofs-ov  :dense-bw-ofs-ov} @cl-ker
-        {a :a v :v w :w b :b} @cl-mem]
+        {add              :add
+         sub              :sub
+         cross-entropy-bw :cross-entropy-bw
+         dense-bw-m       :dense-bw-m
+         dense-bw-m-ov    :dense-bw-m-ov} @cl-ker
+        {a :a v :v w :w b :b wacc :wacc bacc :bacc} @cl-mem]
     (cl/callk q cross-entropy-bw nil [1] :m v :m a :m label :f 0.1)
-    (cl/callk q dense-bw-m-ov    nil [1] :m w :m in :m v :i 1)
-    (CL/clEnqueueCopyBuffer q v b 0 0 Sizeof/cl_float 0 nil nil)
-    ))
+    (if is-1st?
+      (do (cl/callk q dense-bw-m-ov nil [1] :m wacc :m in :m v :i 1)
+          (CL/clEnqueueCopyBuffer q v bacc 0 0 Sizeof/cl_float 0 nil nil))
+      (do (cl/callk q dense-bw-m    nil [1] :m wacc :m in :m v :i 1)
+          (cl/callk q add           nil [1] :m bacc :m v)
+          ));)))
+    (let [{z :z} @cl-mem
+          [[in] [w] [b] [z] [a] [v] [wacc] [bacc]]
+          (map #(cl/read-float q % 1) [in w b z a v wacc bacc])]
+      (printf (apply str (repeat 8 "%7.2f")) in w b z a v wacc bacc)
+      (newline)))))
