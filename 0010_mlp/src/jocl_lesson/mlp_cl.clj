@@ -81,9 +81,13 @@
     (cl/callk q sigmoid-fw nil [1] :m a :m z)
     ))
 
-(defn bw [label]
+(defn bw [in label]
   (let [{q :queue} @cl-env
-        {cross-entropy-bw :cross-entropy-bw} @cl-ker
-        {a :a v :v} @cl-mem]
+        {cross-entropy-bw :cross-entropy-bw
+         dense-bw-m-ov    :dense-bw-m-ov
+         dense-bw-ofs-ov  :dense-bw-ofs-ov} @cl-ker
+        {a :a v :v w :w b :b} @cl-mem]
     (cl/callk q cross-entropy-bw nil [1] :m v :m a :m label :f 0.1)
+    (cl/callk q dense-bw-m-ov    nil [1] :m w :m in :m v :i 1)
+    (cl/callk q dense-bw-ofs-ov  nil [1] :m b :m v)
     ))
