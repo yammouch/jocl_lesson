@@ -100,9 +100,4 @@
           (CL/clEnqueueCopyBuffer q v bacc 0 0 Sizeof/cl_float 0 nil nil))
       (do (cl/callk q dense-bw-m    nil [1] :m wacc :m in :m v :i 1)
           (cl/callk q add           nil [1] :m bacc :m v)
-          ));)))
-    (let [{z :z} @cl-mem
-          [[in] [w] [b] [z] [a] [v] [wacc] [bacc]]
-          (map #(cl/read-float q % 1) [in w b z a v wacc bacc])]
-      (printf (apply str (repeat 8 "%7.2f")) in w b z a v wacc bacc)
-      (newline)))))
+          )))))
