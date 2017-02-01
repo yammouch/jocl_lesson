@@ -101,3 +101,17 @@
       (do (cl/callk q dense-bw-m    nil [1] :m wacc :m in :m v :i 1)
           (cl/callk q add           nil [1] :m bacc :m v)
           )))))
+
+(defn run-subbatch [inputs labels]
+  (loop [i inputs l labels first? true]
+    (if (or (empty? i) (empty? l))
+      :done
+      (do (fw (first i))
+          (bw (first i) (first l) first?)
+          (recur (next i) (next l) false)
+          )))
+  (let [{q :queue} @cl-env
+        {sub :sub} @cl-ker
+        {w :w b :b wacc :wacc bacc :bacc} @cl-mem]
+    (cl/callk q sub nil [1] :m w :m wacc)
+    (cl/callk q sub nil [1] :m b :m bacc)))

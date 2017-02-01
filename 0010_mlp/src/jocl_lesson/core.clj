@@ -17,16 +17,7 @@
          i0 :i0 i1 :i1 i2 :i2 i3 :i3
          l0 :l0 l1 :l1 l2 :l2 l3 :l3} @mlp-cl/cl-mem]
     (dotimes [i 500]
-      (mlp-cl/fw i0)
-      (mlp-cl/bw i0 l0 true)
-      (mlp-cl/fw i1)
-      (mlp-cl/bw i1 l1)
-      (mlp-cl/fw i2)
-      (mlp-cl/bw i2 l2)
-      (mlp-cl/fw i3)
-      (mlp-cl/bw i3 l3)
-      (cl/callk q sub nil [1] :m w :m wacc)
-      (cl/callk q sub nil [1] :m b :m bacc);)
+      (mlp-cl/run-subbatch [i0 i1 i2 i3] [l0 l1 l2 l3])
       (when (= (mod i 10) 0)
         (let [[w] (cl/read-float q w 1)
               [b] (cl/read-float q b 1)]
