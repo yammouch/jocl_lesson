@@ -14,7 +14,7 @@
 (deftest set0-test
   (let [n 4
         {q :queue} @mlp-cl/cl-env
-        {set0 :set0} @mlp-cl/cl-ker
+        {set0 "set0"} @mlp-cl/cl-ker
         mem (cl/create-buffer (@mlp-cl/cl-env :context) :f n)]
     (cl/callk q set0 nil [n] :m mem)
     (is (every? #(< -0.01 % 0.01)
@@ -26,7 +26,7 @@
         out [2 3 4 5]
         n (count in)
         {q :queue} @mlp-cl/cl-env
-        {add "add" sub :sub} @mlp-cl/cl-ker
+        {add "add" sub "sub"} @mlp-cl/cl-ker
         [mem-out mem-in]
         (map (partial cl/create-buffer (@mlp-cl/cl-env :context) :f)
              [out in])]
@@ -41,7 +41,7 @@
 
 (deftest dense-fw-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k :dense-fw} @mlp-cl/cl-ker
+        {k "dense_fw"} @mlp-cl/cl-ker
         w 4, h 3
         in [3 2 1]
         ofs [1 3 5 7]
@@ -60,7 +60,7 @@
 
 (deftest dense-bw-m-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k :dense-bw-m k-ov :dense-bw-m-ov} @mlp-cl/cl-ker
+        {k "dense_bw_m" k-ov "dense_bw_m_ov"} @mlp-cl/cl-ker
         [mem-in mem-out mem-m :as mems]
         (map (partial cl/create-buffer ctx :f)
              [[1 2 3] [1 2 3 4] (repeat 12 1)]
@@ -77,7 +77,7 @@
 
 (deftest dense-bw-ofs-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k :dense-bw-ofs k-ov :dense-bw-ofs-ov} @mlp-cl/cl-ker
+        {k "dense_bw_ofs" k-ov "dense_bw_ofs_ov"} @mlp-cl/cl-ker
         out [1 2 3 4]
         ofs [1 1 2 2]
         n (count out)
@@ -95,7 +95,7 @@
 
 (deftest dense-bw-v-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k :dense-bw-v} @mlp-cl/cl-ker
+        {k "dense_bw_v"} @mlp-cl/cl-ker
         [mem-in mem-out mem-m :as mems]
         (map (partial cl/create-buffer ctx :f)
              [3 [4 3 2 1] [1 2 3 4, 2 4 6 8, 3 6 9 12]])]
@@ -107,7 +107,7 @@
 
 (deftest sigmoid-fw-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k :sigmoid-fw} @mlp-cl/cl-ker
+        {k "sigmoid_fw"} @mlp-cl/cl-ker
         n 11
         in (range -5 (+ -5 n))
         [mem-in mem-out :as mems]
@@ -121,7 +121,7 @@
 
 (deftest sigmoid-bw-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k :sigmoid-bw} @mlp-cl/cl-ker
+        {k "sigmoid_bw"} @mlp-cl/cl-ker
         in (range 0.1 0.91 0.1)
         n (count in)
         [mem-in mem-out :as mems]
@@ -135,7 +135,7 @@
 
 (deftest softmax-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k1 :softmax-fw-step1 k2 :softmax-fw-step2 k3 :softmax-fw-step3}
+        {k1 "softmax_fw_step1" k2 "softmax_fw_step2" k3 "softmax_fw_step3"}
         @mlp-cl/cl-ker
         in [1 2 3 4]
         n (count in)
@@ -154,7 +154,7 @@
 
 (deftest quadratic-bw-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k :quadratic-bw} @mlp-cl/cl-ker
+        {k "quadratic_bw"} @mlp-cl/cl-ker
         out  [0.5 0.5 0.5 0.5]
         expc [0   0   1   1  ]
         n (count out)
@@ -170,7 +170,7 @@
 
 (deftest cross-entropy-bw-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k :cross-entropy-bw} @mlp-cl/cl-ker
+        {k "cross_entropy_bw"} @mlp-cl/cl-ker
         out  [0.5 0.5 0.5 0.5]
         expc [0   0   1   1  ]
         n (count out)

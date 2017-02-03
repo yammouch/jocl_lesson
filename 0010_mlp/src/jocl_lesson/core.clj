@@ -19,11 +19,11 @@
     (clojure.pprint/pprint 
      (map #(cl/parse-str-info (cl/clGetKernelInfo % 'CL_KERNEL_FUNCTION_NAME))
           kernels)))
-  (println (-> (@mlp-cl/cl-ker :add)
+  (println (-> (@mlp-cl/cl-ker "add")
                (cl/clGetKernelInfo 'CL_KERNEL_FUNCTION_NAME)
                (cl/parse-str-info)))
   (let [{q :queue} @mlp-cl/cl-env
-        {sub :sub} @mlp-cl/cl-ker
+        {sub "sub"} @mlp-cl/cl-ker
         {z :z a :a v :v w :w b :b wacc :wacc bacc :bacc
          i0 :i0 i1 :i1 i2 :i2 i3 :i3
          l0 :l0 l1 :l1 l2 :l2 l3 :l3} @mlp-cl/cl-mem]

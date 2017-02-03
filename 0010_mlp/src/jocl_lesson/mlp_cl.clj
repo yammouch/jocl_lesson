@@ -75,12 +75,13 @@
           (prepare-kernels (@cl-env :context)
                            [(get-in @cl-env [:device :id])])]
       (ref-set cl-prg p)
-      (ref-set cl-ker (conj k (cl/create-kernels-in-program p)))
+      ;(ref-set cl-ker (conj k (cl/create-kernels-in-program p)))
+      (ref-set cl-ker (cl/create-kernels-in-program p))
       )))
 
 (defn fw [in]
   (let [{q :queue} @cl-env
-        {dense-fw :dense-fw sigmoid-fw :sigmoid-fw} @cl-ker
+        {dense-fw "dense_fw" sigmoid-fw "sigmoid_fw"} @cl-ker
         {w :w b :b z :z a :a} @cl-mem]
     (cl/callk q dense-fw   nil [1] :m z :m in :m b :m w :i 1 :i 1)
     (cl/callk q sigmoid-fw nil [1] :m a :m z)
@@ -90,11 +91,11 @@
  ([in label] (bw in label false))
  ([in label is-1st?]
   (let [{q :queue} @cl-env
-        {add              :add
-         sub              :sub
-         cross-entropy-bw :cross-entropy-bw
-         dense-bw-m       :dense-bw-m
-         dense-bw-m-ov    :dense-bw-m-ov} @cl-ker
+        {add              "add"
+         sub              "sub"
+         cross-entropy-bw "cross_entropy_bw"
+         dense-bw-m       "dense_bw_m"
+         dense-bw-m-ov    "dense_bw_m_ov"} @cl-ker
         {a :a v :v w :w b :b wacc :wacc bacc :bacc} @cl-mem]
     (cl/callk q cross-entropy-bw nil [1] :m v :m a :m label :f 0.1)
     (if is-1st?
@@ -113,7 +114,7 @@
           (recur (next i) (next l) false)
           )))
   (let [{q :queue} @cl-env
-        {sub :sub} @cl-ker
+        {sub "sub"} @cl-ker
         {w :w b :b wacc :wacc bacc :bacc} @cl-mem]
     (cl/callk q sub nil [1] :m w :m wacc)
     (cl/callk q sub nil [1] :m b :m bacc)))
