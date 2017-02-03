@@ -6,22 +6,6 @@
 
 (import '(org.jocl CL Sizeof Pointer))
 
-(defn clGetKernelInfo [kernel param-name]
-  (let [param-value-size 65536
-        param-value-body (byte-array param-value-size)
-        param-value (Pointer/to param-value-body)
-        param-value-size-ret (long-array 1)
-        errcode-ret (CL/clGetKernelInfo
-                     kernel
-                     (.get (.getField CL (str param-name)) nil)
-                     param-value-size
-                     param-value
-                     param-value-size-ret)]
-    (if (= errcode-ret CL/CL_SUCCESS)
-      (take (nth param-value-size-ret 0) param-value-body)
-      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-      )))
-
 (defn prepare-mem [context]
   (into {}
         (map (fn [[k size]]

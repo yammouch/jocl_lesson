@@ -15,24 +15,6 @@
       (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
-(defn clGetPlatformInfo [platform param-name]
-  (let [param-value-size 65536
-        errcode-ret (int-array 1)
-        param-value-body (byte-array param-value-size)
-        param-value (Pointer/to param-value-body)
-        param-value-size-ret (long-array 1)]
-    (CL/clGetPlatformInfo
-     platform    
-     (.get (.getField CL (str param-name)) nil)
-     param-value-size
-     param-value
-     param-value-size-ret)
-    (if (= (nth errcode-ret 0) CL/CL_SUCCESS)
-      (take (nth param-value-size-ret 0)
-            param-value-body)
-      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-      )))
-
 (defn clGetDeviceIDs [platform]
   (let [num-devices (int-array 1)
         _ (CL/clGetDeviceIDs
@@ -46,22 +28,6 @@
                      num-devices)]
     (if (= errcode-ret CL/CL_SUCCESS)
       (seq devices)
-      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-      )))
-
-(defn clGetDeviceInfo [device param-name]
-  (let [param-value-size 65536
-        param-value-body (byte-array param-value-size)
-        param-value (Pointer/to param-value-body)
-        param-value-size-ret (long-array 1)
-        errcode-ret (CL/clGetDeviceInfo
-                     device
-                     (.get (.getField CL (str param-name)) nil)
-                     param-value-size
-                     param-value
-                     param-value-size-ret)]
-    (if (= errcode-ret CL/CL_SUCCESS)
-      (take (nth param-value-size-ret 0) param-value-body)
       (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
@@ -97,13 +63,12 @@
       (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
-(defn clGetProgramInfo [program param-name]
+(defn clGetAnInfo [f param-name]
   (let [param-value-size 65536
         param-value-body (byte-array param-value-size)
         param-value (Pointer/to param-value-body)
         param-value-size-ret (long-array 1)
-        errcode-ret (CL/clGetProgramInfo
-                     program
+        errcode-ret (f
                      (.get (.getField CL (str param-name)) nil)
                      param-value-size
                      param-value
@@ -113,22 +78,17 @@
       (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
+(defn clGetDeviceInfo [device param-name]
+  (clGetAnInfo #(CL/clGetDeviceInfo device %1 %2 %3 %4) param-name))
+(defn clGetPlatformInfo [platform param-name]
+  (clGetAnInfo #(CL/clGetPlatformInfo platform %1 %2 %3 %4) param-name))
+(defn clGetProgramInfo [program param-name]
+  (clGetAnInfo #(CL/clGetProgramInfo program %1 %2 %3 %4) param-name))
 (defn clGetProgramBuildInfo [program device param-name]
-  (let [param-value-size 65536
-        param-value-body (byte-array param-value-size)
-        param-value (Pointer/to param-value-body)
-        param-value-size-ret (long-array 1)
-        errcode-ret (CL/clGetProgramBuildInfo
-                     program
-                     device
-                     (.get (.getField CL (str param-name)) nil)
-                     param-value-size
-                     param-value
-                     param-value-size-ret)]
-    (if (= errcode-ret CL/CL_SUCCESS)
-      (take (nth param-value-size-ret 0) param-value-body)
-      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-      )))
+  (clGetAnInfo #(CL/clGetProgramBuildInfo program device %1 %2 %3 %4)
+               param-name))
+(defn clGetKernelInfo [kernel param-name]
+  (clGetAnInfo #(CL/clGetKernelInfo kernel %1 %2 %3 %4) param-name))
 
 ; subroutines for get bunch of OpenCL infomation
 

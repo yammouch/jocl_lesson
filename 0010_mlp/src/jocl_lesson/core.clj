@@ -10,9 +10,10 @@
 (require 'clojure.pprint)
 
 (defn -main [& args]
+  (clojure.pprint/pprint (map cl/get-platform (cl/clGetPlatformIDs)))
   (mlp-cl/init)
   (println (-> (@mlp-cl/cl-ker :add)
-               (mlp-cl/clGetKernelInfo 'CL_KERNEL_FUNCTION_NAME)
+               (cl/clGetKernelInfo 'CL_KERNEL_FUNCTION_NAME)
                (cl/parse-str-info)))
   (let [{q :queue} @mlp-cl/cl-env
         {sub :sub} @mlp-cl/cl-ker
