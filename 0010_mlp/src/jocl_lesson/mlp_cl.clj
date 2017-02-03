@@ -75,7 +75,8 @@
           (prepare-kernels (@cl-env :context)
                            [(get-in @cl-env [:device :id])])]
       (ref-set cl-prg p)
-      (ref-set cl-ker k))))
+      (ref-set cl-ker (conj k (cl/create-kernels-in-program p)))
+      )))
 
 (defn fw [in]
   (let [{q :queue} @cl-env

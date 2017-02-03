@@ -16,7 +16,7 @@
 
 (defn clGetPlatformIDs []
   (clGetViaPointer #(CL/clGetPlatformIDs %1 %2 %3) org.jocl.cl_platform_id))
-(defn clGetKernelsInProgram [program]
+(defn clCreateKernelsInProgram [program]
   (clGetViaPointer #(CL/clCreateKernelsInProgram program %1 %2 %3)
                    org.jocl.cl_kernel))
 
@@ -303,6 +303,13 @@
         ret (CL/clCreateKernel p name err)]
     (handle-cl-error (first err))
     ret))
+
+(defn create-kernels-in-program [p]
+  (into {}
+        (map (fn [k] [(-> (clGetKernelInfo k 'CL_KERNEL_FUNCTION_NAME)
+                          parse-str-info)
+                      k])
+             (clCreateKernelsInProgram p))))
 
 (defn callk [q k global-work-offset global-work-size & args]
   (apply set-args k args)

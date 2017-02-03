@@ -26,7 +26,7 @@
         out [2 3 4 5]
         n (count in)
         {q :queue} @mlp-cl/cl-env
-        {add :add sub :sub} @mlp-cl/cl-ker
+        {add "add" sub :sub} @mlp-cl/cl-ker
         [mem-out mem-in]
         (map (partial cl/create-buffer (@mlp-cl/cl-env :context) :f)
              [out in])]

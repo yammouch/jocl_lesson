@@ -14,7 +14,7 @@
 (defn -main [& args]
   (clojure.pprint/pprint (map cl/get-platform (cl/clGetPlatformIDs)))
   (mlp-cl/init)
-  (let [kernels (cl/clGetKernelsInProgram @mlp-cl/cl-prg)]
+  (let [kernels (cl/clCreateKernelsInProgram @mlp-cl/cl-prg)]
     (clojure.pprint/pprint kernels)
     (clojure.pprint/pprint 
      (map #(cl/parse-str-info (cl/clGetKernelInfo % 'CL_KERNEL_FUNCTION_NAME))
