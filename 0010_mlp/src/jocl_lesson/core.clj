@@ -1,27 +1,14 @@
 (ns jocl-lesson.core
   (:gen-class))
 
-(import '(org.jocl CL))
-
 (require 'jocl-lesson.cl)
 (alias 'cl 'jocl-lesson.cl)
 
 (require 'jocl-lesson.mlp-cl)
 (alias 'mlp-cl 'jocl-lesson.mlp-cl)
 
-(require 'clojure.pprint)
-
 (defn -main [& args]
-  (clojure.pprint/pprint (map cl/get-platform (cl/clGetPlatformIDs)))
   (mlp-cl/init)
-  (let [kernels (cl/clCreateKernelsInProgram @mlp-cl/cl-prg)]
-    (clojure.pprint/pprint kernels)
-    (clojure.pprint/pprint 
-     (map #(cl/parse-str-info (cl/clGetKernelInfo % 'CL_KERNEL_FUNCTION_NAME))
-          kernels)))
-  (println (-> (@mlp-cl/cl-ker "add")
-               (cl/clGetKernelInfo 'CL_KERNEL_FUNCTION_NAME)
-               (cl/parse-str-info)))
   (let [{q :queue} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {z :z a :a v :v w :w b :b wacc :wacc bacc :bacc

@@ -29,29 +29,6 @@
 
 (def kernel-source-code (slurp "kernel.cl"))
 
-(defn prepare-kernels [context devices]
-  (let [program (cl/compile-kernel-source context devices kernel-source-code)]
-    {:program program
-     :kernels (into {}
-                    (map (fn [[k name]] [k (cl/create-kernel program name)])
-                         [[:set0             "set0"            ]
-                          [:add              "add"             ]
-                          [:sub              "sub"             ]
-                          [:dense-fw         "dense_fw"        ]
-                          [:dense-bw-m       "dense_bw_m"      ]
-                          [:dense-bw-m-ov    "dense_bw_m_ov"   ]
-                          [:dense-bw-ofs     "dense_bw_ofs"    ]
-                          [:dense-bw-ofs-ov  "dense_bw_ofs_ov" ]
-                          [:dense-bw-v       "dense_bw_v"      ]
-                          [:sigmoid-fw       "sigmoid_fw"      ]
-                          [:sigmoid-bw       "sigmoid_bw"      ]
-                          [:softmax-fw-step1 "softmax_fw_step1"]
-                          [:softmax-fw-step2 "softmax_fw_step2"]
-                          [:softmax-fw-step3 "softmax_fw_step3"]
-                          [:quadratic-bw     "quadratic_bw"    ]
-                          [:cross-entropy-bw "cross_entropy_bw"]
-                          ]))}))
-
 (def cl-env (ref nil))
 (def cl-mem (ref nil))
 (def cl-prg (ref nil))
@@ -71,13 +48,11 @@
     ;(ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_CPU))
     (ref-set cl-mem (prepare-mem (@cl-env :context)))
-    (let [{p :program k :kernels}
-          (prepare-kernels (@cl-env :context)
-                           [(get-in @cl-env [:device :id])])]
-      (ref-set cl-prg p)
-      ;(ref-set cl-ker (conj k (cl/create-kernels-in-program p)))
-      (ref-set cl-ker (cl/create-kernels-in-program p))
-      )))
+    (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
+                     [(get-in @cl-env [:device :id])]
+                     kernel-source-code))
+    (ref-set cl-ker (cl/create-kernels-in-program @cl-prg))
+    ))
 
 (defn fw [in]
   (let [{q :queue} @cl-env
