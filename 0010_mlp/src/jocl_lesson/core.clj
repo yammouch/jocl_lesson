@@ -14,16 +14,11 @@
 (defn -main [& args]
   (clojure.pprint/pprint (map cl/get-platform (cl/clGetPlatformIDs)))
   (mlp-cl/init)
-  (let [num-kernels 1024
-        kernels (make-array org.jocl.cl_kernel num-kernels)
-        num-kernels-ret (int-array 1)
-        errcode-ret (CL/clCreateKernelsInProgram @mlp-cl/cl-prg
-                     num-kernels kernels num-kernels-ret)]
-    (clojure.pprint/pprint
-     (take (nth num-kernels-ret 0) kernels))
+  (let [kernels (cl/clGetKernelsInProgram @mlp-cl/cl-prg)]
+    (clojure.pprint/pprint kernels)
     (clojure.pprint/pprint 
      (map #(cl/parse-str-info (cl/clGetKernelInfo % 'CL_KERNEL_FUNCTION_NAME))
-          (take (nth num-kernels-ret 0) kernels))))
+          kernels)))
   (println (-> (@mlp-cl/cl-ker :add)
                (cl/clGetKernelInfo 'CL_KERNEL_FUNCTION_NAME)
                (cl/parse-str-info)))

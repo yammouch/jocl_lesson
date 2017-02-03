@@ -4,16 +4,21 @@
 
 ; very thin wrapper of OpenCL API
 
-(defn clGetPlatformIDs []
-  (let [num-entries 256
-        platforms (make-array org.jocl.cl_platform_id num-entries)
-        num-platforms (int-array 1)
-        errcode-ret (CL/clGetPlatformIDs
-                     num-entries platforms num-platforms)]
+(defn clGetViaPointer [f type]
+  (let [num 1024
+        ar (make-array type num)
+        num-ret (int-array 1)
+        errcode-ret (f num ar num-ret)]
     (if (= errcode-ret CL/CL_SUCCESS)
-      (take (nth num-platforms 0) platforms)
+      (take (nth num-ret 0) ar)
       (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
+
+(defn clGetPlatformIDs []
+  (clGetViaPointer #(CL/clGetPlatformIDs %1 %2 %3) org.jocl.cl_platform_id))
+(defn clGetKernelsInProgram [program]
+  (clGetViaPointer #(CL/clCreateKernelsInProgram program %1 %2 %3)
+                   org.jocl.cl_kernel))
 
 (defn clGetDeviceIDs [platform]
   (let [num-devices (int-array 1)
