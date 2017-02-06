@@ -7,17 +7,19 @@
 (import '(org.jocl CL Sizeof Pointer))
 
 (defn prepare-mem [context n-in n-out]
-  (into {}
-        (map (fn [[k size]]
-               [k (cl/create-buffer context :f size)])
-             [[:w   (range (* n-in n-out))]
-              [:b   (repeat n-out 0)]
-              [:z    n-out]
-              [:a    n-out]
-              [:v    n-out]
-              [:wacc (* n-in n-out)]
-              [:bacc n-out]
-              ])))
+  {:w    (vec (map (fn [[h w]] (cl/create-buffer context :f (* h w)))
+                   (partition 2 1 [n-in n-out])))
+   :b    (vec (map (partial cl/create-buffer context :f)
+                   [n-out]))
+   :z    (vec (map (partial cl/create-buffer context :f)
+                   [n-out]))
+   :a    (vec (map (partial cl/create-buffer context :f)
+                   [n-out]))
+   :v    [                     (cl/create-buffer context :f (max n-out))]
+   :wacc (vec (map (fn [[h w]] (cl/create-buffer context :f (* h w)))
+                   (partition 2 1 [n-in n-out])))
+   :bacc (vec (map (partial cl/create-buffer context :f)
+                   [n-out]))})
 
 (def kernel-source-code (slurp "kernel.cl"))
 
@@ -33,7 +35,8 @@
   (CL/clFinish (@cl-env :queue))
   (doseq [[_ v] @cl-ker] (CL/clReleaseKernel v))
   (CL/clReleaseProgram @cl-prg)
-  (doseq [[_ v] @cl-mem] (CL/clReleaseMemObject v))
+  (doseq [[_ v] @cl-mem]
+    (doseq [m v] (CL/clReleaseMemObject m)))
   (CL/clReleaseCommandQueue (@cl-env :queue))
   (CL/clReleaseContext (@cl-env :context)))
 
@@ -53,7 +56,7 @@
 (defn fw [in]
   (let [{q :queue} @cl-env
         {dense-fw "dense_fw" sigmoid-fw "sigmoid_fw"} @cl-ker
-        {w :w b :b z :z a :a} @cl-mem]
+        {[w] :w [b] :b [z] :z [a] :a} @cl-mem]
     (cl/callk q dense-fw   nil [@n-out] :m z :m in :m b :m w :i @n-out :i @n-in)
     (cl/callk q sigmoid-fw nil [@n-out] :m a :m z)
     ))
@@ -61,7 +64,7 @@
 (defn fw-err [input label]
   (fw input)
   (let [{q :queue} @cl-env
-        {a :a} @cl-mem
+        {[a] :a} @cl-mem
         out (cl/read-float q a @n-out)
         lbl (cl/read-float q label @n-out)]
     (apply + (map #(let [diff (- %1 %2)] (* diff diff))
@@ -79,7 +82,7 @@
          cross-entropy-bw "cross_entropy_bw"
          dense-bw-m       "dense_bw_m"
          dense-bw-m-ov    "dense_bw_m_ov"} @cl-ker
-        {a :a v :v w :w b :b wacc :wacc bacc :bacc} @cl-mem]
+        {[a] :a [v] :v [w] :w [b] :b [wacc] :wacc [bacc] :bacc} @cl-mem]
     (cl/callk q cross-entropy-bw nil [@n-out] :m v :m a :m label :f 0.1)
     (if is-1st?
       (do (cl/callk q dense-bw-m-ov nil [@n-in @n-out]
@@ -101,6 +104,6 @@
           )))
   (let [{q :queue} @cl-env
         {sub "sub"} @cl-ker
-        {w :w b :b wacc :wacc bacc :bacc} @cl-mem]
+        {[w] :w [b] :b [wacc] :wacc [bacc] :bacc} @cl-mem]
     (cl/callk q sub nil [(* @n-in @n-out)] :m w :m wacc)
     (cl/callk q sub nil [@n-out] :m b :m bacc)))
