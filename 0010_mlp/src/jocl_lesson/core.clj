@@ -17,8 +17,11 @@
     (dotimes [i 100]
       (mlp-cl/run-subbatch [i0 i1 i2 i3] [l0 l1 l2 l3])
       (when (= (mod i 10) 0)
-        (let [[w] (cl/read-float q w 1)
-              [b] (cl/read-float q b 1)]
-          (printf "i: %4d w: %6.2f b: %6.2f -b/w: %6.2f\n" i w b (/ (- b) w))
-          ))))
+        (let [w (cl/read-float q w 3)
+              b (cl/read-float q b 3)]
+          (printf "i: %4d w: [%s] b: [%s]\n"
+           i
+           (apply str (interpose " " (map (partial format "%6.2f") w)))
+           (apply str (interpose " " (map (partial format "%6.2f") b)))
+           )))))
   (mlp-cl/finalize))
