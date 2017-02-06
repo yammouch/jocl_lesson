@@ -8,7 +8,7 @@
 (alias 'mlp-cl 'jocl-lesson.mlp-cl)
 
 (defn -main [& args]
-  (mlp-cl/init)
+  (mlp-cl/init 3)
   (let [{q :queue} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {z :z a :a v :v w :w b :b wacc :wacc bacc :bacc
