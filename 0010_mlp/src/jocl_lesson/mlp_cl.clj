@@ -58,6 +58,18 @@
     (cl/callk q sigmoid-fw nil [3] :m a :m z)
     ))
 
+(defn fw-err [input label]
+  (fw input)
+  (let [{q :queue} @cl-env
+        {a :a} @cl-mem
+        out (cl/read-float q a 3)
+        lbl (cl/read-float q label 3)]
+    (apply + (map #(let [diff (- %1 %2)] (* diff diff))
+                  out lbl))))
+
+(defn fw-err-subbatch [inputs labels]
+  (apply + (map fw-err inputs labels)))
+
 (defn bw
  ([in label] (bw in label false))
  ([in label is-1st?]
