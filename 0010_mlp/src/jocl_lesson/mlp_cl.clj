@@ -6,16 +6,16 @@
 
 (import '(org.jocl CL Sizeof Pointer))
 
-(defn prepare-mem [context n-out]
+(defn prepare-mem [context n-in n-out]
   (into {}
         (map (fn [[k size]]
                [k (cl/create-buffer context :f size)])
-             [[:w   [-1.0 0.0 1.0]]
-              [:b   [ 0.0 0.0 0.0]]
+             [[:w   (range (* n-in n-out))]
+              [:b   (repeat n-out 0)]
               [:z    n-out]
               [:a    n-out]
               [:v    n-out]
-              [:wacc n-out]
+              [:wacc (* n-in n-out)]
               [:bacc n-out]
               ])))
 
@@ -25,6 +25,7 @@
 (def cl-mem (ref nil))
 (def cl-prg (ref nil))
 (def cl-ker (ref nil))
+(def n-in   (ref 1))
 (def n-out  (ref 1))
 
 (defn finalize []
@@ -36,11 +37,12 @@
   (CL/clReleaseCommandQueue (@cl-env :queue))
   (CL/clReleaseContext (@cl-env :context)))
 
-(defn init [no]
+(defn init [ni no]
   (dosync
     ;(ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_CPU))
-    (ref-set cl-mem (prepare-mem (@cl-env :context) no))
+    (ref-set cl-mem (prepare-mem (@cl-env :context) ni no))
+    (ref-set n-in  ni)
     (ref-set n-out no)
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
                      [(get-in @cl-env [:device :id])]
@@ -52,7 +54,7 @@
   (let [{q :queue} @cl-env
         {dense-fw "dense_fw" sigmoid-fw "sigmoid_fw"} @cl-ker
         {w :w b :b z :z a :a} @cl-mem]
-    (cl/callk q dense-fw   nil [@n-out] :m z :m in :m b :m w :i @n-out :i 1)
+    (cl/callk q dense-fw   nil [@n-out] :m z :m in :m b :m w :i @n-out :i @n-in)
     (cl/callk q sigmoid-fw nil [@n-out] :m a :m z)
     ))
 
@@ -80,10 +82,12 @@
         {a :a v :v w :w b :b wacc :wacc bacc :bacc} @cl-mem]
     (cl/callk q cross-entropy-bw nil [@n-out] :m v :m a :m label :f 0.1)
     (if is-1st?
-      (do (cl/callk q dense-bw-m-ov nil [1 @n-out] :m wacc :m in :m v :i @n-out)
+      (do (cl/callk q dense-bw-m-ov nil [@n-in @n-out]
+           :m wacc :m in :m v :i @n-out)
           (CL/clEnqueueCopyBuffer q v bacc
            0 0 (* @n-out Sizeof/cl_float) 0 nil nil))
-      (do (cl/callk q dense-bw-m    nil [1 @n-out] :m wacc :m in :m v :i @n-out)
+      (do (cl/callk q dense-bw-m    nil [@n-in @n-out]
+           :m wacc :m in :m v :i @n-out)
           (cl/callk q add           nil [@n-out] :m bacc :m v)
           )))))
 
@@ -98,5 +102,5 @@
   (let [{q :queue} @cl-env
         {sub "sub"} @cl-ker
         {w :w b :b wacc :wacc bacc :bacc} @cl-mem]
-    (cl/callk q sub nil [@n-out] :m w :m wacc)
+    (cl/callk q sub nil [(* @n-in @n-out)] :m w :m wacc)
     (cl/callk q sub nil [@n-out] :m b :m bacc)))
