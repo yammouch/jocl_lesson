@@ -10,7 +10,7 @@
 (alias 'mlp-cl 'jocl-lesson.mlp-cl)
 
 (defn -main [& args]
-  (mlp-cl/init 3 5)
+  (mlp-cl/init [3 5])
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem

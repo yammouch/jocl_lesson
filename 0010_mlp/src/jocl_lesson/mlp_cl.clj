@@ -6,20 +6,20 @@
 
 (import '(org.jocl CL Sizeof Pointer))
 
-(defn prepare-mem [context n-in n-out]
+(defn prepare-mem [context conf]
   {:w    (vec (map (fn [[h w]] (cl/create-buffer context :f (* h w)))
-                   (partition 2 1 [n-in n-out])))
+                   (partition 2 1 conf)))
    :b    (vec (map (partial cl/create-buffer context :f)
-                   [n-out]))
+                   (next conf)))
    :z    (vec (map (partial cl/create-buffer context :f)
-                   [n-out]))
+                   (next conf)))
    :a    (vec (map (partial cl/create-buffer context :f)
-                   [n-out]))
-   :v    [                     (cl/create-buffer context :f (max n-out))]
+                   (next conf)))
+   :v    [                     (cl/create-buffer context :f (apply max conf))]
    :wacc (vec (map (fn [[h w]] (cl/create-buffer context :f (* h w)))
-                   (partition 2 1 [n-in n-out])))
+                   (partition 2 1 conf)))
    :bacc (vec (map (partial cl/create-buffer context :f)
-                   [n-out]))})
+                   (next conf)))})
 
 (def kernel-source-code (slurp "kernel.cl"))
 
@@ -27,8 +27,7 @@
 (def cl-mem (ref nil))
 (def cl-prg (ref nil))
 (def cl-ker (ref nil))
-(def n-in   (ref 1))
-(def n-out  (ref 1))
+(def mlp-config (ref []))
 
 (defn finalize []
   (CL/clFlush (@cl-env :queue))
@@ -40,13 +39,12 @@
   (CL/clReleaseCommandQueue (@cl-env :queue))
   (CL/clReleaseContext (@cl-env :context)))
 
-(defn init [ni no]
+(defn init [conf]
   (dosync
     ;(ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_CPU))
-    (ref-set cl-mem (prepare-mem (@cl-env :context) ni no))
-    (ref-set n-in  ni)
-    (ref-set n-out no)
+    (ref-set cl-mem (prepare-mem (@cl-env :context) conf))
+    (ref-set mlp-config (vec conf))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
                      [(get-in @cl-env [:device :id])]
                      kernel-source-code))
@@ -57,18 +55,20 @@
   (let [{q :queue} @cl-env
         {dense-fw "dense_fw" sigmoid-fw "sigmoid_fw"} @cl-ker
         {w :w b :b z :z a :a} @cl-mem]
-    (dotimes [i 1]
-      (cl/callk q dense-fw   nil [@n-out] :m (z i) :m in :m (b i) :m (w i)
-       :i @n-out :i @n-in)
-      (cl/callk q sigmoid-fw nil [@n-out] :m (a i) :m (z i))
-      )))
+    (dotimes [i (- (count @mlp-config) 1)]
+      (cl/callk q dense-fw   nil [(@mlp-config (+ i 1))]
+       :m (z i) :m in :m (b i) :m (w i)
+       :i (@mlp-config (+ i 1)) :i (@mlp-config i))
+      (cl/callk q sigmoid-fw nil [(@mlp-config (+ i 1))]
+       :m (a i) :m (z i)
+       ))))
 
 (defn fw-err [input label]
   (fw input)
   (let [{q :queue} @cl-env
         {a :a} @cl-mem
-        out (cl/read-float q (a 0) @n-out)
-        lbl (cl/read-float q label @n-out)]
+        out (cl/read-float q (a (- (count @mlp-config) 2)) (last @mlp-config))
+        lbl (cl/read-float q label (last @mlp-config))]
     (apply + (map #(let [diff (- %1 %2)] (* diff diff))
                   out lbl))))
 
@@ -85,20 +85,26 @@
          sigmoid-bw       "sigmoid_bw"
          dense-bw-m       "dense_bw_m"
          dense-bw-m-ov    "dense_bw_m_ov"} @cl-ker
-        {a :a v :v w :w b :b wacc :wacc bacc :bacc} @cl-mem]
-    (doseq [i (range 0 -1 -1)]
-      (cl/callk q
-       (if (= i 0) cross-entropy-bw sigmoid-bw)
-       nil [@n-out] :m (v 0) :m (a i) :m label :f 0.1)
+        {a :a v :v w :w b :b wacc :wacc bacc :bacc} @cl-mem
+        loop-init (- (count @mlp-config) 2)]
+    (doseq [i (range loop-init -1 -1)]
+      (if (= i loop-init)
+        (cl/callk q cross-entropy-bw nil [(@mlp-config (+ i 1))]
+         :m (v 0) :m (a i) :m label :f 0.1)
+        (cl/callk q sigmoid-bw nil [(@mlp-config (+ i 1))]
+         :m (v 0) :m (a i)))
       (if is-1st?
-        (do (cl/callk q dense-bw-m-ov nil [@n-in @n-out]
-             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v 0) :i @n-out)
+        (do (cl/callk q dense-bw-m-ov nil (take 2 (nthnext @mlp-config i))
+             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v 0)
+             :i (@mlp-config (+ i 1)))
             (CL/clEnqueueCopyBuffer q (v 0) (bacc i)
-             0 0 (* @n-out Sizeof/cl_float) 0 nil nil))
-        (do (cl/callk q dense-bw-m    nil [@n-in @n-out]
-             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v 0) :i @n-out)
-            (cl/callk q add           nil [@n-out] :m (bacc i) :m (v 0))
-            ))))))
+             0 0 (* (@mlp-config (+ i 1)) Sizeof/cl_float) 0 nil nil))
+        (do (cl/callk q dense-bw-m    nil (take 2 (nthnext @mlp-config i))
+             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v 0)
+             :i (@mlp-config (+ i 1)))
+            (cl/callk q add           nil [(@mlp-config (+ i 1))]
+             :m (bacc i) :m (v 0)
+             )))))))
 
 (defn run-subbatch [inputs labels]
   (loop [i inputs l labels first? true]
@@ -111,7 +117,8 @@
   (let [{q :queue} @cl-env
         {sub "sub"} @cl-ker
         {w :w b :b wacc :wacc bacc :bacc} @cl-mem]
-    (dotimes [i 1]
-      (cl/callk q sub nil [(* @n-in @n-out)] :m (w i) :m (wacc i))
-      (cl/callk q sub nil [@n-out] :m (b i) :m (bacc i))
+    (dotimes [i (- (count @mlp-config) 1)]
+      (cl/callk q sub nil [(* (@mlp-config i) (@mlp-config (+ i 1)))]
+       :m (w i) :m (wacc i))
+      (cl/callk q sub nil [(@mlp-config (+ i 1))] :m (b i) :m (bacc i))
       )))
