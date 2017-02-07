@@ -56,16 +56,17 @@
 (defn fw [in]
   (let [{q :queue} @cl-env
         {dense-fw "dense_fw" sigmoid-fw "sigmoid_fw"} @cl-ker
-        {[w] :w [b] :b [z] :z [a] :a} @cl-mem]
-    (cl/callk q dense-fw   nil [@n-out] :m z :m in :m b :m w :i @n-out :i @n-in)
-    (cl/callk q sigmoid-fw nil [@n-out] :m a :m z)
+        {w :w b :b z :z a :a} @cl-mem]
+    (cl/callk q dense-fw   nil [@n-out] :m (z 0) :m in :m (b 0) :m (w 0)
+     :i @n-out :i @n-in)
+    (cl/callk q sigmoid-fw nil [@n-out] :m (a 0) :m (z 0))
     ))
 
 (defn fw-err [input label]
   (fw input)
   (let [{q :queue} @cl-env
-        {[a] :a} @cl-mem
-        out (cl/read-float q a @n-out)
+        {a :a} @cl-mem
+        out (cl/read-float q (a 0) @n-out)
         lbl (cl/read-float q label @n-out)]
     (apply + (map #(let [diff (- %1 %2)] (* diff diff))
                   out lbl))))
@@ -82,16 +83,16 @@
          cross-entropy-bw "cross_entropy_bw"
          dense-bw-m       "dense_bw_m"
          dense-bw-m-ov    "dense_bw_m_ov"} @cl-ker
-        {[a] :a [v] :v [w] :w [b] :b [wacc] :wacc [bacc] :bacc} @cl-mem]
-    (cl/callk q cross-entropy-bw nil [@n-out] :m v :m a :m label :f 0.1)
+        {a :a v :v w :w b :b wacc :wacc bacc :bacc} @cl-mem]
+    (cl/callk q cross-entropy-bw nil [@n-out] :m (v 0) :m (a 0) :m label :f 0.1)
     (if is-1st?
       (do (cl/callk q dense-bw-m-ov nil [@n-in @n-out]
-           :m wacc :m in :m v :i @n-out)
-          (CL/clEnqueueCopyBuffer q v bacc
+           :m (wacc 0) :m in :m (v 0) :i @n-out)
+          (CL/clEnqueueCopyBuffer q (v 0) (bacc 0)
            0 0 (* @n-out Sizeof/cl_float) 0 nil nil))
       (do (cl/callk q dense-bw-m    nil [@n-in @n-out]
-           :m wacc :m in :m v :i @n-out)
-          (cl/callk q add           nil [@n-out] :m bacc :m v)
+           :m (wacc 0) :m in :m (v 0) :i @n-out)
+          (cl/callk q add           nil [@n-out] :m (bacc 0) :m (v 0))
           )))))
 
 (defn run-subbatch [inputs labels]
@@ -104,6 +105,6 @@
           )))
   (let [{q :queue} @cl-env
         {sub "sub"} @cl-ker
-        {[w] :w [b] :b [wacc] :wacc [bacc] :bacc} @cl-mem]
-    (cl/callk q sub nil [(* @n-in @n-out)] :m w :m wacc)
-    (cl/callk q sub nil [@n-out] :m b :m bacc)))
+        {w :w b :b wacc :wacc bacc :bacc} @cl-mem]
+    (cl/callk q sub nil [(* @n-in @n-out)] :m (w 0) :m (wacc 0))
+    (cl/callk q sub nil [@n-out] :m (b 0) :m (bacc 0))))

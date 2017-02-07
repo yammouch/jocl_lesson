@@ -13,7 +13,7 @@
   (mlp-cl/init 3 5)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
-        {[w] :w [b] :b} @mlp-cl/cl-mem
+        {w :w b :b} @mlp-cl/cl-mem
         inputs (map (partial cl/create-buffer ctx :f)
                     [[0 0 0]
                      [0 0 1]
@@ -35,8 +35,8 @@
     (dotimes [i 1001]
       (mlp-cl/run-subbatch inputs labels)
       (when (= (mod i 50) 0)
-        (let [w (cl/read-float q w 15)
-              b (cl/read-float q b 5)]
+        (let [w (cl/read-float q (w 0) 15)
+              b (cl/read-float q (b 0) 5)]
           (printf "i: %4d b: [%s] err: %8.2f w: (follows)\n"
            i
            (apply str (interpose " " (map (partial format "%6.2f") b)))
