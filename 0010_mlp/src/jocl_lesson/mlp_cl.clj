@@ -57,10 +57,11 @@
   (let [{q :queue} @cl-env
         {dense-fw "dense_fw" sigmoid-fw "sigmoid_fw"} @cl-ker
         {w :w b :b z :z a :a} @cl-mem]
-    (cl/callk q dense-fw   nil [@n-out] :m (z 0) :m in :m (b 0) :m (w 0)
-     :i @n-out :i @n-in)
-    (cl/callk q sigmoid-fw nil [@n-out] :m (a 0) :m (z 0))
-    ))
+    (dotimes [i 1]
+      (cl/callk q dense-fw   nil [@n-out] :m (z i) :m in :m (b i) :m (w i)
+       :i @n-out :i @n-in)
+      (cl/callk q sigmoid-fw nil [@n-out] :m (a i) :m (z i))
+      )))
 
 (defn fw-err [input label]
   (fw input)
@@ -81,19 +82,23 @@
         {add              "add"
          sub              "sub"
          cross-entropy-bw "cross_entropy_bw"
+         sigmoid-bw       "sigmoid_bw"
          dense-bw-m       "dense_bw_m"
          dense-bw-m-ov    "dense_bw_m_ov"} @cl-ker
         {a :a v :v w :w b :b wacc :wacc bacc :bacc} @cl-mem]
-    (cl/callk q cross-entropy-bw nil [@n-out] :m (v 0) :m (a 0) :m label :f 0.1)
-    (if is-1st?
-      (do (cl/callk q dense-bw-m-ov nil [@n-in @n-out]
-           :m (wacc 0) :m in :m (v 0) :i @n-out)
-          (CL/clEnqueueCopyBuffer q (v 0) (bacc 0)
-           0 0 (* @n-out Sizeof/cl_float) 0 nil nil))
-      (do (cl/callk q dense-bw-m    nil [@n-in @n-out]
-           :m (wacc 0) :m in :m (v 0) :i @n-out)
-          (cl/callk q add           nil [@n-out] :m (bacc 0) :m (v 0))
-          )))))
+    (doseq [i (range 0 -1 -1)]
+      (cl/callk q
+       (if (= i 0) cross-entropy-bw sigmoid-bw)
+       nil [@n-out] :m (v 0) :m (a i) :m label :f 0.1)
+      (if is-1st?
+        (do (cl/callk q dense-bw-m-ov nil [@n-in @n-out]
+             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v 0) :i @n-out)
+            (CL/clEnqueueCopyBuffer q (v 0) (bacc i)
+             0 0 (* @n-out Sizeof/cl_float) 0 nil nil))
+        (do (cl/callk q dense-bw-m    nil [@n-in @n-out]
+             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v 0) :i @n-out)
+            (cl/callk q add           nil [@n-out] :m (bacc i) :m (v 0))
+            ))))))
 
 (defn run-subbatch [inputs labels]
   (loop [i inputs l labels first? true]
@@ -106,5 +111,7 @@
   (let [{q :queue} @cl-env
         {sub "sub"} @cl-ker
         {w :w b :b wacc :wacc bacc :bacc} @cl-mem]
-    (cl/callk q sub nil [(* @n-in @n-out)] :m (w 0) :m (wacc 0))
-    (cl/callk q sub nil [@n-out] :m (b 0) :m (bacc 0))))
+    (dotimes [i 1]
+      (cl/callk q sub nil [(* @n-in @n-out)] :m (w i) :m (wacc i))
+      (cl/callk q sub nil [@n-out] :m (b i) :m (bacc i))
+      )))
