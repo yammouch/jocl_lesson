@@ -7,9 +7,9 @@
 (import '(org.jocl CL Sizeof Pointer))
 
 (defn prepare-mem [context conf]
-  {:w    (vec (map (fn [[h w]] (cl/create-buffer context :f (* h w)))
+  {:w    (vec (map (fn [[h w]] (cl/create-buffer context :f (range (* h w))))
                    (partition 2 1 conf)))
-   :b    (vec (map (partial cl/create-buffer context :f)
+   :b    (vec (map (fn [l] (cl/create-buffer context :f (repeat l 0)))
                    (next conf)))
    :z    (vec (map (partial cl/create-buffer context :f)
                    (next conf)))
