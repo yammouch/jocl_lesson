@@ -51,6 +51,30 @@
     (ref-set cl-ker (cl/create-kernels-in-program @cl-prg))
     ))
 
+(defn formatv [v]
+  (apply str
+   (interpose " "
+    (map (partial format "%6.2f")
+         v))))
+
+(defn print-matrix [cl-mem cr cc] ; column count
+  (let [strs (map formatv
+                  (partition cc
+                             (cl/read-float (@cl-env :queue)
+                                            cl-mem
+                                            (* cr cc))))]
+    (doseq [s strs] (println s))))
+
+(defn dump [k i]
+  (printf "%s[%d]:\n" (name k) i)
+  (let [[cr cc] (case k
+                  (:w :wacc) (nthnext @mlp-config i)
+                  (:b :bacc) [1 (@mlp-config i)]
+                  (:z :a :v) [1 (+ (@mlp-config i) 1)]
+                  )]
+    (print-matrix (get-in @cl-mem [k (if (= k :v) 0 i)])
+                  cr cc)))
+
 (defn fw [in]
   (let [{q :queue} @cl-env
         {dense-fw "dense_fw" sigmoid-fw "sigmoid_fw"} @cl-ker
@@ -59,9 +83,11 @@
       (cl/callk q dense-fw   nil [(@mlp-config (+ i 1))]
        :m (z i) :m in :m (b i) :m (w i)
        :i (@mlp-config (+ i 1)) :i (@mlp-config i))
+      (dump :z i)
       (cl/callk q sigmoid-fw nil [(@mlp-config (+ i 1))]
-       :m (a i) :m (z i)
-       ))))
+       :m (a i) :m (z i))
+      (dump :a i)
+      )))
 
 (defn fw-err [input label]
   (fw input)
@@ -93,6 +119,7 @@
          :m (v 0) :m (a i) :m label :f 0.1)
         (cl/callk q sigmoid-bw nil [(@mlp-config (+ i 1))]
          :m (v 0) :m (a i)))
+      (dump :v i)
       (if is-1st?
         (do (cl/callk q dense-bw-m-ov nil (take 2 (nthnext @mlp-config i))
              :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v 0)
@@ -104,13 +131,18 @@
              :i (@mlp-config (+ i 1)))
             (cl/callk q add           nil [(@mlp-config (+ i 1))]
              :m (bacc i) :m (v 0)
-             )))))))
+             )))
+      (dump :wacc i)
+      (dump :bacc i)
+      ))))
 
 (defn run-subbatch [inputs labels]
   (loop [i inputs l labels first? true]
     (if (or (empty? i) (empty? l))
       :done
-      (do (fw (first i))
+      (do (println "input:") (print-matrix (first i) 1 (first @mlp-config))
+          (println "label:") (print-matrix (first l) 1 (last @mlp-config))
+          (fw (first i))
           (bw (first i) (first l) first?)
           (recur (next i) (next l) false)
           )))
@@ -121,4 +153,8 @@
       (cl/callk q sub nil [(* (@mlp-config i) (@mlp-config (+ i 1)))]
        :m (w i) :m (wacc i))
       (cl/callk q sub nil [(@mlp-config (+ i 1))] :m (b i) :m (bacc i))
-      )))
+      ))
+  (dotimes [i (- (count @mlp-config) 1)]
+    (dump :w i)
+    (dump :b i))
+)
