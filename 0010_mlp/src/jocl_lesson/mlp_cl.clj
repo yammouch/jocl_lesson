@@ -69,7 +69,7 @@
   (printf "%s[%d]:\n" (name k) i)
   (let [[cr cc] (case k
                   (:w :wacc) (nthnext @mlp-config i)
-                  (:b :bacc :z :a :v) [1 (+ (@mlp-config i) 1)]
+                  (:b :bacc :z :a :v) [1 (@mlp-config (+ i 1))]
                   )]
     (print-matrix (get-in @cl-mem [k (if (= k :v) 0 i)])
                   cr cc)))
