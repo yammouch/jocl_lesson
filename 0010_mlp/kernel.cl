@@ -88,10 +88,11 @@ __kernel void sigmoid_fw(
 
 __kernel void sigmoid_bw(
  __global       float *in,
- __global const float *out) {
+ __global const float *out,
+ __global const float *out_prop) {
   uint i = get_global_id(0);
   float x = out[i];
-  in[i] = x*(1.0f - x);
+  in[i] = x*(1.0f - x)*out_prop[i];
 }
 
 __kernel void softmax_fw_step1(

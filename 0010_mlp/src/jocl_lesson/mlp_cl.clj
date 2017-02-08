@@ -117,8 +117,12 @@
       (if (= i loop-init)
         (cl/callk q cross-entropy-bw nil [(@mlp-config (+ i 1))]
          :m (v 0) :m (a i) :m label :f 0.1)
-        (cl/callk q sigmoid-bw nil [(@mlp-config (+ i 1))]
-         :m (v 0) :m (a i)))
+        (do
+          (cl/callk q dense-bw-v nil [(@mlp-config (+ i 1))]
+           :m (v 0) :m (a (+ i 1)) :m (w (+ i 1)) :i (@mlp-config (+ i 2)))
+          (dump :v i)
+          (cl/callk q sigmoid-bw nil [(@mlp-config (+ i 1))]
+           :m (v 0) :m (a i) :m (v 0))))
       (dump :v i)
       (if is-1st?
         (do (cl/callk q dense-bw-m-ov nil (take 2 (nthnext @mlp-config i))
