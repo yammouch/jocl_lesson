@@ -69,8 +69,7 @@
   (printf "%s[%d]:\n" (name k) i)
   (let [[cr cc] (case k
                   (:w :wacc) (nthnext @mlp-config i)
-                  (:b :bacc) [1 (@mlp-config i)]
-                  (:z :a :v) [1 (+ (@mlp-config i) 1)]
+                  (:b :bacc :z :a :v) [1 (+ (@mlp-config i) 1)]
                   )]
     (print-matrix (get-in @cl-mem [k (if (= k :v) 0 i)])
                   cr cc)))
@@ -81,7 +80,7 @@
         {w :w b :b z :z a :a} @cl-mem]
     (dotimes [i (- (count @mlp-config) 1)]
       (cl/callk q dense-fw   nil [(@mlp-config (+ i 1))]
-       :m (z i) :m in :m (b i) :m (w i)
+       :m (z i) :m (if (= i 0) in (a (- i 1))) :m (b i) :m (w i)
        :i (@mlp-config (+ i 1)) :i (@mlp-config i))
       (dump :z i)
       (cl/callk q sigmoid-fw nil [(@mlp-config (+ i 1))]
@@ -108,6 +107,7 @@
         {add              "add"
          sub              "sub"
          cross-entropy-bw "cross_entropy_bw"
+         dense-bw-v       "dense_bw_v"
          sigmoid-bw       "sigmoid_bw"
          dense-bw-m       "dense_bw_m"
          dense-bw-m-ov    "dense_bw_m_ov"} @cl-ker

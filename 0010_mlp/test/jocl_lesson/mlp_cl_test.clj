@@ -7,7 +7,7 @@
 
 (use-fixtures :once
   (fn [f]
-    (mlp-cl/init)
+    (mlp-cl/init [1 1])
     (f)
     (mlp-cl/finalize)))
 
@@ -130,6 +130,11 @@
     (is (every? #(< -0.01 % 0.01)
                 (map #(- %1 (* %2 (- 1.0 %2)))
                      (cl/read-float q mem-in n)
+                     in)))
+    (cl/callk q k nil [n] :m mem-out :m mem-out) ; overwrite test
+    (is (every? #(< -0.01 % 0.01)
+                (map #(- %1 (* %2 (- 1.0 %2)))
+                     (cl/read-float q mem-out n)
                      in)))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
