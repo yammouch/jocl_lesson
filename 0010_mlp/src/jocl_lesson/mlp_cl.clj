@@ -15,7 +15,8 @@
                    (next conf)))
    :a    (vec (map (partial cl/create-buffer context :f)
                    (next conf)))
-   :v    [                     (cl/create-buffer context :f (apply max conf))]
+   :v    (vec (map (partial cl/create-buffer context :f)
+                   (next conf)))
    :wacc (vec (map (fn [[h w]] (cl/create-buffer context :f (* h w)))
                    (partition 2 1 conf)))
    :bacc (vec (map (partial cl/create-buffer context :f)
@@ -55,6 +56,9 @@
   (apply str
    (interpose " "
     (map (partial format "%6.2f")
+   ; comma separated, for analyzing on Google Sheet
+   ;(interpose ","
+   ; (map (partial format "%.2f")
          v))))
 
 (defn print-matrix [cl-mem cr cc] ; column count
@@ -71,7 +75,7 @@
                   (:w :wacc) (nthnext @mlp-config i)
                   (:b :bacc :z :a :v) [1 (@mlp-config (+ i 1))]
                   )]
-    (print-matrix (get-in @cl-mem [k (if (= k :v) 0 i)])
+    (print-matrix (get-in @cl-mem [k i])
                   cr cc)))
 
 (defn fw [in]
@@ -82,10 +86,10 @@
       (cl/callk q dense-fw   nil [(@mlp-config (+ i 1))]
        :m (z i) :m (if (= i 0) in (a (- i 1))) :m (b i) :m (w i)
        :i (@mlp-config (+ i 1)) :i (@mlp-config i))
-      (dump :z i)
+      ;(dump :z i)
       (cl/callk q sigmoid-fw nil [(@mlp-config (+ i 1))]
        :m (a i) :m (z i))
-      (dump :a i)
+      ;(dump :a i)
       )))
 
 (defn fw-err [input label]
@@ -105,7 +109,6 @@
  ([in label is-1st?]
   (let [{q :queue} @cl-env
         {add              "add"
-         sub              "sub"
          cross-entropy-bw "cross_entropy_bw"
          dense-bw-v       "dense_bw_v"
          sigmoid-bw       "sigmoid_bw"
@@ -116,36 +119,36 @@
     (doseq [i (range loop-init -1 -1)]
       (if (= i loop-init)
         (cl/callk q cross-entropy-bw nil [(@mlp-config (+ i 1))]
-         :m (v 0) :m (a i) :m label :f 0.1)
+         :m (v i) :m (a i) :m label :f 0.1)
         (do
           (cl/callk q dense-bw-v nil [(@mlp-config (+ i 1))]
-           :m (v 0) :m (a (+ i 1)) :m (w (+ i 1)) :i (@mlp-config (+ i 2)))
-          (dump :v i)
+           :m (v i) :m (v (+ i 1)) :m (w (+ i 1)) :i (@mlp-config (+ i 2)))
+          ;(dump :v i)
           (cl/callk q sigmoid-bw nil [(@mlp-config (+ i 1))]
-           :m (v 0) :m (a i) :m (v 0))))
-      (dump :v i)
+           :m (v i) :m (a i) :m (v i))))
+      ;(dump :v i)
       (if is-1st?
         (do (cl/callk q dense-bw-m-ov nil (take 2 (nthnext @mlp-config i))
-             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v 0)
+             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v i)
              :i (@mlp-config (+ i 1)))
-            (CL/clEnqueueCopyBuffer q (v 0) (bacc i)
+            (CL/clEnqueueCopyBuffer q (v i) (bacc i)
              0 0 (* (@mlp-config (+ i 1)) Sizeof/cl_float) 0 nil nil))
         (do (cl/callk q dense-bw-m    nil (take 2 (nthnext @mlp-config i))
-             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v 0)
+             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v i)
              :i (@mlp-config (+ i 1)))
             (cl/callk q add           nil [(@mlp-config (+ i 1))]
-             :m (bacc i) :m (v 0)
+             :m (bacc i) :m (v i)
              )))
-      (dump :wacc i)
-      (dump :bacc i)
+      ;(dump :wacc i)
+      ;(dump :bacc i)
       ))))
 
 (defn run-subbatch [inputs labels]
   (loop [i inputs l labels first? true]
     (if (or (empty? i) (empty? l))
       :done
-      (do (println "input:") (print-matrix (first i) 1 (first @mlp-config))
-          (println "label:") (print-matrix (first l) 1 (last @mlp-config))
+      (do ;(println "input:") (print-matrix (first i) 1 (first @mlp-config))
+          ;(println "label:") (print-matrix (first l) 1 (last @mlp-config))
           (fw (first i))
           (bw (first i) (first l) first?)
           (recur (next i) (next l) false)
@@ -158,7 +161,7 @@
        :m (w i) :m (wacc i))
       (cl/callk q sub nil [(@mlp-config (+ i 1))] :m (b i) :m (bacc i))
       ))
-  (dotimes [i (- (count @mlp-config) 1)]
-    (dump :w i)
-    (dump :b i))
+  ;(dotimes [i (- (count @mlp-config) 1)]
+  ;  (dump :w i)
+  ;  (dump :b i))
 )

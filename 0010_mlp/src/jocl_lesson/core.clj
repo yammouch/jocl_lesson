@@ -32,13 +32,17 @@
                      [1 0 1 1 1]
                      [1 1 0 1 1]
                      [1 1 1 1 0]])]
-    ;(dotimes [i 10001]
-    (dotimes [i 1]
+    (dotimes [i 5001]
+    ;(dotimes [i 1]
       (mlp-cl/run-subbatch inputs labels)
-      (when (= (mod i 500) 0)
+      (when (= (mod i 200) 0)
         (printf "i: %4d err: %8.2f\n"
          i
-         (mlp-cl/fw-err-subbatch inputs labels)
-         )))
+         (mlp-cl/fw-err-subbatch inputs labels))
+        (mlp-cl/dump :w 0)
+        (mlp-cl/dump :b 0)
+        (mlp-cl/dump :w 1)
+        (mlp-cl/dump :b 1)
+        ))
     (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
