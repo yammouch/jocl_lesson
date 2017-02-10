@@ -42,8 +42,8 @@
 
 (defn init [conf]
   (dosync
-    ;(ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
-    (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_CPU))
+    (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
+    ;(ref-set cl-env (cl/context 'CL_DEVICE_TYPE_CPU))
     (ref-set cl-mem (prepare-mem (@cl-env :context) conf))
     (ref-set mlp-config (vec conf))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
