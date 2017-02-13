@@ -77,11 +77,11 @@
         v (map (partial one-hot 64) (range 64))
         inputs (mapv (partial cl/create-buffer ctx :f) v)
         labels (mapv (partial cl/create-buffer ctx :f) v)]
-    (dotimes [i 10001]
+    (dotimes [i 20001]
     ;(dotimes [i 1]
       (mlp-cl/run-subbatch inputs labels)
       (when (= (mod i 500) 0)
-        (printf "i: %4d err: %8.2f\n"
+        (printf "i: %5d err: %8.2f\n"
          i
          (mlp-cl/fw-err-subbatch inputs labels))
         ;(mlp-cl/dump :w 0)
