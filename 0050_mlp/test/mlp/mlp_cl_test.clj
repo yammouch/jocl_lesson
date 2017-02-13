@@ -123,19 +123,15 @@
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k "sigmoid_bw"} @mlp-cl/cl-ker
         in (range 0.1 0.91 0.1)
+        out-prop (take (count in) (iterate (partial + 0.5) 0.05))
         n (count in)
-        [mem-in mem-out :as mems]
-        (map (partial cl/create-buffer ctx :f) [n in])]
-    (cl/callk q k nil [n] :m mem-in :m mem-out)
+        [mem-in mem-out mem-out-prop :as mems]
+        (map (partial cl/create-buffer ctx :f) [n in out-prop])]
+    (cl/callk q k nil [n] :m mem-in :m mem-out :m mem-out-prop)
     (is (every? #(< -0.01 % 0.01)
-                (map #(- %1 (* %2 (- 1.0 %2)))
+                (map #(- %1 (* %3 %2 (- 1.0 %2)))
                      (cl/read-float q mem-in n)
-                     in)))
-    (cl/callk q k nil [n] :m mem-out :m mem-out) ; overwrite test
-    (is (every? #(< -0.01 % 0.01)
-                (map #(- %1 (* %2 (- 1.0 %2)))
-                     (cl/read-float q mem-out n)
-                     in)))
+                     in out-prop)))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest softmax-test
