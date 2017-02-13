@@ -203,11 +203,14 @@
 (defn get-platforms [] (map get-platform (clGetPlatformIDs)))
 
 (defn find-devices [type platform]
-  (filter (fn [d] 
-            (some #(= % type)
-                  ((into {} (d :info)) 'CL_DEVICE_TYPE)
-                  ))
-          (platform :devices)))
+  (let [ds (platform :devices)
+        pred (fn [d]
+               (some #(= % type)
+                     ((into {} (d :info)) 'CL_DEVICE_TYPE)
+                     ))]
+    (concat (filter pred ds)
+            (filter (complement pred) ds)
+            )))
 
 (defn context [device-type]
   (loop [pfs (get-platforms)]

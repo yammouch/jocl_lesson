@@ -7,7 +7,10 @@
 (import '(org.jocl CL Sizeof Pointer))
 
 (defn prepare-mem [context conf]
-  {:w    (vec (map (fn [[h w]] (cl/create-buffer context :f (range (* h w))))
+  {:w    (vec (map (fn [[h w]]
+                     (let [ar-len (* h w)
+                           v (map #(/ % ar-len) (range ar-len))]
+                       (cl/create-buffer context :f v)))
                    (partition 2 1 conf)))
    :b    (vec (map (fn [l] (cl/create-buffer context :f (repeat l 0)))
                    (next conf)))
@@ -42,8 +45,7 @@
 
 (defn init [conf]
   (dosync
-    ;(ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
-    (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_CPU))
+    (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
     (ref-set cl-mem (prepare-mem (@cl-env :context) conf))
     (ref-set mlp-config (vec conf))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
