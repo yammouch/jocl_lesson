@@ -84,15 +84,13 @@
   (let [{q :queue} @cl-env
         {dense-fw "dense_fw" sigmoid-fw "sigmoid_fw"} @cl-ker
         {w :w b :b z :z a :a} @cl-mem]
-    (dotimes [i (- (count @mlp-config) 1)]
-      (cl/callk q dense-fw   nil [(@mlp-config (+ i 1))]
-       :m (z i) :m (if (= i 0) in (a (- i 1))) :m (b i) :m (w i)
-       :i (@mlp-config (+ i 1)) :i (@mlp-config i))
-      ;(dump :z i)
-      (cl/callk q sigmoid-fw nil [(@mlp-config (+ i 1))]
-       :m (a i) :m (z i))
-      ;(dump :a i)
-      )))
+    (cl/callk q dense-fw   nil [4]
+     :m (z 0) :m in :m (b 0) :m (w 0) :i 4 :i 3)
+    (cl/callk q sigmoid-fw nil [4] :m (a 0) :m (z 0))
+    (cl/callk q dense-fw   nil [5]
+     :m (z 1) :m (a 0) :m (b 1) :m (w 1) :i 5 :i 4)
+    (cl/callk q sigmoid-fw nil [5] :m (a 1) :m (z 1))
+    ))
 
 (defn fw-err [input label]
   (fw input)
