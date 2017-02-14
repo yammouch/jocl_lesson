@@ -149,12 +149,8 @@
   (let [{q :queue} @cl-env
         {sub "sub"} @cl-ker
         {w :w b :b wacc :wacc bacc :bacc} @cl-mem]
-    (dotimes [i (- (count @mlp-config) 1)]
-      (cl/callk q sub nil [(* (@mlp-config i) (@mlp-config (+ i 1)))]
-       :m (w i) :m (wacc i))
-      (cl/callk q sub nil [(@mlp-config (+ i 1))] :m (b i) :m (bacc i))
-      ))
-  ;(dotimes [i (- (count @mlp-config) 1)]
-  ;  (dump :w i)
-  ;  (dump :b i))
-)
+    (cl/callk q sub nil [(* 4 5)] :m (w 1) :m (wacc 1))
+    (cl/callk q sub nil [     5 ] :m (b 1) :m (bacc 1))
+    (cl/callk q sub nil [(* 3 4)] :m (w 0) :m (wacc 0))
+    (cl/callk q sub nil [     4 ] :m (b 0) :m (bacc 0))
+    ))
