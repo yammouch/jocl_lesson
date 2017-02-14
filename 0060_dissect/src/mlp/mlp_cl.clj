@@ -96,8 +96,8 @@
   (fw input)
   (let [{q :queue} @cl-env
         {a :a} @cl-mem
-        out (cl/read-float q (a (- (count @mlp-config) 2)) (last @mlp-config))
-        lbl (cl/read-float q label (last @mlp-config))]
+        out (cl/read-float q (a 1) 5)
+        lbl (cl/read-float q label 5)] 
     (apply + (map #(let [diff (- %1 %2)] (* diff diff))
                   out lbl))))
 
@@ -114,34 +114,27 @@
          sigmoid-bw       "sigmoid_bw"
          dense-bw-m       "dense_bw_m"
          dense-bw-m-ov    "dense_bw_m_ov"} @cl-ker
-        {a :a v :v w :w b :b wacc :wacc bacc :bacc} @cl-mem
-        loop-init (- (count @mlp-config) 2)]
-    (doseq [i (range loop-init -1 -1)]
-      (if (= i loop-init)
-        (cl/callk q cross-entropy-bw nil [(@mlp-config (+ i 1))]
-         :m (v i) :m (a i) :m label :f 0.1)
-        (do
-          (cl/callk q dense-bw-v nil [(@mlp-config (+ i 1))]
-           :m (v i) :m (v (+ i 1)) :m (w (+ i 1)) :i (@mlp-config (+ i 2)))
-          ;(dump :v i)
-          (cl/callk q sigmoid-bw nil [(@mlp-config (+ i 1))]
-           :m (v i) :m (a i) :m (v i))))
-      ;(dump :v i)
-      (if is-1st?
-        (do (cl/callk q dense-bw-m-ov nil (take 2 (nthnext @mlp-config i))
-             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v i)
-             :i (@mlp-config (+ i 1)))
-            (CL/clEnqueueCopyBuffer q (v i) (bacc i)
-             0 0 (* (@mlp-config (+ i 1)) Sizeof/cl_float) 0 nil nil))
-        (do (cl/callk q dense-bw-m    nil (take 2 (nthnext @mlp-config i))
-             :m (wacc i) :m (if (<= i 0) in (a (- i 1))) :m (v i)
-             :i (@mlp-config (+ i 1)))
-            (cl/callk q add           nil [(@mlp-config (+ i 1))]
-             :m (bacc i) :m (v i)
-             )))
-      ;(dump :wacc i)
-      ;(dump :bacc i)
-      ))))
+        {a :a v :v w :w b :b wacc :wacc bacc :bacc} @cl-mem]
+    (cl/callk q cross-entropy-bw nil [5] :m (v 1) :m (a 1) :m label :f 0.1)
+    (if is-1st?
+      (do (cl/callk q dense-bw-m-ov nil [4 5]
+           :m (wacc 1) :m (a 0) :m (v 1) :i 5)
+          (CL/clEnqueueCopyBuffer q (v 1) (bacc 1)
+           0 0 (* 5 Sizeof/cl_float) 0 nil nil))
+      (do (cl/callk q dense-bw-m    nil [4 5]
+           :m (wacc 1) :m (a 0) :m (v 1) :i 5)
+          (cl/callk q add           nil [5] :m (bacc 1) :m (v 1))
+          ))
+    (cl/callk q dense-bw-v nil [4] :m (v 0) :m (v 1) :m (w 1) :i 5)
+    (cl/callk q sigmoid-bw nil [4] :m (v 0) :m (a 0) :m (v 0))
+    (if is-1st?
+      (do (cl/callk q dense-bw-m-ov nil [3 4] :m (wacc 0) :m in :m (v 0) :i 4)
+          (CL/clEnqueueCopyBuffer q (v 0) (bacc 0)
+           0 0 (* 4 Sizeof/cl_float) 0 nil nil))
+      (do (cl/callk q dense-bw-m    nil [3 4]
+           :m (wacc 0) :m in :m (v 0) :i 4)
+          (cl/callk q add           nil [4] :m (bacc 0) :m (v 0))
+          )))))
 
 (defn run-subbatch [inputs labels]
   (loop [i inputs l labels first? true]
