@@ -21,7 +21,6 @@ __kernel void sub(
 __kernel void dense_fw(
  __global       float *out,
  __global const float *in,
- __global const float *ofs,
  __global const float *m,
                 int    m_w,
                 int    m_h) {
@@ -31,7 +30,7 @@ __kernel void dense_fw(
   for (i = 0; i < m_h; i++) {
     acc += in[i] * m[i*m_w+j];
   }
-  out[j] = acc + ofs[j];
+  out[j] = acc;
 }
 
 __kernel void dense_bw_m(
