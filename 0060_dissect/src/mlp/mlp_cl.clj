@@ -73,12 +73,11 @@
 
 (defn formatv [v]
   (apply str
-   (interpose " "
-    (map (partial format "%6.2f")
+   ;(interpose " "
+   ; (map (partial format "%6.2f")
    ; comma separated, for analyzing on Google Sheet
-   ;(interpose ","
-   ; (map (partial format "%.2f")
-         v))))
+   (map (partial format ",%.2f")
+        v)))
 
 (defn print-matrix [cl-mem cr cc] ; column count
   (let [strs (map formatv
@@ -110,11 +109,17 @@
          {o4 :o b4 :b p4 :p u4 :u}
          {o5 :o}] @cl-mem]
     (cl/callk q dense-fw   nil [4] :m o1 :m in :m p0 :i 4 :i 3)
+    (dump 1 :o)
     (cl/callk q add        nil [4] :m o1 :m p1)
+    (dump 1 :o)
     (cl/callk q sigmoid-fw nil [4] :m o2 :m o1)
+    (dump 2 :o)
     (cl/callk q dense-fw   nil [5] :m o4 :m o2 :m p3 :i 5 :i 4)
+    (dump 4 :o)
     (cl/callk q add        nil [5] :m o4 :m p4)
+    (dump 4 :o)
     (cl/callk q sigmoid-fw nil [5] :m o5 :m o4)
+    (dump 5 :o)
     ))
 
 (defn fw-err [input label]
@@ -146,26 +151,37 @@
          {o4 :o b4 :b p4 :p u4 :u}
          {o5 :o}] @cl-mem]
     (cl/callk q cross-entropy-bw nil [5] :m b4 :m o5 :m label :f 0.1)
+    (dump 4 :b)
     (if is-1st?
       (do (cl/callk q dense-bw-m-ov nil [4 5] :m u3 :m o5 :m b4 :i 5)
-          (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil))
+          (dump 3 :u)
+          (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
+          (dump 4 :u))
       (do (cl/callk q dense-bw-m    nil [4 5] :m u3 :m o5 :m b4 :i 5)
-          (cl/callk q add           nil [5]   :m u4 :m b4)))
+          (dump 3 :u)
+          (cl/callk q add           nil [5]   :m u4 :m b4)
+          (dump 4 :u)))
     (cl/callk q dense-bw-v nil [4] :m b2 :m b3 :m p3 :i 5)
+    (dump 2 :b)
     (cl/callk q sigmoid-bw nil [4] :m b1 :m o2 :m b2)
+    (dump 1 :b)
     (if is-1st?
       (do (cl/callk q dense-bw-m-ov nil [3 4] :m u0 :m in :m b1 :i 4)
-          (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil))
+          (dump 0 :u)
+          (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)
+          (dump 1 :u))
       (do (cl/callk q dense-bw-m    nil [3 4] :m u0 :m in :m b1 :i 4)
+          (dump 0 :u)
           (cl/callk q add           nil [4]   :m u1 :m b1)
+          (dump 1 :u)
           )))))
 
 (defn run-subbatch [inputs labels]
   (loop [i inputs l labels first? true]
     (if (or (empty? i) (empty? l))
       :done
-      (do ;(println "input:") (print-matrix (first i) 1 (first @mlp-config))
-          ;(println "label:") (print-matrix (first l) 1 (last @mlp-config))
+      (do (println "input:") (print-matrix (first i) 1 3)
+          (println "label:") (print-matrix (first l) 1 5)
           (fw (first i))
           (bw (first i) (first l) first?)
           (recur (next i) (next l) false)

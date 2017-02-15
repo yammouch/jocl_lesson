@@ -34,8 +34,8 @@
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         inputs (map (partial cl/create-buffer ctx :f) inputs-v)
         labels (map (partial cl/create-buffer ctx :f) labels-v)]
-    (dotimes [i 1001]
-    ;(dotimes [i 1]
+    ;(dotimes [i 1001]
+    (dotimes [i 1]
       (mlp-cl/run-subbatch inputs labels)
       (when (= (mod i 50) 0)
         (printf "i: %4d err: %8.2f\n"
