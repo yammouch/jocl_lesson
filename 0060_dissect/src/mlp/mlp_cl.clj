@@ -109,17 +109,17 @@
          {o4 :o b4 :b p4 :p u4 :u}
          {o5 :o}] @cl-mem]
     (cl/callk q dense-fw   nil [4] :m o1 :m in :m p0 :i 4 :i 3)
-    (dump 1 :o)
+    ;(dump 1 :o)
     (cl/callk q add        nil [4] :m o1 :m p1)
-    (dump 1 :o)
+    ;(dump 1 :o)
     (cl/callk q sigmoid-fw nil [4] :m o2 :m o1)
-    (dump 2 :o)
+    ;(dump 2 :o)
     (cl/callk q dense-fw   nil [5] :m o4 :m o2 :m p3 :i 5 :i 4)
-    (dump 4 :o)
+    ;(dump 4 :o)
     (cl/callk q add        nil [5] :m o4 :m p4)
-    (dump 4 :o)
+    ;(dump 4 :o)
     (cl/callk q sigmoid-fw nil [5] :m o5 :m o4)
-    (dump 5 :o)
+    ;(dump 5 :o)
     ))
 
 (defn fw-err [input label]
@@ -151,37 +151,37 @@
          {o4 :o b4 :b p4 :p u4 :u}
          {o5 :o}] @cl-mem]
     (cl/callk q cross-entropy-bw nil [5] :m b4 :m o5 :m label :f 0.1)
-    (dump 4 :b)
+    ;(dump 4 :b)
     (if is-1st?
       (do (cl/callk q dense-bw-m-ov nil [4 5] :m u3 :m o2 :m b4 :i 5)
-          (dump 3 :u)
+          ;(dump 3 :u)
           (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
-          (dump 4 :u))
+          );(dump 4 :u))
       (do (cl/callk q dense-bw-m    nil [4 5] :m u3 :m o2 :m b4 :i 5)
-          (dump 3 :u)
+          ;(dump 3 :u)
           (cl/callk q add           nil [5]   :m u4 :m b4)
-          (dump 4 :u)))
+          ));(dump 4 :u)))
     (cl/callk q dense-bw-v nil [4] :m b2 :m b4 :m p3 :i 5)
-    (dump 2 :b)
+    ;(dump 2 :b)
     (cl/callk q sigmoid-bw nil [4] :m b1 :m o2 :m b2)
-    (dump 1 :b)
+    ;(dump 1 :b)
     (if is-1st?
       (do (cl/callk q dense-bw-m-ov nil [3 4] :m u0 :m in :m b1 :i 4)
-          (dump 0 :u)
+          ;(dump 0 :u)
           (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)
-          (dump 1 :u))
+          );(dump 1 :u))
       (do (cl/callk q dense-bw-m    nil [3 4] :m u0 :m in :m b1 :i 4)
-          (dump 0 :u)
+          ;(dump 0 :u)
           (cl/callk q add           nil [4]   :m u1 :m b1)
-          (dump 1 :u)
+          ;(dump 1 :u)
           )))))
 
 (defn run-subbatch [inputs labels]
   (loop [i inputs l labels first? true]
     (if (or (empty? i) (empty? l))
       :done
-      (do (println "input:") (print-matrix (first i) 1 3)
-          (println "label:") (print-matrix (first l) 1 5)
+      (do ;(println "input:") (print-matrix (first i) 1 3)
+          ;(println "label:") (print-matrix (first l) 1 5)
           (fw (first i))
           (bw (first i) (first l) first?)
           (recur (next i) (next l) false)
@@ -190,8 +190,8 @@
         {sub "sub"} @cl-ker
         [{p0 :p u0 :u} {p1 :p u1 :u} _
          {p3 :p u3 :u} {p4 :p u4 :u} _] @cl-mem]
-    (cl/callk q sub nil [(* 4 5)] :m p0 :m u0)
-    (cl/callk q sub nil [     5 ] :m p1 :m u1)
-    (cl/callk q sub nil [(* 3 4)] :m p3 :m u3)
-    (cl/callk q sub nil [     4 ] :m p4 :m u4)
+    (cl/callk q sub nil [(* 3 4)] :m p0 :m u0)
+    (cl/callk q sub nil [     4 ] :m p1 :m u1)
+    (cl/callk q sub nil [(* 4 5)] :m p3 :m u3)
+    (cl/callk q sub nil [     5 ] :m p4 :m u4)
     ))
