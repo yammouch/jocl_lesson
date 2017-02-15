@@ -88,7 +88,7 @@
     (doseq [s strs] (println s))))
 
 (defn dump [i k]
-  (printf "layer %d, name %s:\n" i (name k))
+  (printf "layer %d name %s:\n" i (name k))
   (let [[cr cc] ({[0 :o] [1 4], [0 :b] [1 4], [0 :p] [3 4], [0 :u] [3 4],
                   [1 :o] [1 4], [1 :b] [1 4], [1 :p] [1 4], [1 :u] [1 4],
                   [2 :o] [1 4], [2 :b] [1 4],
@@ -153,15 +153,15 @@
     (cl/callk q cross-entropy-bw nil [5] :m b4 :m o5 :m label :f 0.1)
     (dump 4 :b)
     (if is-1st?
-      (do (cl/callk q dense-bw-m-ov nil [4 5] :m u3 :m o5 :m b4 :i 5)
+      (do (cl/callk q dense-bw-m-ov nil [4 5] :m u3 :m o2 :m b4 :i 5)
           (dump 3 :u)
           (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
           (dump 4 :u))
-      (do (cl/callk q dense-bw-m    nil [4 5] :m u3 :m o5 :m b4 :i 5)
+      (do (cl/callk q dense-bw-m    nil [4 5] :m u3 :m o2 :m b4 :i 5)
           (dump 3 :u)
           (cl/callk q add           nil [5]   :m u4 :m b4)
           (dump 4 :u)))
-    (cl/callk q dense-bw-v nil [4] :m b2 :m b3 :m p3 :i 5)
+    (cl/callk q dense-bw-v nil [4] :m b2 :m b4 :m p3 :i 5)
     (dump 2 :b)
     (cl/callk q sigmoid-bw nil [4] :m b1 :m o2 :m b2)
     (dump 1 :b)

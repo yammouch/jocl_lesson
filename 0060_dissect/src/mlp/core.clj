@@ -36,6 +36,10 @@
         labels (map (partial cl/create-buffer ctx :f) labels-v)]
     ;(dotimes [i 1001]
     (dotimes [i 1]
+      (mlp-cl/dump 0 :p)
+      (mlp-cl/dump 1 :p)
+      (mlp-cl/dump 3 :p)
+      (mlp-cl/dump 4 :p)
       (mlp-cl/run-subbatch inputs labels)
       (when (= (mod i 50) 0)
         (printf "i: %4d err: %8.2f\n"
