@@ -32,8 +32,6 @@
 (defn -main [& args]
   (mlp-cl/init [3 4 5])
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {sub "sub"} @mlp-cl/cl-ker
-        {w :w b :b} @mlp-cl/cl-mem
         inputs (map (partial cl/create-buffer ctx :f) inputs-v)
         labels (map (partial cl/create-buffer ctx :f) labels-v)]
     (dotimes [i 1001]
@@ -43,10 +41,11 @@
         (printf "i: %4d err: %8.2f\n"
          i
          (mlp-cl/fw-err-subbatch inputs labels))
-        (mlp-cl/dump :w 0)
-        (mlp-cl/dump :b 0)
-        (mlp-cl/dump :w 1)
-        (mlp-cl/dump :b 1)
+        (mlp-cl/dump 0 :p)
+        (mlp-cl/dump 1 :p)
+        (mlp-cl/dump 3 :p)
+        (mlp-cl/dump 4 :p)
+        (flush)
         ))
     (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
