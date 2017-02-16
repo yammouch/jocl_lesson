@@ -6,9 +6,10 @@ __kernel void set0(
 
 __kernel void add(
  __global       float *out,
- __global const float *in) {
+ __global const float *in0,
+ __global const float *in1) {
   uint i = get_global_id(0);
-  out[i] += in[i];
+  out[i] = in0[i] + in1[i];
 }
 
 __kernel void sub(
