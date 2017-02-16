@@ -147,18 +147,20 @@
          {i5 :i o5 :o}] @cl-mem]
     (cl/callk q cross-entropy-bw nil [5] :m b4 :m o5 :m label :f 0.1)
     (if is-1st?
-      (do (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
-          (cl/callk q mul-vv     nil [4 5] :m u3 :m i3 :m b4 :i 5))
-      (do (cl/callk q add        nil [5]   :m u4 :m u4 :m b4)
-          (cl/callk q mul-vv-acc nil [4 5] :m u3 :m i3 :m b4 :i 5)))
+      (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
+      (cl/callk q add        nil [5]   :m u4 :m u4 :m b4))
+    (if is-1st?
+      (cl/callk q mul-vv     nil [4 5] :m u3 :m i3 :m b4 :i 5)
+      (cl/callk q mul-vv-acc nil [4 5] :m u3 :m i3 :m b4 :i 5))
     (CL/clEnqueueCopyBuffer q b4 b3 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
     (cl/callk q dense-bw-v nil [4] :m b2 :m b3 :m p3 :i 5)
     (cl/callk q sigmoid-bw nil [4] :m b1 :m i3 :m b2)
     (if is-1st?
-      (do (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)
-          (cl/callk q mul-vv     nil [3 4] :m u0 :m i0 :m b1 :i 4))
-      (do (cl/callk q add        nil [4]   :m u1 :m u1 :m b1)
-          (cl/callk q mul-vv-acc nil [3 4] :m u0 :m i0 :m b1 :i 4)))
+      (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)
+      (cl/callk q add        nil [4]   :m u1 :m u1 :m b1))
+    (if is-1st?
+      (cl/callk q mul-vv     nil [3 4] :m u0 :m i0 :m b1 :i 4)
+      (cl/callk q mul-vv-acc nil [3 4] :m u0 :m i0 :m b1 :i 4))
     ;(dump 4 :b) (dump 4 :u) (dump 3 :u) (dump 2 :b)
     ;(dump 1 :b) (dump 1 :u) (dump 0 :u)
     )))
