@@ -135,7 +135,7 @@
   (let [{q :queue} @cl-env
         {add              "add"
          cross-entropy-bw "cross_entropy_bw"
-         dense-bw-v       "dense_bw_v"
+         mul-mv           "mul_mv"
          sigmoid-bw       "sigmoid_bw"
          mul-vv-acc       "mul_vv_acc"
          mul-vv           "mul_vv"} @cl-ker
@@ -153,7 +153,7 @@
       (cl/callk q mul-vv     nil [4 5] :m u3 :m i3 :m b4 :i 5)
       (cl/callk q mul-vv-acc nil [4 5] :m u3 :m i3 :m b4 :i 5))
     (CL/clEnqueueCopyBuffer q b4 b3 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
-    (cl/callk q dense-bw-v nil [4] :m b2 :m b3 :m p3 :i 5)
+    (cl/callk q mul-mv     nil [4] :m b2 :m p3 :m b3 :i 5)
     (cl/callk q sigmoid-bw nil [4] :m b1 :m i3 :m b2)
     (if is-1st?
       (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)

@@ -22,20 +22,20 @@
     (CL/clReleaseMemObject mem)))
 
 (deftest add-test
-  (let [in0 [1 2 3 4]
-        in1 [2 3 4 5]
-        n (count in0)
+  (let [v0 [1 2 3 4]
+        v1 [2 3 4 5]
+        n (count v0)
         {q :queue ctx :context} @mlp-cl/cl-env
         {add "add" sub "sub"} @mlp-cl/cl-ker
-        [mem-out mem-in0 mem-in1]
-        (map (partial cl/create-buffer ctx :f) [n in0 in1])]
-    (cl/callk q add nil [n] :m mem-out :m mem-in0 :m mem-in1)
+        [mem-result mem-v0 mem-v1]
+        (map (partial cl/create-buffer ctx :f) [n v0 v1])]
+    (cl/callk q add nil [n] :m mem-result :m mem-v0 :m mem-v1)
     (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-out n)
+                (map - (cl/read-float q mem-result n)
                        [3 5 7 9])))
-    (cl/callk q sub nil [n] :m mem-out :m mem-in0 :m mem-in1)
+    (cl/callk q sub nil [n] :m mem-result :m mem-v0 :m mem-v1)
     (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-out n)
+                (map - (cl/read-float q mem-result n)
                        [-1 -1 -1 -1])))))
 
 (deftest mul-vm-test
@@ -46,11 +46,11 @@
         m [ 1  2  3  4
             2  4  6  8
             3  6  9 12]
-        [mem-v mem-m mem-out :as mems]
+        [mem-v mem-m mem-prod :as mems]
         (map (partial cl/create-buffer ctx :f) [v m w])]
-    (cl/callk q k nil [w] :m mem-out :m mem-v :m mem-m :i h :i w)
+    (cl/callk q k nil [w] :m mem-prod :m mem-v :m mem-m :i h :i w)
     (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-out w)
+                (map - (cl/read-float q mem-prod w)
                        [10 20 30 40])))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
@@ -89,15 +89,15 @@
                        [1 2 3 4])))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
-(deftest dense-bw-v-test
+(deftest mul-mv-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "dense_bw_v"} @mlp-cl/cl-ker
-        [mem-in mem-out mem-m :as mems]
+        {k "mul_mv"} @mlp-cl/cl-ker
+        [mem-prod mem-m mem-v :as mems]
         (map (partial cl/create-buffer ctx :f)
-             [3 [4 3 2 1] [1 2 3 4, 2 4 6 8, 3 6 9 12]])]
-    (cl/callk q k nil [3] :m mem-in :m mem-out :m mem-m :i 4)
+             [3 [1 2 3 4, 2 4 6 8, 3 6 9 12] [4 3 2 1]])]
+    (cl/callk q k nil [3] :m mem-prod :m mem-m :m mem-v :i 4)
     (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-in 3)
+                (map - (cl/read-float q mem-prod 3)
                        [20 40 60])))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 

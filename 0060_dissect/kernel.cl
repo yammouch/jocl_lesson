@@ -5,23 +5,23 @@ __kernel void set0(
 }
 
 __kernel void add(
- __global       float *out,
- __global const float *in0,
- __global const float *in1) {
+ __global       float *sum,
+ __global const float *v0,
+ __global const float *v1) {
   uint i = get_global_id(0);
-  out[i] = in0[i] + in1[i];
+  sum[i] = v0[i] + v1[i];
 }
 
 __kernel void sub(
- __global       float *out,
- __global const float *in0,
- __global const float *in1) {
+ __global       float *diff,
+ __global const float *v0,
+ __global const float *v1) {
   uint i = get_global_id(0);
-  out[i] = in0[i] - in1[i];
+  diff[i] = v0[i] - v1[i];
 }
 
 __kernel void mul_vm(
- __global       float *out,
+ __global       float *prod,
  __global const float *v,
  __global const float *m,
                 int    cr,   // row count
@@ -32,7 +32,7 @@ __kernel void mul_vm(
   for (i = 0; i < cr; i++) {
     acc += v[i] * m[i*cc+j];
   }
-  out[j] = acc;
+  prod[j] = acc;
 }
 
 __kernel void mul_vv_acc(
@@ -67,17 +67,17 @@ __kernel void dense_bw_ofs_ov(
   ofs[i] = out[i];
 }
 
-__kernel void dense_bw_v(
- __global       float *in,
- __global const float *out,
+__kernel void mul_mv(
+ __global       float *prod,
  __global const float *m,
-                int    m_w) {
+ __global const float *v,
+                int    cc) { // column count
   uint i = get_global_id(0), j;
   float acc = 0.0f;
-  for (j = 0; j < m_w; j++) {
-    acc += out[j]*m[i*m_w+j];
+  for (j = 0; j < cc; j++) {
+    acc += m[i*cc+j]*v[j];
   }
-  in[i] = acc;
+  prod[i] = acc;
 }
 
 __kernel void sigmoid_fw(
