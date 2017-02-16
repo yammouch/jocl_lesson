@@ -137,7 +137,7 @@
          cross-entropy-bw "cross_entropy_bw"
          dense-bw-v       "dense_bw_v"
          sigmoid-bw       "sigmoid_bw"
-         dense-bw-m       "dense_bw_m"
+         mul-vv-acc       "mul_vv_acc"
          dense-bw-m-ov    "dense_bw_m_ov"} @cl-ker
         [{      b0 :b p0 :p u0 :u}
          {i1 :i b1 :b p1 :p u1 :u}
@@ -150,7 +150,7 @@
       (do (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
           (cl/callk q dense-bw-m-ov nil [4 5] :m u3 :m i3 :m b4 :i 5))
       (do (cl/callk q add           nil [5]   :m u4 :m u4 :m b4)
-          (cl/callk q dense-bw-m    nil [4 5] :m u3 :m i3 :m b4 :i 5)))
+          (cl/callk q mul-vv-acc    nil [4 5] :m u3 :m i3 :m b4 :i 5)))
     (CL/clEnqueueCopyBuffer q b4 b3 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
     (cl/callk q dense-bw-v nil [4] :m b2 :m b3 :m p3 :i 5)
     (cl/callk q sigmoid-bw nil [4] :m b1 :m i3 :m b2)
@@ -158,7 +158,7 @@
       (do (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)
           (cl/callk q dense-bw-m-ov nil [3 4] :m u0 :m i0 :m b1 :i 4))
       (do (cl/callk q add           nil [4]   :m u1 :m u1 :m b1)
-          (cl/callk q dense-bw-m    nil [3 4] :m u0 :m i0 :m b1 :i 4)))
+          (cl/callk q mul-vv-acc    nil [3 4] :m u0 :m i0 :m b1 :i 4)))
     ;(dump 4 :b) (dump 4 :u) (dump 3 :u) (dump 2 :b)
     ;(dump 1 :b) (dump 1 :u) (dump 0 :u)
     )))

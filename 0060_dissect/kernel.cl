@@ -35,13 +35,13 @@ __kernel void mul_vm(
   out[j] = acc;
 }
 
-__kernel void dense_bw_m(
+__kernel void mul_vv_acc(
  __global       float *m,
- __global const float *in,
- __global const float *out,
-                int    m_w) {
+ __global const float *v1,
+ __global const float *v2,
+                int    cc) { // column count
   uint i = get_global_id(0), j = get_global_id(1);
-  m[i*m_w+j] += in[i]*out[j];
+  m[i*cc+j] += v1[i]*v2[j];
 }
 
 __kernel void dense_bw_m_ov(

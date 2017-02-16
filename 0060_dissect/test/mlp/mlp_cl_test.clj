@@ -56,7 +56,7 @@
 
 (deftest dense-bw-m-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "dense_bw_m" k-ov "dense_bw_m_ov"} @mlp-cl/cl-ker
+        {k "mul_vv_acc" k-ov "dense_bw_m_ov"} @mlp-cl/cl-ker
         [mem-in mem-out mem-m :as mems]
         (map (partial cl/create-buffer ctx :f)
              [[1 2 3] [1 2 3 4] (repeat 12 1)]
