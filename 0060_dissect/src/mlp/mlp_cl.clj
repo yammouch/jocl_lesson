@@ -101,25 +101,20 @@
 
 (defn fw [i0]
   (let [{q :queue} @cl-env
-        {dense-fw "dense_fw" add "add" sigmoid-fw "sigmoid_fw"} @cl-ker
+        {mul-vm "mul_vm" add "add" sigmoid-fw "sigmoid_fw"} @cl-ker
         [{      b0 :b p0 :p u0 :u}
          {i1 :i b1 :b p1 :p u1 :u}
          {i2 :i b2 :b}
          {i3 :i b3 :b p3 :p u3 :u}
          {i4 :i b4 :b p4 :p u4 :u}
          {i5 :i o5 :o}] @cl-mem]
-    (cl/callk q dense-fw   nil [4] :m i1 :m i0 :m p0 :i 4 :i 3)
-    ;(dump 2 :i)
+    (cl/callk q mul-vm     nil [4] :m i1 :m i0 :m p0 :i 3 :i 4)
     (cl/callk q add        nil [4] :m i2 :m i1 :m p1)
-    ;(dump 2 :i)
     (cl/callk q sigmoid-fw nil [4] :m i3 :m i2)
-    ;(dump 3 :o)
-    (cl/callk q dense-fw   nil [5] :m i4 :m i3 :m p3 :i 5 :i 4)
-    ;(dump 5 :i)
+    (cl/callk q mul-vm     nil [5] :m i4 :m i3 :m p3 :i 4 :i 5)
     (cl/callk q add        nil [5] :m i5 :m i4 :m p4)
-    ;(dump 5 :i)
     (cl/callk q sigmoid-fw nil [5] :m o5 :m i5)
-    ;(dump 5 :o)
+    ;(dump 2 :i) (dump 3 :i) (dump 4 :i) (dump 5 :i) (dump 5 :o)
     ))
 
 (defn fw-err [input label]
@@ -151,23 +146,21 @@
          {i4 :i b4 :b p4 :p u4 :u}
          {i5 :i o5 :o}] @cl-mem]
     (cl/callk q cross-entropy-bw nil [5] :m b4 :m o5 :m label :f 0.1)
-    ;(dump 4 :b)
     (if is-1st?
       (do (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
           (cl/callk q dense-bw-m-ov nil [4 5] :m u3 :m i3 :m b4 :i 5))
       (do (cl/callk q add           nil [5]   :m u4 :m u4 :m b4)
           (cl/callk q dense-bw-m    nil [4 5] :m u3 :m i3 :m b4 :i 5)))
-          ;(dump 4 :u) (dump 3 :u)
     (CL/clEnqueueCopyBuffer q b4 b3 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
     (cl/callk q dense-bw-v nil [4] :m b2 :m b3 :m p3 :i 5)
     (cl/callk q sigmoid-bw nil [4] :m b1 :m i3 :m b2)
-    ;(dump 2 :b) (dump 1 :b)
     (if is-1st?
       (do (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)
           (cl/callk q dense-bw-m-ov nil [3 4] :m u0 :m i0 :m b1 :i 4))
       (do (cl/callk q add           nil [4]   :m u1 :m u1 :m b1)
           (cl/callk q dense-bw-m    nil [3 4] :m u0 :m i0 :m b1 :i 4)))
-    ;(dump 1 :u) (dump 0 :u)
+    ;(dump 4 :b) (dump 4 :u) (dump 3 :u) (dump 2 :b)
+    ;(dump 1 :b) (dump 1 :u) (dump 0 :u)
     )))
 
 (defn run-subbatch [inputs labels]

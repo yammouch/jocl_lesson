@@ -38,17 +38,17 @@
                 (map - (cl/read-float q mem-out n)
                        [-1 -1 -1 -1])))))
 
-(deftest dense-fw-test
+(deftest mul-vm-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "dense_fw"} @mlp-cl/cl-ker
+        {k "mul_vm"} @mlp-cl/cl-ker
         w 4, h 3
-        in [3 2 1]
-        m  [ 1  2  3  4
-             2  4  6  8
-             3  6  9 12]
-        [mem-m mem-in mem-out :as mems]
-        (map (partial cl/create-buffer ctx :f) [m in w])]
-    (cl/callk q k nil [w] :m mem-out :m mem-in :m mem-m :i w :i h)
+        v [3 2 1]
+        m [ 1  2  3  4
+            2  4  6  8
+            3  6  9 12]
+        [mem-v mem-m mem-out :as mems]
+        (map (partial cl/create-buffer ctx :f) [v m w])]
+    (cl/callk q k nil [w] :m mem-out :m mem-v :m mem-m :i h :i w)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-out w)
                        [10 20 30 40])))

@@ -20,17 +20,17 @@ __kernel void sub(
   out[i] = in0[i] - in1[i];
 }
 
-__kernel void dense_fw(
+__kernel void mul_vm(
  __global       float *out,
- __global const float *in,
+ __global const float *v,
  __global const float *m,
-                int    m_w,
-                int    m_h) {
+                int    cr,   // row count
+                int    cc) { // column count
   uint i, j = get_global_id(0);
   float acc = 0.0f;
 
-  for (i = 0; i < m_h; i++) {
-    acc += in[i] * m[i*m_w+j];
+  for (i = 0; i < cr; i++) {
+    acc += v[i] * m[i*cc+j];
   }
   out[j] = acc;
 }
