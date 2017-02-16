@@ -54,18 +54,18 @@
                        [10 20 30 40])))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
-(deftest dense-bw-m-test
+(deftest mul-vv-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "mul_vv_acc" k-ov "dense_bw_m_ov"} @mlp-cl/cl-ker
-        [mem-in mem-out mem-m :as mems]
+        {acc "mul_vv_acc" ov "mul_vv"} @mlp-cl/cl-ker
+        [mem-v1 mem-v2 mem-m :as mems]
         (map (partial cl/create-buffer ctx :f)
              [[1 2 3] [1 2 3 4] (repeat 12 1)]
              )]
-    (cl/callk q k    nil [3 4] :m mem-m :m mem-in :m mem-out :i 4)
+    (cl/callk q acc nil [3 4] :m mem-m :m mem-v1 :m mem-v2 :i 4)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-m 12)
                        [2 3 4 5, 3 5 7 9, 4 7 10 13])))
-    (cl/callk q k-ov nil [3 4] :m mem-m :m mem-in :m mem-out :i 4)
+    (cl/callk q ov  nil [3 4] :m mem-m :m mem-v1 :m mem-v2 :i 4)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-m 12)
                        [1 2 3 4, 2 4 6 8, 3 6 9 12])))
