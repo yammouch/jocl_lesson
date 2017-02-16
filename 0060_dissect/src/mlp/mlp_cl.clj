@@ -8,34 +8,34 @@
 
 (defn prepare-mem [context conf]
   [; layer 0, a dense layer
-   {:o (cl/create-buffer context :f 4)
-    :b (cl/create-buffer context :f 4)
+   {:b (cl/create-buffer context :f 4)
     :p (let [ar-len (* 3 4)
              v (map #(/ % ar-len) (range ar-len))]
          (cl/create-buffer context :f v))
     :u (cl/create-buffer context :f (* 3 4))}
    ; layer 1, an offset layer
-   {:o (cl/create-buffer context :f 4)
+   {:i (cl/create-buffer context :f 4)
     :b (cl/create-buffer context :f 4)
     :p (cl/create-buffer context :f (repeat 4 0))
     :u (cl/create-buffer context :f 4)}
    ; layer 2, a sigmoid layer
-   {:o (cl/create-buffer context :f 4)
+   {:i (cl/create-buffer context :f 4)
     :b (cl/create-buffer context :f 4)}
    ; layer 3, a dense layer
-   {:o (cl/create-buffer context :f 5)
+   {:i (cl/create-buffer context :f 4)
     :b (cl/create-buffer context :f 5)
     :p (let [ar-len (* 4 5)
              v (map #(/ % ar-len) (range ar-len))]
          (cl/create-buffer context :f v))
     :u (cl/create-buffer context :f (* 4 5))}
    ; layer 4, an offset layer
-   {:o (cl/create-buffer context :f 5)
+   {:i (cl/create-buffer context :f 5)
     :b (cl/create-buffer context :f 5)
     :p (cl/create-buffer context :f (repeat 5 0))
     :u (cl/create-buffer context :f 5)}
    ; layer 5, a sigmoid layer
-   {:o (cl/create-buffer context :f 5)}])
+   {:i (cl/create-buffer context :f 5)
+    :o (cl/create-buffer context :f 5)}])
 
 (def kernel-source-code (slurp "kernel.cl"))
 
@@ -89,36 +89,36 @@
 
 (defn dump [i k]
   (printf "layer %d name %s:\n" i (name k))
-  (let [[cr cc] ({[0 :o] [1 4], [0 :b] [1 4], [0 :p] [3 4], [0 :u] [3 4],
-                  [1 :o] [1 4], [1 :b] [1 4], [1 :p] [1 4], [1 :u] [1 4],
-                  [2 :o] [1 4], [2 :b] [1 4],
-                  [3 :o] [1 5], [3 :b] [1 5], [3 :p] [4 5], [3 :u] [4 5],
-                  [4 :o] [1 5], [4 :b] [1 5], [4 :p] [1 5], [4 :u] [1 5],
-                  [5 :o] [1 5], [5 :b] [1 5]}
+  (let [[cr cc] ({              [0 :b] [1 4], [0 :p] [3 4], [0 :u] [3 4],
+                  [1 :i] [1 4], [1 :b] [1 4], [1 :p] [1 4], [1 :u] [1 4],
+                  [2 :i] [1 4], [2 :b] [1 4],
+                  [3 :i] [1 5], [3 :b] [1 5], [3 :p] [4 5], [3 :u] [4 5],
+                  [4 :i] [1 5], [4 :b] [1 5], [4 :p] [1 5], [4 :u] [1 5],
+                  [5 :i] [1 5]}
                  [i k])]
     (print-matrix (get-in @cl-mem [i k])
                   cr cc)))
 
-(defn fw [in]
+(defn fw [i0]
   (let [{q :queue} @cl-env
         {dense-fw "dense_fw" add "add" sigmoid-fw "sigmoid_fw"} @cl-ker
-        [{o0 :o b0 :b p0 :p u0 :u}
-         {o1 :o b1 :b p1 :p u1 :u}
-         {o2 :o b2 :b}
-         {o3 :o b3 :b p3 :p u3 :u}
-         {o4 :o b4 :b p4 :p u4 :u}
-         {o5 :o}] @cl-mem]
-    (cl/callk q dense-fw   nil [4] :m o1 :m in :m p0 :i 4 :i 3)
-    ;(dump 1 :o)
-    (cl/callk q add        nil [4] :m o1 :m p1)
-    ;(dump 1 :o)
-    (cl/callk q sigmoid-fw nil [4] :m o2 :m o1)
-    ;(dump 2 :o)
-    (cl/callk q dense-fw   nil [5] :m o4 :m o2 :m p3 :i 5 :i 4)
-    ;(dump 4 :o)
-    (cl/callk q add        nil [5] :m o4 :m p4)
-    ;(dump 4 :o)
-    (cl/callk q sigmoid-fw nil [5] :m o5 :m o4)
+        [{      b0 :b p0 :p u0 :u}
+         {i1 :i b1 :b p1 :p u1 :u}
+         {i2 :i b2 :b}
+         {i3 :i b3 :b p3 :p u3 :u}
+         {i4 :i b4 :b p4 :p u4 :u}
+         {i5 :i o5 :o}] @cl-mem]
+    (cl/callk q dense-fw   nil [4] :m i2 :m i0 :m p0 :i 4 :i 3)
+    ;(dump 2 :i)
+    (cl/callk q add        nil [4] :m i2 :m p1)
+    ;(dump 2 :i)
+    (cl/callk q sigmoid-fw nil [4] :m i3 :m i2)
+    ;(dump 3 :o)
+    (cl/callk q dense-fw   nil [5] :m i5 :m i3 :m p3 :i 5 :i 4)
+    ;(dump 5 :i)
+    (cl/callk q add        nil [5] :m i5 :m p4)
+    ;(dump 5 :i)
+    (cl/callk q sigmoid-fw nil [5] :m o5 :m i5)
     ;(dump 5 :o)
     ))
 
@@ -136,7 +136,7 @@
 
 (defn bw
  ([in label] (bw in label false))
- ([in label is-1st?]
+ ([i0 label is-1st?]
   (let [{q :queue} @cl-env
         {add              "add"
          cross-entropy-bw "cross_entropy_bw"
@@ -144,33 +144,33 @@
          sigmoid-bw       "sigmoid_bw"
          dense-bw-m       "dense_bw_m"
          dense-bw-m-ov    "dense_bw_m_ov"} @cl-ker
-        [{o0 :o b0 :b p0 :p u0 :u}
-         {o1 :o b1 :b p1 :p u1 :u}
-         {o2 :o b2 :b}
-         {o3 :o b3 :b p3 :p u3 :u}
-         {o4 :o b4 :b p4 :p u4 :u}
-         {o5 :o}] @cl-mem]
+        [{      b0 :b p0 :p u0 :u}
+         {i1 :i b1 :b p1 :p u1 :u}
+         {i2 :i b2 :b}
+         {i3 :i b3 :b p3 :p u3 :u}
+         {i4 :i b4 :b p4 :p u4 :u}
+         {i5 :i o5 :o}] @cl-mem]
     (cl/callk q cross-entropy-bw nil [5] :m b4 :m o5 :m label :f 0.1)
     ;(dump 4 :b)
     (if is-1st?
-      (do (cl/callk q dense-bw-m-ov nil [4 5] :m u3 :m o2 :m b4 :i 5)
+      (do (cl/callk q dense-bw-m-ov nil [4 5] :m u3 :m i3 :m b4 :i 5)
           ;(dump 3 :u)
           (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
           );(dump 4 :u))
-      (do (cl/callk q dense-bw-m    nil [4 5] :m u3 :m o2 :m b4 :i 5)
+      (do (cl/callk q dense-bw-m    nil [4 5] :m u3 :m i3 :m b4 :i 5)
           ;(dump 3 :u)
           (cl/callk q add           nil [5]   :m u4 :m b4)
           ));(dump 4 :u)))
     (cl/callk q dense-bw-v nil [4] :m b2 :m b4 :m p3 :i 5)
     ;(dump 2 :b)
-    (cl/callk q sigmoid-bw nil [4] :m b1 :m o2 :m b2)
+    (cl/callk q sigmoid-bw nil [4] :m b1 :m i3 :m b2)
     ;(dump 1 :b)
     (if is-1st?
-      (do (cl/callk q dense-bw-m-ov nil [3 4] :m u0 :m in :m b1 :i 4)
+      (do (cl/callk q dense-bw-m-ov nil [3 4] :m u0 :m i0 :m b1 :i 4)
           ;(dump 0 :u)
           (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)
           );(dump 1 :u))
-      (do (cl/callk q dense-bw-m    nil [3 4] :m u0 :m in :m b1 :i 4)
+      (do (cl/callk q dense-bw-m    nil [3 4] :m u0 :m i0 :m b1 :i 4)
           ;(dump 0 :u)
           (cl/callk q add           nil [4]   :m u1 :m b1)
           ;(dump 1 :u)
