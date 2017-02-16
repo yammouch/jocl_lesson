@@ -11,16 +11,6 @@
     (f)
     (mlp-cl/finalize)))
 
-(deftest set0-test
-  (let [n 4
-        {q :queue} @mlp-cl/cl-env
-        {set0 "set0"} @mlp-cl/cl-ker
-        mem (cl/create-buffer (@mlp-cl/cl-env :context) :f n)]
-    (cl/callk q set0 nil [n] :m mem)
-    (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem n) (repeat n 0))))
-    (CL/clReleaseMemObject mem)))
-
 (deftest add-test
   (let [v0 [1 2 3 4]
         v1 [2 3 4 5]
@@ -69,24 +59,6 @@
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-m 12)
                        [1 2 3 4, 2 4 6 8, 3 6 9 12])))
-    (doseq [m mems] (CL/clReleaseMemObject m))))
-
-(deftest dense-bw-ofs-test
-  (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "dense_bw_ofs" k-ov "dense_bw_ofs_ov"} @mlp-cl/cl-ker
-        out [1 2 3 4]
-        ofs [1 1 2 2]
-        n (count out)
-        [mem-ofs mem-out :as mems]
-        (map (partial cl/create-buffer ctx :f) [ofs out])]
-    (cl/callk q k    nil [n] :m mem-ofs :m mem-out)
-    (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-ofs n)
-                       [2 3 5 6])))
-    (cl/callk q k-ov nil [n] :m mem-ofs :m mem-out)
-    (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-ofs n)
-                       [1 2 3 4])))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest mul-mv-test

@@ -1,9 +1,3 @@
-__kernel void set0(
- __global float *out) {
-  uint i = get_global_id(0);
-  out[i] = 0.0f;
-}
-
 __kernel void add(
  __global       float *sum,
  __global const float *v0,
@@ -51,20 +45,6 @@ __kernel void mul_vv(
                 int    cc) { // column count
   uint i = get_global_id(0), j = get_global_id(1);
   m[i*cc+j] = v1[i]*v2[j];
-}
-
-__kernel void dense_bw_ofs(
- __global       float *ofs,
- __global const float *out) {
-  uint i = get_global_id(0);
-  ofs[i] += out[i];
-}
-
-__kernel void dense_bw_ofs_ov(
- __global       float *ofs,
- __global const float *out) {
-  uint i = get_global_id(0);
-  ofs[i] = out[i];
 }
 
 __kernel void mul_mv(
