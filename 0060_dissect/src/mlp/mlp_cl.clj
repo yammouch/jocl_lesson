@@ -190,8 +190,8 @@
         {sub "sub"} @cl-ker
         [{p0 :p u0 :u} {p1 :p u1 :u} _
          {p3 :p u3 :u} {p4 :p u4 :u} _] @cl-mem]
-    (cl/callk q sub nil [(* 3 4)] :m p0 :m u0)
-    (cl/callk q sub nil [     4 ] :m p1 :m u1)
-    (cl/callk q sub nil [(* 4 5)] :m p3 :m u3)
-    (cl/callk q sub nil [     5 ] :m p4 :m u4)
+    (cl/callk q sub nil [(* 3 4)] :m p0 :m p0 :m u0)
+    (cl/callk q sub nil [     4 ] :m p1 :m p1 :m u1)
+    (cl/callk q sub nil [(* 4 5)] :m p3 :m p3 :m u3)
+    (cl/callk q sub nil [     5 ] :m p4 :m p4 :m u4)
     ))

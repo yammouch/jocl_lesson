@@ -24,7 +24,6 @@
 (deftest add-test
   (let [in0 [1 2 3 4]
         in1 [2 3 4 5]
-        out [3 5 7 9]
         n (count in0)
         {q :queue ctx :context} @mlp-cl/cl-env
         {add "add" sub "sub"} @mlp-cl/cl-ker
@@ -33,7 +32,11 @@
     (cl/callk q add nil [n] :m mem-out :m mem-in0 :m mem-in1)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-out n)
-                       out)))))
+                       [3 5 7 9])))
+    (cl/callk q sub nil [n] :m mem-out :m mem-in0 :m mem-in1)
+    (is (every? #(< -0.01 % 0.01)
+                (map - (cl/read-float q mem-out n)
+                       [-1 -1 -1 -1])))))
 
 (deftest dense-fw-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
