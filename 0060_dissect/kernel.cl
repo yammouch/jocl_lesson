@@ -61,62 +61,62 @@ __kernel void mul_mv(
 }
 
 __kernel void sigmoid_fw(
- __global       float *out,
- __global const float *in) {
+ __global       float *result,
+ __global const float *v) {
   uint i = get_global_id(0);
-  out[i] = 1.0f/(1.0f + exp(-in[i]));
+  result[i] = 1.0f/(1.0f + exp(-v[i]));
 }
 
 __kernel void sigmoid_bw(
- __global       float *in,
- __global const float *out,
- __global const float *out_prop) {
+ __global       float *result,
+ __global const float *fw_out,
+ __global const float *grad) {
   uint i = get_global_id(0);
-  float x = out[i];
-  in[i] = x*(1.0f - x)*out_prop[i];
+  float x = fw_out[i];
+  result[i] = x*(1.0f - x)*grad[i];
 }
 
 __kernel void softmax_fw_step1(
- __global       float *out,
- __global const float *in) {
+ __global       float *result,
+ __global const float *v) {
   uint i = get_global_id(0);
-  out[i] = exp(in[i]);
+  result[i] = exp(v[i]);
 }
 
 __kernel void softmax_fw_step2(
- __global float *out,
+ __global float *v,
           int    len) {
   int i;
   float acc = 0.0f;
   for (i = 0; i < len; i++) {
-    acc += out[i];
+    acc += v[i];
   }
-  out[len] = acc;
+  v[len] = acc;
 }
 
 __kernel void softmax_fw_step3(
- __global       float *out,
+ __global       float *result,
                 int    len) {
   uint i = get_global_id(0);
-  out[i] = out[i] / out[len];
+  result[i] = result[i] / result[len];
 }
 
 __kernel void quadratic_bw(
- __global       float *in,
- __global const float *out,
+ __global       float *result,
+ __global const float *fw_out,
  __global const float *expc,
                 float  learning_rate) {
   uint i = get_global_id(0);
   float x;
-  x = out[i];
-  in[i] = (x - expc[i])*learning_rate*x*(1.0f - x);
+  x = fw_out[i];
+  result[i] = (x - expc[i])*learning_rate*x*(1.0f - x);
 }
 
 __kernel void cross_entropy_bw(
- __global       float *in,
- __global const float *out,
+ __global       float *result,
+ __global const float *fw_out,
  __global const float *expc,
                 float  learning_rate) {
   uint i = get_global_id(0);
-  in[i] = (out[i] - expc[i])*learning_rate;
+  result[i] = (fw_out[i] - expc[i])*learning_rate;
 }
