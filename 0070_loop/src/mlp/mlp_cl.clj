@@ -6,7 +6,7 @@
 
 (import '(org.jocl CL Sizeof Pointer))
 
-(defn prepare-mem [context conf]
+(defn prepare-mem [context]
   [; layer 0, a dense layer
    {:b (cl/create-buffer context :f 4)
     :p (let [ar-len (* 3 4)
@@ -34,8 +34,9 @@
     :p (cl/create-buffer context :f (repeat 5 0))
     :u (cl/create-buffer context :f 5)}
    ; layer 5, a sigmoid layer
-   {:i (cl/create-buffer context :f 5)
-    :o (cl/create-buffer context :f 5)}])
+   {:i (cl/create-buffer context :f 5)}
+   ; layer 6, a receiver of the output
+   {:i (cl/create-buffer context :f 5)}])
 
 (def kernel-source-code (slurp "kernel.cl"))
 
@@ -43,7 +44,15 @@
 (def cl-mem (ref nil))
 (def cl-prg (ref nil))
 (def cl-ker (ref nil))
-(def mlp-config (ref []))
+(def mlp-config
+  [{:type :dense   :size [3 4]}
+   {:type :offset  :size [4  ]}
+   {:type :sigmoid :size [4  ]}
+   {:type :dense   :size [4 5]}
+   {:type :offset  :size [5  ]}
+   {:type :sigmoid :size [5  ]}
+   {:type :cross-entropy}
+   ])
 
 ;(require 'clojure.pprint)
 
@@ -60,11 +69,11 @@
   (CL/clReleaseCommandQueue (@cl-env :queue))
   (CL/clReleaseContext (@cl-env :context)))
 
-(defn init [conf]
+(defn init [_]
   (dosync
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
-    (ref-set cl-mem (prepare-mem (@cl-env :context) conf))
-    (ref-set mlp-config (vec conf))
+    (ref-set cl-mem (prepare-mem (@cl-env :context)))
+    ;(ref-set mlp-config (vec conf))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
                      [(get-in @cl-env [:device :id])]
                      kernel-source-code))
@@ -99,6 +108,17 @@
     (print-matrix (get-in @cl-mem [i k])
                   cr cc)))
 
+(defn fw1 [{t :type [cr cc] :size i :i p :p} {o :i}]
+  (let [{q :queue} @cl-env]
+    (case t
+      :dense
+      (cl/callk (@cl-ker "mul_vm")     nil [cc] :m o :m i :m p :i cr :i cc)
+      :offset
+      (cl/callk (@cl-ker "add")        nil [cr] :m o :m i :m p)
+      :sigmoid
+      (cl/callk (@cl-ker "sigmoid_fw") nil [cr] :m o :m i)
+      )))
+
 (defn fw [i0]
   (let [{q :queue} @cl-env
         {mul-vm "mul_vm" add "add" sigmoid-fw "sigmoid_fw"} @cl-ker
@@ -107,20 +127,27 @@
          {i2 :i b2 :b}
          {i3 :i b3 :b p3 :p u3 :u}
          {i4 :i b4 :b p4 :p u4 :u}
-         {i5 :i o5 :o}] @cl-mem]
+         {i5 :i}
+         {i6 :i}] @cl-mem]
+    (doseq [[l0 l1] (->> (assoc-in @cl-mem [0 :i] i0)
+                         (map into mlp-config)
+                         (partition 2 1)
+                         (take 0)
+                         )]
+      (fw1 l0 l1))
     (cl/callk q mul-vm     nil [4] :m i1 :m i0 :m p0 :i 3 :i 4)
     (cl/callk q add        nil [4] :m i2 :m i1 :m p1)
     (cl/callk q sigmoid-fw nil [4] :m i3 :m i2)
     (cl/callk q mul-vm     nil [5] :m i4 :m i3 :m p3 :i 4 :i 5)
     (cl/callk q add        nil [5] :m i5 :m i4 :m p4)
-    (cl/callk q sigmoid-fw nil [5] :m o5 :m i5)
+    (cl/callk q sigmoid-fw nil [5] :m i6 :m i5)
     ;(dump 2 :i) (dump 3 :i) (dump 4 :i) (dump 5 :i) (dump 5 :o)
     ))
 
 (defn fw-err [input label]
   (fw input)
   (let [{q :queue} @cl-env
-        a (get-in @cl-mem [5 :o])
+        a (get-in @cl-mem [6 :i])
         out (cl/read-float q a 5)
         lbl (cl/read-float q label 5)] 
     (apply + (map #(let [diff (- %1 %2)] (* diff diff))
@@ -144,8 +171,9 @@
          {i2 :i b2 :b}
          {i3 :i b3 :b p3 :p u3 :u}
          {i4 :i b4 :b p4 :p u4 :u}
-         {i5 :i o5 :o}] @cl-mem]
-    (cl/callk q cross-entropy-bw nil [5] :m b4 :m o5 :m label :f 0.1)
+         {i5 :i}
+         {i6 :i}] @cl-mem]
+    (cl/callk q cross-entropy-bw nil [5] :m b4 :m i6 :m label :f 0.1)
     (if is-1st?
       (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
       (cl/callk q add        nil [5]   :m u4 :m u4 :m b4))
