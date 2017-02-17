@@ -54,17 +54,13 @@
    {:type :cross-entropy}
    ])
 
-;(require 'clojure.pprint)
-
 (defn finalize []
   (CL/clFlush (@cl-env :queue))
   (CL/clFinish (@cl-env :queue))
   (doseq [[_ v] @cl-ker] (CL/clReleaseKernel v))
   (CL/clReleaseProgram @cl-prg)
   (doseq [x @cl-mem]
-    ;(clojure.pprint/pprint x)
     (doseq [[_ m] x]
-      ;(clojure.pprint/pprint m)
       (CL/clReleaseMemObject m)))
   (CL/clReleaseCommandQueue (@cl-env :queue))
   (CL/clReleaseContext (@cl-env :context)))
@@ -120,27 +116,10 @@
       )))
 
 (defn fw [i0]
-  (let [{q :queue} @cl-env
-        {mul-vm "mul_vm" add "add" sigmoid-fw "sigmoid_fw"} @cl-ker
-        ;[{      b0 :b p0 :p u0 :u}
-        ; {i1 :i b1 :b p1 :p u1 :u}
-        ; {i2 :i b2 :b}
-        ; {i3 :i b3 :b p3 :p u3 :u}
-        ; {i4 :i b4 :b p4 :p u4 :u}
-        ; {i5 :i}
-        ]; {i6 :i}] @cl-mem]
-    (doseq [[l0 l1] (->> (assoc-in @cl-mem [0 :i] i0)
-                         (map into mlp-config)
-                         (partition 2 1)
-                         ;(take 5)
-                         )]
-      (fw1 l0 l1))
-    ;(cl/callk q mul-vm     nil [4] :m i1 :m i0 :m p0 :i 3 :i 4)
-    ;(cl/callk q add        nil [4] :m i2 :m i1 :m p1)
-    ;(cl/callk q sigmoid-fw nil [4] :m i3 :m i2)
-    ;(cl/callk q mul-vm     nil [5] :m i4 :m i3 :m p3 :i 4 :i 5)
-    ;(cl/callk q add        nil [5] :m i5 :m i4 :m p4)
-    ;(cl/callk q sigmoid-fw nil [5] :m i6 :m i5)
+  (doseq [[l0 l1] (->> (assoc-in @cl-mem [0 :i] i0)
+                       (map into mlp-config)
+                       (partition 2 1))]
+    (fw1 l0 l1)
     ;(dump 2 :i) (dump 3 :i) (dump 4 :i) (dump 5 :i) (dump 5 :o)
     ))
 
@@ -156,42 +135,90 @@
 (defn fw-err-subbatch [inputs labels]
   (apply + (map fw-err inputs labels)))
 
+(defn bw-dense [{bp :b} {i :i b :b p :p u :u [cr cc] :size} is-1st?]
+  (let [{q :queue} @cl-env
+        {vv "mul_vv", vva "mul_vv_acc", mv "mul_mv"} @cl-ker]
+    (if is-1st?
+      (cl/callk q vv  nil [cr cc] :m u  :m i :m b :i cc)
+      (cl/callk q vva nil [cr cc] :m u  :m i :m b :i cc))
+    (when bp
+      (cl/callk q mv  nil [cr]    :m bp :m p :m b :i cc))))
+
+(defn bw-offset [{bp :b} {b :b u :u [n] :size} is-1st?]
+  (let [{q :queue} @cl-env]
+    (if is-1st?
+      (CL/clEnqueueCopyBuffer q b u 0 0 (* n Sizeof/cl_float) 0 nil nil)
+      (cl/callk q (@cl-ker "add") nil [n] :m u :m u :m b))
+    (when bp
+      (CL/clEnqueueCopyBuffer q b bp 0 0 (* n Sizeof/cl_float) 0 nil nil))))
+
+(defn bw1
+ [{               bp :b                         :as lp} ; previous layer
+  {t  :type i  :i b  :b p :p u :u [cr cc] :size :as l }
+  {tn :type in :i bn :b                               } ; next layer
+  is-1st?]
+  (let [{q :queue} @cl-env
+        {ce "cross_entropy_bw", smd "sigmoid_bw"} @cl-ker]
+    (case tn
+      :cross-entropy
+      (case t
+        :sigmoid
+        (cl/callk q ce nil [cr]
+         :m bp :m in :m bn :f 0.1))
+      (case t
+        :dense   (bw-dense  lp l is-1st?)
+        :offset  (bw-offset lp l is-1st?)
+        :sigmoid (cl/callk q smd nil [4] :m bp :m in :m b)
+        ))))
+
+(require 'clojure.pprint)
+
 (defn bw
  ([in label] (bw in label false))
  ([i0 label is-1st?]
-  (let [{q :queue} @cl-env
-        {add              "add"
-         cross-entropy-bw "cross_entropy_bw"
-         mul-mv           "mul_mv"
-         sigmoid-bw       "sigmoid_bw"
-         mul-vv-acc       "mul_vv_acc"
-         mul-vv           "mul_vv"} @cl-ker
-        [{      b0 :b p0 :p u0 :u}
-         {i1 :i b1 :b p1 :p u1 :u}
-         {i2 :i b2 :b}
-         {i3 :i b3 :b p3 :p u3 :u}
-         {i4 :i b4 :b p4 :p u4 :u}
-         {i5 :i}
-         {i6 :i}] @cl-mem]
-    (cl/callk q cross-entropy-bw nil [5] :m b4 :m i6 :m label :f 0.1)
-    (if is-1st?
-      (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
-      (cl/callk q add        nil [5]   :m u4 :m u4 :m b4))
-    (if is-1st?
-      (cl/callk q mul-vv     nil [4 5] :m u3 :m i3 :m b4 :i 5)
-      (cl/callk q mul-vv-acc nil [4 5] :m u3 :m i3 :m b4 :i 5))
-    (CL/clEnqueueCopyBuffer q b4 b3 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
-    (cl/callk q mul-mv     nil [4] :m b2 :m p3 :m b3 :i 5)
-    (cl/callk q sigmoid-bw nil [4] :m b1 :m i3 :m b2)
-    (if is-1st?
-      (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)
-      (cl/callk q add        nil [4]   :m u1 :m u1 :m b1))
-    (if is-1st?
-      (cl/callk q mul-vv     nil [3 4] :m u0 :m i0 :m b1 :i 4)
-      (cl/callk q mul-vv-acc nil [3 4] :m u0 :m i0 :m b1 :i 4))
+  ;(let [{q :queue} @cl-env
+  ;      {add              "add"
+  ;       cross-entropy-bw "cross_entropy_bw"
+  ;       mul-mv           "mul_mv"
+  ;       sigmoid-bw       "sigmoid_bw"
+  ;       mul-vv-acc       "mul_vv_acc"
+  ;       mul-vv           "mul_vv"} @cl-ker
+  ;      [{      b0 :b p0 :p u0 :u}
+  ;       {i1 :i b1 :b p1 :p u1 :u}
+  ;       {i2 :i b2 :b}
+  ;       {i3 :i b3 :b p3 :p u3 :u}
+  ;       {i4 :i b4 :b p4 :p u4 :u}
+  ;       {i5 :i}
+  ;       {i6 :i}] @cl-mem]
+    (doseq [[lp l ln] (->> (-> @cl-mem
+                               (assoc-in [6 :b] label)
+                               (assoc-in [0 :i] i0))
+                           (map into mlp-config)
+                           (cons nil)
+                           (partition 3 1)
+                           (reverse)
+                           ;(take 6)
+                           )]
+      (bw1 lp l ln is-1st?))
+    ;(cl/callk q cross-entropy-bw nil [5] :m b4 :m i6 :m label :f 0.1)
+    ;(if is-1st?
+    ;  (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
+    ;  (cl/callk q add        nil [5]   :m u4 :m u4 :m b4))
+    ;(if is-1st?
+    ;  (cl/callk q mul-vv     nil [4 5] :m u3 :m i3 :m b4 :i 5)
+    ;  (cl/callk q mul-vv-acc nil [4 5] :m u3 :m i3 :m b4 :i 5))
+    ;(CL/clEnqueueCopyBuffer q b4 b3 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
+    ;(cl/callk q mul-mv     nil [4] :m b2 :m p3 :m b3 :i 5)
+    ;(cl/callk q sigmoid-bw nil [4] :m b1 :m i3 :m b2)
+    ;(if is-1st?
+    ;  (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)
+    ;  (cl/callk q add        nil [4]   :m u1 :m u1 :m b1))
+    ;(if is-1st?
+    ;  (cl/callk q mul-vv     nil [3 4] :m u0 :m i0 :m b1 :i 4)
+    ;  (cl/callk q mul-vv-acc nil [3 4] :m u0 :m i0 :m b1 :i 4))
     ;(dump 4 :b) (dump 4 :u) (dump 3 :u) (dump 2 :b)
     ;(dump 1 :b) (dump 1 :u) (dump 0 :u)
-    )))
+    ));)
 
 (defn run-subbatch [inputs labels]
   (loop [i inputs l labels first? true]
