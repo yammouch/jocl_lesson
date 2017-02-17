@@ -112,35 +112,35 @@
   (let [{q :queue} @cl-env]
     (case t
       :dense
-      (cl/callk (@cl-ker "mul_vm")     nil [cc] :m o :m i :m p :i cr :i cc)
+      (cl/callk q (@cl-ker "mul_vm")     nil [cc] :m o :m i :m p :i cr :i cc)
       :offset
-      (cl/callk (@cl-ker "add")        nil [cr] :m o :m i :m p)
+      (cl/callk q (@cl-ker "add")        nil [cr] :m o :m i :m p)
       :sigmoid
-      (cl/callk (@cl-ker "sigmoid_fw") nil [cr] :m o :m i)
+      (cl/callk q (@cl-ker "sigmoid_fw") nil [cr] :m o :m i)
       )))
 
 (defn fw [i0]
   (let [{q :queue} @cl-env
         {mul-vm "mul_vm" add "add" sigmoid-fw "sigmoid_fw"} @cl-ker
-        [{      b0 :b p0 :p u0 :u}
-         {i1 :i b1 :b p1 :p u1 :u}
-         {i2 :i b2 :b}
-         {i3 :i b3 :b p3 :p u3 :u}
-         {i4 :i b4 :b p4 :p u4 :u}
-         {i5 :i}
-         {i6 :i}] @cl-mem]
+        ;[{      b0 :b p0 :p u0 :u}
+        ; {i1 :i b1 :b p1 :p u1 :u}
+        ; {i2 :i b2 :b}
+        ; {i3 :i b3 :b p3 :p u3 :u}
+        ; {i4 :i b4 :b p4 :p u4 :u}
+        ; {i5 :i}
+        ]; {i6 :i}] @cl-mem]
     (doseq [[l0 l1] (->> (assoc-in @cl-mem [0 :i] i0)
                          (map into mlp-config)
                          (partition 2 1)
-                         (take 0)
+                         ;(take 5)
                          )]
       (fw1 l0 l1))
-    (cl/callk q mul-vm     nil [4] :m i1 :m i0 :m p0 :i 3 :i 4)
-    (cl/callk q add        nil [4] :m i2 :m i1 :m p1)
-    (cl/callk q sigmoid-fw nil [4] :m i3 :m i2)
-    (cl/callk q mul-vm     nil [5] :m i4 :m i3 :m p3 :i 4 :i 5)
-    (cl/callk q add        nil [5] :m i5 :m i4 :m p4)
-    (cl/callk q sigmoid-fw nil [5] :m i6 :m i5)
+    ;(cl/callk q mul-vm     nil [4] :m i1 :m i0 :m p0 :i 3 :i 4)
+    ;(cl/callk q add        nil [4] :m i2 :m i1 :m p1)
+    ;(cl/callk q sigmoid-fw nil [4] :m i3 :m i2)
+    ;(cl/callk q mul-vm     nil [5] :m i4 :m i3 :m p3 :i 4 :i 5)
+    ;(cl/callk q add        nil [5] :m i5 :m i4 :m p4)
+    ;(cl/callk q sigmoid-fw nil [5] :m i6 :m i5)
     ;(dump 2 :i) (dump 3 :i) (dump 4 :i) (dump 5 :i) (dump 5 :o)
     ))
 
