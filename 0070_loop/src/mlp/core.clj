@@ -29,8 +29,18 @@
    [1 1 0 1 1]
    [1 1 1 1 0]])
 
+(def mlp-config
+  [{:type :dense         :size [3 4]}
+   {:type :offset        :size [4  ]}
+   {:type :sigmoid       :size [4  ]}
+   {:type :dense         :size [4 5]}
+   {:type :offset        :size [5  ]}
+   {:type :sigmoid       :size [5  ]}
+   {:type :cross-entropy :size [5  ]}
+   ])
+
 (defn -main [& args]
-  (mlp-cl/init [3 4 5])
+  (mlp-cl/init mlp-config)
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         inputs (map (partial cl/create-buffer ctx :f) inputs-v)
         labels (map (partial cl/create-buffer ctx :f) labels-v)]

@@ -25,19 +25,11 @@
 
 (def kernel-source-code (slurp "kernel.cl"))
 
-(def cl-env (ref nil))
-(def cl-mem (ref nil))
-(def cl-prg (ref nil))
-(def cl-ker (ref nil))
-(def mlp-config
-  [{:type :dense         :size [3 4]}
-   {:type :offset        :size [4  ]}
-   {:type :sigmoid       :size [4  ]}
-   {:type :dense         :size [4 5]}
-   {:type :offset        :size [5  ]}
-   {:type :sigmoid       :size [5  ]}
-   {:type :cross-entropy :size [5  ]}
-   ])
+(def cl-env     (ref nil))
+(def cl-mem     (ref nil))
+(def cl-prg     (ref nil))
+(def cl-ker     (ref nil))
+(def mlp-config (ref nil))
 
 (defn finalize []
   (CL/clFlush (@cl-env :queue))
@@ -50,11 +42,11 @@
   (CL/clReleaseCommandQueue (@cl-env :queue))
   (CL/clReleaseContext (@cl-env :context)))
 
-(defn init [_]
+(defn init [conf]
   (dosync
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
-    (ref-set cl-mem (prepare-mem (@cl-env :context) mlp-config))
-    ;(ref-set mlp-config (vec conf))
+    (ref-set cl-mem (prepare-mem (@cl-env :context) conf))
+    (ref-set mlp-config (vec conf))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
                      [(get-in @cl-env [:device :id])]
                      kernel-source-code))
@@ -79,7 +71,7 @@
 
 (defn dump [i k]
   (printf "layer %d name %s:\n" i (name k))
-  (let [l (mlp-config i)
+  (let [l (@mlp-config i)
         [cr cc] (l :size)
         [cr cc] (case (l :type)
                   :dense         [cr cc]
@@ -100,7 +92,7 @@
 
 (defn fw [i0]
   (doseq [[l0 l1] (->> (assoc-in @cl-mem [0 :i] i0)
-                       (map into mlp-config)
+                       (map into @mlp-config)
                        (partition 2 1))]
     (fw1 l0 l1)))
 
@@ -154,9 +146,9 @@
  ([in label] (bw in label false))
  ([i0 label is-1st?]
     (doseq [[lp l ln] (->> (-> @cl-mem
-                               (assoc-in [(- (count mlp-config) 1) :g] label)
+                               (assoc-in [(- (count @mlp-config) 1) :g] label)
                                (assoc-in [0 :i] i0))
-                           (map into mlp-config)
+                           (map into @mlp-config)
                            (cons nil)
                            (partition 3 1)
                            (reverse))]
@@ -172,7 +164,7 @@
           )))
   (let [{q :queue} @cl-env
         {sub "sub"} @cl-ker]
-    (doseq [{t :type u :u p :p [cr cc] :size} (mapv into mlp-config @cl-mem)]
+    (doseq [{t :type u :u p :p [cr cc] :size} (mapv into @mlp-config @cl-mem)]
       (case t
         :dense  (cl/callk q sub nil [(* cr cc)] :m p :m p :m u)
         :offset (cl/callk q sub nil [   cr    ] :m p :m p :m u)
