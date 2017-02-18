@@ -151,18 +151,16 @@
       (CL/clEnqueueCopyBuffer q b bp 0 0 (* n Sizeof/cl_float) 0 nil nil))))
 
 (defn bw1
- [{               bp :b                         :as lp} ; previous layer
-  {t  :type i  :i b  :b p :p u :u [cr cc] :size :as l }
-  {tn :type in :i bn :b                               } ; next layer
+ [{               bp :b            :as lp} ; previous layer
+  {t  :type       b  :b [cr] :size :as l }
+  {tn :type in :i bn :b                  } ; next layer
   is-1st?]
   (let [{q :queue} @cl-env
         {ce "cross_entropy_bw", smd "sigmoid_bw"} @cl-ker]
     (case tn
       :cross-entropy
       (case t
-        :sigmoid
-        (cl/callk q ce nil [cr]
-         :m bp :m in :m bn :f 0.1))
+        :sigmoid (cl/callk q ce nil [cr] :m bp :m in :m bn :f 0.1))
       (case t
         :dense   (bw-dense  lp l is-1st?)
         :offset  (bw-offset lp l is-1st?)
