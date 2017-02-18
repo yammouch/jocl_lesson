@@ -12,13 +12,13 @@
             :dense (let [ar-len (* cr cc)
                          v (map #(/ % ar-len) (range ar-len))]
                      (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
-                                    [:i :b :p :u    ]
+                                    [:i :g :p :u    ]
                                     [cr cc v  ar-len])))
             :offset (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
-                                   [:i :b :p            :u]
+                                   [:i :g :p            :u]
                                    [cr cr (repeat cr 0) cr]))
             :sigmoid (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
-                                    [:i :b]
+                                    [:i :g]
                                     [cr cr]))
             :cross-entropy {:i (cl/create-buffer ctx :f cr)}))
         conf))
@@ -116,45 +116,45 @@
 (defn fw-err-subbatch [inputs labels]
   (apply + (map fw-err inputs labels)))
 
-(defn bw-dense [{bp :b} {i :i b :b p :p u :u [cr cc] :size} is-1st?]
+(defn bw-dense [{gp :g} {i :i g :g p :p u :u [cr cc] :size} is-1st?]
   (let [{q :queue} @cl-env
         {vv "mul_vv", vva "mul_vv_acc", mv "mul_mv"} @cl-ker]
     (if is-1st?
-      (cl/callk q vv  nil [cr cc] :m u  :m i :m b :i cc)
-      (cl/callk q vva nil [cr cc] :m u  :m i :m b :i cc))
-    (when bp
-      (cl/callk q mv  nil [cr]    :m bp :m p :m b :i cc))))
+      (cl/callk q vv  nil [cr cc] :m u  :m i :m g :i cc)
+      (cl/callk q vva nil [cr cc] :m u  :m i :m g :i cc))
+    (when gp
+      (cl/callk q mv  nil [cr]    :m gp :m p :m g :i cc))))
 
-(defn bw-offset [{bp :b} {b :b u :u [n] :size} is-1st?]
+(defn bw-offset [{gp :g} {g :g u :u [n] :size} is-1st?]
   (let [{q :queue} @cl-env]
     (if is-1st?
-      (CL/clEnqueueCopyBuffer q b u 0 0 (* n Sizeof/cl_float) 0 nil nil)
-      (cl/callk q (@cl-ker "add") nil [n] :m u :m u :m b))
-    (when bp
-      (CL/clEnqueueCopyBuffer q b bp 0 0 (* n Sizeof/cl_float) 0 nil nil))))
+      (CL/clEnqueueCopyBuffer q g u 0 0 (* n Sizeof/cl_float) 0 nil nil)
+      (cl/callk q (@cl-ker "add") nil [n] :m u :m u :m g))
+    (when gp
+      (CL/clEnqueueCopyBuffer q g gp 0 0 (* n Sizeof/cl_float) 0 nil nil))))
 
 (defn bw1
- [{               bp :b            :as lp} ; previous layer
-  {t  :type       b  :b [cr] :size :as l }
-  {tn :type in :i bn :b                  } ; next layer
+ [{               gp :g            :as lp} ; previous layer
+  {t  :type       g  :g [cr] :size :as l }
+  {tn :type in :i gn :g                  } ; next layer
   is-1st?]
   (let [{q :queue} @cl-env
         {ce "cross_entropy_bw", smd "sigmoid_bw"} @cl-ker]
     (case tn
       :cross-entropy
       (case t
-        :sigmoid (cl/callk q ce nil [cr] :m bp :m in :m bn :f 0.1))
+        :sigmoid (cl/callk q ce nil [cr] :m gp :m in :m gn :f 0.1))
       (case t
         :dense   (bw-dense  lp l is-1st?)
         :offset  (bw-offset lp l is-1st?)
-        :sigmoid (cl/callk q smd nil [4] :m bp :m in :m b)
+        :sigmoid (cl/callk q smd nil [4] :m gp :m in :m g)
         ))))
 
 (defn bw
  ([in label] (bw in label false))
  ([i0 label is-1st?]
     (doseq [[lp l ln] (->> (-> @cl-mem
-                               (assoc-in [(- (count mlp-config) 1) :b] label)
+                               (assoc-in [(- (count mlp-config) 1) :g] label)
                                (assoc-in [0 :i] i0))
                            (map into mlp-config)
                            (cons nil)
