@@ -179,7 +179,7 @@
                            (reverse))]
       (bw1 lp l ln is-1st?))))
 
-(defn run-subbatch [inputs labels]
+(defn run-minibatch [inputs labels]
   (loop [i inputs l labels first? true]
     (if (or (empty? i) (empty? l))
       :done
