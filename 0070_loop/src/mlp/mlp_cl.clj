@@ -6,37 +6,22 @@
 
 (import '(org.jocl CL Sizeof Pointer))
 
-(defn prepare-mem [context]
-  [; layer 0, a dense layer
-   {:b (cl/create-buffer context :f 4)
-    :p (let [ar-len (* 3 4)
-             v (map #(/ % ar-len) (range ar-len))]
-         (cl/create-buffer context :f v))
-    :u (cl/create-buffer context :f (* 3 4))}
-   ; layer 1, an offset layer
-   {:i (cl/create-buffer context :f 4)
-    :b (cl/create-buffer context :f 4)
-    :p (cl/create-buffer context :f (repeat 4 0))
-    :u (cl/create-buffer context :f 4)}
-   ; layer 2, a sigmoid layer
-   {:i (cl/create-buffer context :f 4)
-    :b (cl/create-buffer context :f 4)}
-   ; layer 3, a dense layer
-   {:i (cl/create-buffer context :f 4)
-    :b (cl/create-buffer context :f 5)
-    :p (let [ar-len (* 4 5)
-             v (map #(/ % ar-len) (range ar-len))]
-         (cl/create-buffer context :f v))
-    :u (cl/create-buffer context :f (* 4 5))}
-   ; layer 4, an offset layer
-   {:i (cl/create-buffer context :f 5)
-    :b (cl/create-buffer context :f 5)
-    :p (cl/create-buffer context :f (repeat 5 0))
-    :u (cl/create-buffer context :f 5)}
-   ; layer 5, a sigmoid layer
-   {:i (cl/create-buffer context :f 5)}
-   ; layer 6, a receiver of the output
-   {:i (cl/create-buffer context :f 5)}])
+(defn prepare-mem [ctx conf]
+  (mapv (fn [{t :type [cr cc] :size}]
+          (case t
+            :dense (let [ar-len (* cr cc)
+                         v (map #(/ % ar-len) (range ar-len))]
+                     (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
+                                    [:i :b :p :u    ]
+                                    [cr cc v  ar-len])))
+            :offset (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
+                                   [:i :b :p            :u]
+                                   [cr cr (repeat cr 0) cr]))
+            :sigmoid (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
+                                    [:i :b]
+                                    [cr cr]))
+            :cross-entropy {:i (cl/create-buffer ctx :f cr)}))
+        conf))
 
 (def kernel-source-code (slurp "kernel.cl"))
 
@@ -68,7 +53,7 @@
 (defn init [_]
   (dosync
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
-    (ref-set cl-mem (prepare-mem (@cl-env :context)))
+    (ref-set cl-mem (prepare-mem (@cl-env :context) mlp-config))
     ;(ref-set mlp-config (vec conf))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
                      [(get-in @cl-env [:device :id])]
@@ -105,14 +90,12 @@
                   cr cc)))
 
 (defn fw1 [{t :type [cr cc] :size i :i p :p} {o :i}]
-  (let [{q :queue} @cl-env]
+  (let [{q :queue} @cl-env
+        {vm "mul_vm" add "add" smd "sigmoid_fw"} @cl-ker]
     (case t
-      :dense
-      (cl/callk q (@cl-ker "mul_vm")     nil [cc] :m o :m i :m p :i cr :i cc)
-      :offset
-      (cl/callk q (@cl-ker "add")        nil [cr] :m o :m i :m p)
-      :sigmoid
-      (cl/callk q (@cl-ker "sigmoid_fw") nil [cr] :m o :m i)
+      :dense   (cl/callk q vm  nil [cc] :m o :m i :m p :i cr :i cc)
+      :offset  (cl/callk q add nil [cr] :m o :m i :m p)
+      :sigmoid (cl/callk q smd nil [cr] :m o :m i)
       )))
 
 (defn fw [i0]

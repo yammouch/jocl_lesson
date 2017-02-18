@@ -40,7 +40,7 @@
       ;(mlp-cl/dump 1 :p)
       ;(mlp-cl/dump 3 :p)
       ;(mlp-cl/dump 4 :p)
-      (mlp-cl/run-subbatch inputs labels)
+      (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 50) 0)
         (printf "i: %4d err: %8.2f\n"
          i
