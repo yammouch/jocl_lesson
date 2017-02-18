@@ -167,8 +167,6 @@
         :sigmoid (cl/callk q smd nil [4] :m bp :m in :m b)
         ))))
 
-(require 'clojure.pprint)
-
 (defn bw
  ([in label] (bw in label false))
  ([i0 label is-1st?]
@@ -185,18 +183,14 @@
   (loop [i inputs l labels first? true]
     (if (or (empty? i) (empty? l))
       :done
-      (do ;(println "input:") (print-matrix (first i) 1 3)
-          ;(println "label:") (print-matrix (first l) 1 5)
-          (fw (first i))
+      (do (fw (first i))
           (bw (first i) (first l) first?)
           (recur (next i) (next l) false)
           )))
   (let [{q :queue} @cl-env
-        {sub "sub"} @cl-ker
-        [{p0 :p u0 :u} {p1 :p u1 :u} _
-         {p3 :p u3 :u} {p4 :p u4 :u} _] @cl-mem]
-    (cl/callk q sub nil [(* 3 4)] :m p0 :m p0 :m u0)
-    (cl/callk q sub nil [     4 ] :m p1 :m p1 :m u1)
-    (cl/callk q sub nil [(* 4 5)] :m p3 :m p3 :m u3)
-    (cl/callk q sub nil [     5 ] :m p4 :m p4 :m u4)
-    ))
+        {sub "sub"} @cl-ker]
+    (doseq [{t :type u :u p :p [cr cc] :size} (mapv into mlp-config @cl-mem)]
+      (case t
+        :dense  (cl/callk q sub nil [(* cr cc)] :m p :m p :m u)
+        :offset (cl/callk q sub nil [   cr    ] :m p :m p :m u)
+        :do-nothing))))
