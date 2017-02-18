@@ -45,13 +45,13 @@
 (def cl-prg (ref nil))
 (def cl-ker (ref nil))
 (def mlp-config
-  [{:type :dense   :size [3 4]}
-   {:type :offset  :size [4  ]}
-   {:type :sigmoid :size [4  ]}
-   {:type :dense   :size [4 5]}
-   {:type :offset  :size [5  ]}
-   {:type :sigmoid :size [5  ]}
-   {:type :cross-entropy}
+  [{:type :dense         :size [3 4]}
+   {:type :offset        :size [4  ]}
+   {:type :sigmoid       :size [4  ]}
+   {:type :dense         :size [4 5]}
+   {:type :offset        :size [5  ]}
+   {:type :sigmoid       :size [5  ]}
+   {:type :cross-entropy :size [5  ]}
    ])
 
 (defn finalize []
@@ -94,13 +94,13 @@
 
 (defn dump [i k]
   (printf "layer %d name %s:\n" i (name k))
-  (let [[cr cc] ({              [0 :b] [1 4], [0 :p] [3 4], [0 :u] [3 4],
-                  [1 :i] [1 4], [1 :b] [1 4], [1 :p] [1 4], [1 :u] [1 4],
-                  [2 :i] [1 4], [2 :b] [1 4],
-                  [3 :i] [1 5], [3 :b] [1 5], [3 :p] [4 5], [3 :u] [4 5],
-                  [4 :i] [1 5], [4 :b] [1 5], [4 :p] [1 5], [4 :u] [1 5],
-                  [5 :i] [1 5]}
-                 [i k])]
+  (let [l (mlp-config i)
+        [cr cc] (l :size)
+        [cr cc] (case (l :type)
+                  :dense         [cr cc]
+                  :offset        [ 1 cr]
+                  :sigmoid       [ 1 cr]
+                  :cross-entropy [ 1 cr])]
     (print-matrix (get-in @cl-mem [i k])
                   cr cc)))
 
@@ -119,9 +119,7 @@
   (doseq [[l0 l1] (->> (assoc-in @cl-mem [0 :i] i0)
                        (map into mlp-config)
                        (partition 2 1))]
-    (fw1 l0 l1)
-    ;(dump 2 :i) (dump 3 :i) (dump 4 :i) (dump 5 :i) (dump 5 :o)
-    ))
+    (fw1 l0 l1)))
 
 (defn fw-err [input label]
   (fw input)
@@ -176,49 +174,14 @@
 (defn bw
  ([in label] (bw in label false))
  ([i0 label is-1st?]
-  ;(let [{q :queue} @cl-env
-  ;      {add              "add"
-  ;       cross-entropy-bw "cross_entropy_bw"
-  ;       mul-mv           "mul_mv"
-  ;       sigmoid-bw       "sigmoid_bw"
-  ;       mul-vv-acc       "mul_vv_acc"
-  ;       mul-vv           "mul_vv"} @cl-ker
-  ;      [{      b0 :b p0 :p u0 :u}
-  ;       {i1 :i b1 :b p1 :p u1 :u}
-  ;       {i2 :i b2 :b}
-  ;       {i3 :i b3 :b p3 :p u3 :u}
-  ;       {i4 :i b4 :b p4 :p u4 :u}
-  ;       {i5 :i}
-  ;       {i6 :i}] @cl-mem]
     (doseq [[lp l ln] (->> (-> @cl-mem
                                (assoc-in [6 :b] label)
                                (assoc-in [0 :i] i0))
                            (map into mlp-config)
                            (cons nil)
                            (partition 3 1)
-                           (reverse)
-                           ;(take 6)
-                           )]
-      (bw1 lp l ln is-1st?))
-    ;(cl/callk q cross-entropy-bw nil [5] :m b4 :m i6 :m label :f 0.1)
-    ;(if is-1st?
-    ;  (CL/clEnqueueCopyBuffer q b4 u4 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
-    ;  (cl/callk q add        nil [5]   :m u4 :m u4 :m b4))
-    ;(if is-1st?
-    ;  (cl/callk q mul-vv     nil [4 5] :m u3 :m i3 :m b4 :i 5)
-    ;  (cl/callk q mul-vv-acc nil [4 5] :m u3 :m i3 :m b4 :i 5))
-    ;(CL/clEnqueueCopyBuffer q b4 b3 0 0 (* 5 Sizeof/cl_float) 0 nil nil)
-    ;(cl/callk q mul-mv     nil [4] :m b2 :m p3 :m b3 :i 5)
-    ;(cl/callk q sigmoid-bw nil [4] :m b1 :m i3 :m b2)
-    ;(if is-1st?
-    ;  (CL/clEnqueueCopyBuffer q b1 u1 0 0 (* 4 Sizeof/cl_float) 0 nil nil)
-    ;  (cl/callk q add        nil [4]   :m u1 :m u1 :m b1))
-    ;(if is-1st?
-    ;  (cl/callk q mul-vv     nil [3 4] :m u0 :m i0 :m b1 :i 4)
-    ;  (cl/callk q mul-vv-acc nil [3 4] :m u0 :m i0 :m b1 :i 4))
-    ;(dump 4 :b) (dump 4 :u) (dump 3 :u) (dump 2 :b)
-    ;(dump 1 :b) (dump 1 :u) (dump 0 :u)
-    ));)
+                           (reverse))]
+      (bw1 lp l ln is-1st?))))
 
 (defn run-subbatch [inputs labels]
   (loop [i inputs l labels first? true]
