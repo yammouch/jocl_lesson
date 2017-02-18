@@ -173,7 +173,7 @@
  ([in label] (bw in label false))
  ([i0 label is-1st?]
     (doseq [[lp l ln] (->> (-> @cl-mem
-                               (assoc-in [6 :b] label)
+                               (assoc-in [(- (count mlp-config) 1) :b] label)
                                (assoc-in [0 :i] i0))
                            (map into mlp-config)
                            (cons nil)
