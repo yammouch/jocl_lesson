@@ -30,7 +30,7 @@
                      [1 1 1 1 0]])]
     (dotimes [i 5001]
     ;(dotimes [i 1]
-      (mlp-cl/run-subbatch inputs labels)
+      (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 200) 0)
         (printf "i: %4d err: %8.2f\n"
          i
@@ -57,7 +57,7 @@
         labels (mapv (partial cl/create-buffer ctx :f) v)]
     (dotimes [i 5001]
     ;(dotimes [i 1]
-      (mlp-cl/run-subbatch inputs labels)
+      (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 200) 0)
         (printf "i: %4d err: %8.2f\n"
          i
@@ -79,7 +79,7 @@
         labels (mapv (partial cl/create-buffer ctx :f) v)]
     (dotimes [i 20001]
     ;(dotimes [i 1]
-      (mlp-cl/run-subbatch inputs labels)
+      (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 500) 0)
         (printf "i: %5d err: %8.2f\n"
          i
@@ -108,7 +108,7 @@
                      [0]])]
     (dotimes [i 4001]
     ;(dotimes [i 1]
-      (mlp-cl/run-subbatch inputs labels)
+      (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 200) 0)
         (printf "i: %4d err: %8.2f\n"
          i

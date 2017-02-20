@@ -120,3 +120,23 @@ __kernel void cross_entropy_bw(
   uint i = get_global_id(0);
   result[i] = (fw_out[i] - expc[i])*learning_rate;
 }
+
+__kernel void conv_fw(
+ __global       float *result,
+ __global const float *input,
+ __global const float *core,
+                int    wr,   // width  of result
+                int    wi,   // width  of input
+                int    wc,   // width  of core
+                int    hc) { // height of core
+  uint x = get_global_id(0), y = get_global_id(1);
+  int xc, yc; // for core
+  float acc = 0.0f;
+
+  for (yc = 0; yc < hc; yc++) {
+    for (xc = 0; xc < wc; xc++) {
+      acc += core[yc*wc+xc] * input[(yc+y)*wi+(xc+x)];
+    }
+  }
+  result[y*wr+x] = acc;
+}

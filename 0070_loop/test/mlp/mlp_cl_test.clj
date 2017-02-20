@@ -7,7 +7,8 @@
 
 (use-fixtures :once
   (fn [f]
-    (mlp-cl/init [1 1])
+    ;(mlp-cl/init [1 1])
+    (mlp-cl/init nil)
     (f)
     (mlp-cl/finalize)))
 
@@ -152,4 +153,47 @@
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-in n)
                        [0.05 0.05 -0.05 -0.05])))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
+
+;(defn formatv [v]
+;  (apply str (interpose " " (map (partial format "%6.2f")
+;                                 v)))) 
+(defn formatv [v]
+  (apply str (map (partial format ",%.2f")
+             v)))
+
+(defn print-matrix [m]
+  (doseq [s (map formatv m)] (println s)))
+
+(defn conv-fw [i c]
+  (let [hc (count c)
+        wc (count (first c))]
+    (map (fn [rows]
+           (apply map (fn [& vs]
+                        (apply + (map * (apply concat vs) (apply concat c))))
+                      (map (partial partition wc 1) rows)))
+         (partition hc 1 i))))
+
+(deftest conv-fw-test
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k "conv_fw"} @mlp-cl/cl-ker
+        hi 5 wi 6 hc 3 wc 2
+        i (partition wi (map (partial * 0.1) (range (* hi wi))))
+        c (partition wc (map (partial * 0.1) (range (* hc wc))))
+        result (conv-fw i c)
+        hr (count result) wr (count (first result))
+        [mem-result mem-i mem-c :as mems]
+        (map (partial cl/create-buffer ctx :f)
+             [(* hr wr) (apply concat i) (apply concat c)])]
+    ;(print-matrix i)
+    ;(print-matrix c)
+    ;(print-matrix result)
+    (cl/callk q k nil [wr hr] :m mem-result :m mem-i :m mem-c
+     :i wr :i wi :i wc :i hc)
+    ;(mlp-cl/print-matrix mem-i      hi wi)
+    ;(mlp-cl/print-matrix mem-c      hc wc)
+    ;(mlp-cl/print-matrix mem-result hr wr)
+    (is (every? #(< -0.01 % 0.01)
+                (map - (cl/read-float q mem-result (* hr wr))
+                       (apply concat result))))
     (doseq [m mems] (CL/clReleaseMemObject m))))

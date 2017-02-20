@@ -53,11 +53,15 @@
     (ref-set cl-ker (cl/create-kernels-in-program @cl-prg))
     ))
 
+;(defn formatv [v]
+;  (apply str
+;   (interpose " "
+;    (map (partial format "%6.2f")
+;         v))))
+
+; comma separated, for analyzing on Google Sheet
 (defn formatv [v]
   (apply str
-   ;(interpose " "
-   ; (map (partial format "%6.2f")
-   ; comma separated, for analyzing on Google Sheet
    (map (partial format ",%.2f")
         v)))
 
