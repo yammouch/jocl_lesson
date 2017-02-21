@@ -140,3 +140,24 @@ __kernel void conv_fw(
   }
   result[y*wr+x] = acc;
 }
+
+__kernel void conv_bw_u(
+ __global       float *result,
+ __global const float *fw_input,
+ __global const float *grad,
+                int    wr,   // width  of result
+                int    wi,   // width  of fw_input
+                int    wg,   // width  of grad
+                int    hg) { // height of grad
+  uint x = get_global_id(0), y = get_global_id(1);
+  int xg, yg; // for grad
+  float acc = 0.0f;
+
+  for (yg = 0; yg < hg; yg++) {
+    for (xg = 0; xg < wg; xg++) {
+      acc += grad[yg*wg+xg] * fw_input[(yg+y)*wi+(xg+x)];
+    }
+  }
+
+  result[y*wr+x] = acc;
+}

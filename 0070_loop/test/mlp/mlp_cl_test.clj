@@ -197,3 +197,27 @@
                 (map - (cl/read-float q mem-result (* hr wr))
                        (apply concat result))))
     (doseq [m mems] (CL/clReleaseMemObject m))))
+
+(deftest conv-bw-u-test
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k "conv_bw_u"} @mlp-cl/cl-ker
+        hi 5 wi 6 hg 3 wg 2
+        i (partition wi (map (partial * 0.1) (range (* hi wi))))
+        g (partition wg (map (partial * 0.1) (range (* hg wg))))
+        result (conv-fw i g)
+        hr (count result) wr (count (first result))
+        [mem-result mem-i mem-g :as mems]
+        (map (partial cl/create-buffer ctx :f)
+             [(* hr wr) (apply concat i) (apply concat g)])]
+    ;(print-matrix i)
+    ;(print-matrix c)
+    ;(print-matrix result)
+    (cl/callk q k nil [wr hr] :m mem-result :m mem-i :m mem-g
+     :i wr :i wi :i wg :i hg)
+    ;(mlp-cl/print-matrix mem-i      hi wi)
+    ;(mlp-cl/print-matrix mem-c      hc wc)
+    ;(mlp-cl/print-matrix mem-result hr wr)
+    (is (every? #(< -0.01 % 0.01)
+                (map - (cl/read-float q mem-result (* hr wr))
+                       (apply concat result))))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
