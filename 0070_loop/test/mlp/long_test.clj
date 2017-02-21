@@ -6,7 +6,13 @@
   (:import  [org.jocl CL Sizeof Pointer]))
 
 (deftest ^:long-test ident-8
-  (mlp-cl/init [3 4 5])
+  (mlp-cl/init [{:type :dense         :size [3 4]}
+                {:type :offset        :size [4  ]}
+                {:type :sigmoid       :size [4  ]}
+                {:type :dense         :size [4 5]}
+                {:type :offset        :size [5  ]}
+                {:type :sigmoid       :size [5  ]}
+                {:type :cross-entropy :size [5  ]}])
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
@@ -28,7 +34,7 @@
                      [1 0 1 1 1]
                      [1 1 0 1 1]
                      [1 1 1 1 0]])]
-    (dotimes [i 5001]
+    (dotimes [i 2001]
     ;(dotimes [i 1]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 200) 0)
