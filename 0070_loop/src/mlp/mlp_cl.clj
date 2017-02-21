@@ -103,9 +103,10 @@
 (defn fw-err [input label]
   (fw input)
   (let [{q :queue} @cl-env
-        a (get-in @cl-mem [6 :i])
-        out (cl/read-float q a 5)
-        lbl (cl/read-float q label 5)] 
+        len (get-in (last @mlp-config) [:size 0])
+        a ((last @cl-mem) :i)
+        out (cl/read-float q a len)
+        lbl (cl/read-float q label len)] 
     (apply + (map #(let [diff (- %1 %2)] (* diff diff))
                   out lbl))))
 
