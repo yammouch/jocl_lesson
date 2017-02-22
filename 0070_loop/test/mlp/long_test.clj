@@ -109,7 +109,17 @@
   (mlp-cl/finalize))
 
 (deftest ^:long-test xor
-  (mlp-cl/init [2 3 3 1])
+  ;(mlp-cl/init [2 3 3 1])
+  (mlp-cl/init [{:type :dense         :size [2 3]}
+                {:type :offset        :size [3  ]}
+                {:type :sigmoid       :size [3  ]}
+                {:type :dense         :size [3 3]}
+                {:type :offset        :size [3  ]}
+                {:type :sigmoid       :size [3  ]}
+                {:type :dense         :size [3 1]}
+                {:type :offset        :size [1  ]}
+                {:type :sigmoid       :size [1  ]}
+                {:type :cross-entropy :size [1  ]}])
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
