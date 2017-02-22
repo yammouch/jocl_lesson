@@ -80,14 +80,21 @@
   (mlp-cl/finalize))
 
 (deftest ^:long-test ident-64-2-layers
-  (mlp-cl/init [64 64 64])
+  ;(mlp-cl/init [64 64 64])
+  (mlp-cl/init [{:type :dense         :size [64 64]}
+                {:type :offset        :size [64   ]}
+                {:type :sigmoid       :size [64   ]}
+                {:type :dense         :size [64 64]}
+                {:type :offset        :size [64 64]}
+                {:type :sigmoid       :size [64   ]}
+                {:type :cross-entropy :size [64   ]}])
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
         v (map (partial one-hot 64) (range 64))
         inputs (mapv (partial cl/create-buffer ctx :f) v)
         labels (mapv (partial cl/create-buffer ctx :f) v)]
-    (dotimes [i 20001]
+    (dotimes [i 40001]
     ;(dotimes [i 1]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 500) 0)
