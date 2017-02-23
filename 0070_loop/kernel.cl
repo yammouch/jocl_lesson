@@ -96,9 +96,10 @@ __kernel void softmax_fw_step2(
 
 __kernel void softmax_fw_step3(
  __global       float *result,
+ __global const float *in,
                 int    len) {
   uint i = get_global_id(0);
-  result[i] = result[i] / result[len];
+  result[i] = in[i] / in[len];
 }
 
 __kernel void quadratic_bw(

@@ -20,6 +20,9 @@
             :sigmoid (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
                                     [:i :g]
                                     [cr cr]))
+            :softmax (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
+                                    [:i :g]
+                                    [cr (+ cr 1)]))
             :cross-entropy {:i (cl/create-buffer ctx :f cr)}))
         conf))
 
@@ -81,18 +84,24 @@
                   :dense         [cr cc]
                   :offset        [ 1 cr]
                   :sigmoid       [ 1 cr]
+                  :softmax       [ 1 cr]
                   :cross-entropy [ 1 cr])]
     (print-matrix (get-in @cl-mem [i k])
                   cr cc)))
 
-(defn fw1 [{t :type [cr cc] :size i :i p :p} {o :i}]
+(defn fw1 [{t :type [cr cc] :size i :i p :p g :g} {o :i}]
   (let [{q :queue} @cl-env
-        {vm "mul_vm" add "add" smd "sigmoid_fw"} @cl-ker]
+        {vm "mul_vm" add "add" smd "sigmoid_fw"
+         smx1 "softmax_fw_step1" smx2 "softmax_fw_step2"
+         smx3 "softmax_fw_step3"} @cl-ker]
     (case t
-      :dense   (cl/callk q vm  nil [cc] :m o :m i :m p :i cr :i cc)
-      :offset  (cl/callk q add nil [cr] :m o :m i :m p)
-      :sigmoid (cl/callk q smd nil [cr] :m o :m i)
-      )))
+      :dense       (cl/callk q vm   nil [cc] :m o :m i :m p :i cr :i cc)
+      :offset      (cl/callk q add  nil [cr] :m o :m i :m p)
+      :sigmoid     (cl/callk q smd  nil [cr] :m o :m i)
+      :softmax (do (cl/callk q smx1 nil [cr] :m g :m i)
+                   (cl/callk q smx2 nil [ 1] :m g :i cr)
+                   (cl/callk q smx3 nil [cr] :m o :m g :i cr)
+                   ))))
 
 (defn fw [i0]
   (doseq [[l0 l1] (->> (assoc-in @cl-mem [0 :i] i0)
@@ -140,11 +149,13 @@
     (case tn
       :cross-entropy
       (case t
-        :sigmoid (cl/callk q ce nil [cr] :m gp :m in :m gn :f 0.1))
+        :sigmoid (cl/callk q ce nil [cr] :m gp :m in :m gn :f 0.1)
+        :softmax (cl/callk q ce nil [cr] :m gp :m in :m gn :f 0.1))
       (case t
         :dense   (bw-dense  lp l is-1st?)
         :offset  (bw-offset lp l is-1st?)
         :sigmoid (cl/callk q smd nil [4] :m gp :m in :m g)
+        :softmax (cl/callk q smd nil [4] :m gp :m in :m g)
         ))))
 
 (defn bw

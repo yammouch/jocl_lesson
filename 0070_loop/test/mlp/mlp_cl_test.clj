@@ -109,11 +109,11 @@
         @mlp-cl/cl-ker
         v [1 2 3 4]
         n (count v)
-        [mem-result mem-v :as mems]
-        (map (partial cl/create-buffer ctx :f) [v (inc n)])]
-    (cl/callk q k1 nil [n] :m mem-result :m mem-v)
-    (cl/callk q k2 nil [1] :m mem-result :i n)
-    (cl/callk q k3 nil [n] :m mem-result :i n)
+        [mem-result mem-v mem-b :as mems]
+        (map (partial cl/create-buffer ctx :f) [n v (+ 1 n)])]
+    (cl/callk q k1 nil [n] :m mem-b :m mem-v)
+    (cl/callk q k2 nil [1] :m mem-b :i n)
+    (cl/callk q k3 nil [n] :m mem-result :m mem-b :i n)
     (let [exp-v (map #(Math/exp %) v)
           sum (apply + exp-v)]
       (is (every? #(< -0.01 % 0.01)

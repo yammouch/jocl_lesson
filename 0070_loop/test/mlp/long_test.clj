@@ -150,3 +150,38 @@
         ))
     (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
+
+(deftest ^:long-test xor-softmax
+  (mlp-cl/init [{:type :dense         :size [2 3]}
+                {:type :offset        :size [3  ]}
+                {:type :sigmoid       :size [3  ]}
+                {:type :dense         :size [3 3]}
+                {:type :offset        :size [3  ]}
+                {:type :sigmoid       :size [3  ]}
+                {:type :dense         :size [3 2]}
+                {:type :offset        :size [2  ]}
+                {:type :softmax       :size [2  ]}
+                {:type :cross-entropy :size [2  ]}])
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {sub "sub"} @mlp-cl/cl-ker
+        {w :w b :b} @mlp-cl/cl-mem
+        inputs (map (partial cl/create-buffer ctx :f)
+                    [[0 0]
+                     [0 1]
+                     [1 0]
+                     [1 1]])
+        labels (map (partial cl/create-buffer ctx :f)
+                    [[0 1]
+                     [1 0]
+                     [1 0]
+                     [0 1]])]
+    (dotimes [i 4001]
+      (mlp-cl/run-minibatch inputs labels)
+      (when (= (mod i 200) 0)
+        (printf "i: %4d err: %8.2f\n"
+         i
+         (mlp-cl/fw-err-subbatch inputs labels))
+        (flush)
+        ))
+    (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
+  (mlp-cl/finalize))
