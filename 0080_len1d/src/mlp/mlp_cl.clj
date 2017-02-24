@@ -6,14 +6,33 @@
 
 (import '(org.jocl CL Sizeof Pointer))
 
-(defn prepare-mem [ctx conf]
-  (mapv (fn [{t :type [cr cc] :size}]
+(defn xorshift [x y z w]
+  (let [t  (bit-xor x (bit-shift-left x 11))
+        wn (bit-and 0xFFFFFFFF
+                    (bit-xor w (bit-shift-right w 19)
+                             t (bit-shift-right t  8)))]
+    (cons w (lazy-seq (xorshift y z w wn)))))
+
+(defn initial-param [conf seed]
+  (loop [[{t :type [cr cc] :size :as c} & cs] conf
+         rnd (drop 64 (apply xorshift (range seed (+ seed 4))))
+         acc []]
+    (if c
+      (let [l (case t
+                :dense  (* cr cc)
+                0)]
+        (recur cs (drop l rnd)
+               (conj acc (map #(/ (- (float %) 0x80000000) 0x80000000)
+                              (take l rnd)
+                              ))))
+      acc)))
+
+(defn prepare-mem [ctx conf seed]
+  (mapv (fn [{t :type [cr cc] :size} s]
           (case t
-            :dense (let [ar-len (* cr cc)
-                         v (map #(/ % ar-len) (range ar-len))]
-                     (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
-                                    [:i :g :p :u    ]
-                                    [cr cc v  ar-len])))
+            :dense (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
+                                  [:i :g :p :u       ]
+                                  [cr cc s  (* cr cc)]))
             :offset (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
                                    [:i :g :p            :u]
                                    [cr cr (repeat cr 0) cr]))
@@ -21,10 +40,11 @@
                                     [:i :g]
                                     [cr cr]))
             :softmax (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
-                                    [:i :g]
+                                    [:i :g      ]
                                     [cr (+ cr 1)]))
             :cross-entropy {:i (cl/create-buffer ctx :f cr)}))
-        conf))
+        conf
+        (initial-param conf seed)))
 
 (def kernel-source-code (slurp "kernel.cl"))
 
@@ -45,16 +65,18 @@
   (CL/clReleaseCommandQueue (@cl-env :queue))
   (CL/clReleaseContext (@cl-env :context)))
 
-(defn init [conf]
+(defn init
+ ([conf] (init conf 1))
+ ([conf seed]
   (dosync
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
-    (ref-set cl-mem (prepare-mem (@cl-env :context) conf))
+    (ref-set cl-mem (prepare-mem (@cl-env :context) conf seed))
     (ref-set mlp-config (vec conf))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
                      [(get-in @cl-env [:device :id])]
                      kernel-source-code))
     (ref-set cl-ker (cl/create-kernels-in-program @cl-prg))
-    ))
+    )))
 
 ;(defn formatv [v]
 ;  (apply str
