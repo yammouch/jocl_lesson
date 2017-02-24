@@ -34,19 +34,13 @@
                      [1 0 1 1 1]
                      [1 1 0 1 1]
                      [1 1 1 1 0]])]
-    (dotimes [i 2001]
-    ;(dotimes [i 1]
+    (dotimes [i 501]
       (mlp-cl/run-minibatch inputs labels)
-      (when (= (mod i 200) 0)
+      (when (= (mod i 20) 0)
         (printf "i: %4d err: %8.2f\n"
          i
          (mlp-cl/fw-err-subbatch inputs labels))
-        ;(mlp-cl/dump :w 0)
-        ;(mlp-cl/dump :b 0)
-        ;(mlp-cl/dump :w 1)
-        ;(mlp-cl/dump :b 1)
-        (flush)
-        ))
+        (flush)))
     (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
 
@@ -58,37 +52,29 @@
                 {:type :offset        :size [64   ]}
                 {:type :sigmoid       :size [64   ]}
                 {:type :cross-entropy :size [64   ]}])
-  ;(mlp-cl/init [64 64])
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
         v (map (partial one-hot 64) (range 64))
         inputs (mapv (partial cl/create-buffer ctx :f) v)
         labels (mapv (partial cl/create-buffer ctx :f) v)]
-    (dotimes [i 3001]
-    ;(dotimes [i 1]
+    (dotimes [i 1001]
       (mlp-cl/run-minibatch inputs labels)
-      (when (= (mod i 200) 0)
+      (when (= (mod i 50) 0)
         (printf "i: %4d err: %8.2f\n"
          i
          (mlp-cl/fw-err-subbatch inputs labels))
-        ;(mlp-cl/dump :w 0)
-        ;(mlp-cl/dump :b 0)
-        (flush)
-        ))
+        (flush)))
     (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
 
 (deftest ^:long-test ident-64-2-layers
-  ;(mlp-cl/init [64 64 64])
   (mlp-cl/init [{:type :dense         :size [64 64]}
                 {:type :offset        :size [64   ]}
-                ;{:type :sigmoid       :size [64   ]}
-                {:type :softmax       :size [64   ]}
+                {:type :sigmoid       :size [64   ]}
                 {:type :dense         :size [64 64]}
                 {:type :offset        :size [64 64]}
-                ;{:type :sigmoid       :size [64   ]}
-                {:type :softmax       :size [64   ]}
+                {:type :sigmoid       :size [64   ]}
                 {:type :cross-entropy :size [64   ]}])
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
@@ -96,22 +82,17 @@
         v (map (partial one-hot 64) (range 64))
         inputs (mapv (partial cl/create-buffer ctx :f) v)
         labels (mapv (partial cl/create-buffer ctx :f) v)]
-    (dotimes [i 40001]
-    ;(dotimes [i 1]
+    (dotimes [i 1501]
       (mlp-cl/run-minibatch inputs labels)
-      (when (= (mod i 500) 0)
+      (when (= (mod i 50) 0)
         (printf "i: %5d err: %8.2f\n"
          i
          (mlp-cl/fw-err-subbatch inputs labels))
-        ;(mlp-cl/dump :w 0)
-        ;(mlp-cl/dump :b 0)
-        (flush)
-        ))
+        (flush)))
     (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
 
 (deftest ^:long-test xor
-  ;(mlp-cl/init [2 3 3 1])
   (mlp-cl/init [{:type :dense         :size [2 3]}
                 {:type :offset        :size [3  ]}
                 {:type :sigmoid       :size [3  ]}
@@ -136,20 +117,12 @@
                      [1]
                      [0]])]
     (dotimes [i 4001]
-    ;(dotimes [i 1]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 200) 0)
         (printf "i: %4d err: %8.2f\n"
          i
          (mlp-cl/fw-err-subbatch inputs labels))
-        ;(mlp-cl/dump :w 0)
-        ;(mlp-cl/dump :b 0)
-        ;(mlp-cl/dump :w 1)
-        ;(mlp-cl/dump :b 1)
-        ;(mlp-cl/dump :w 2)
-        ;(mlp-cl/dump :b 2)
-        (flush)
-        ))
+        (flush)))
     (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
   (mlp-cl/finalize))
 
