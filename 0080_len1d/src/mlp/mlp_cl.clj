@@ -165,14 +165,15 @@
  [{               gp :g            :as lp} ; previous layer
   {t  :type       g  :g [cr] :size :as l }
   {tn :type in :i gn :g                  } ; next layer
+  lr ; learning-rate
   is-1st?]
   (let [{q :queue} @cl-env
         {ce "cross_entropy_bw", smd "sigmoid_bw"} @cl-ker]
     (case tn
       :cross-entropy
       (case t
-        :sigmoid (cl/callk q ce nil [cr] :m gp :m in :m gn :f 0.1)
-        :softmax (cl/callk q ce nil [cr] :m gp :m in :m gn :f 0.1))
+        :sigmoid (cl/callk q ce nil [cr] :m gp :m in :m gn :f lr)
+        :softmax (cl/callk q ce nil [cr] :m gp :m in :m gn :f lr))
       (case t
         :dense   (bw-dense  lp l is-1st?)
         :offset  (bw-offset lp l is-1st?)
@@ -181,8 +182,8 @@
         ))))
 
 (defn bw
- ([in label] (bw in label false))
- ([i0 label is-1st?]
+ ([in label learning-rate] (bw in label false))
+ ([i0 label learning-rate is-1st?]
     (doseq [[lp l ln] (->> (-> @cl-mem
                                (assoc-in [(- (count @mlp-config) 1) :g] label)
                                (assoc-in [0 :i] i0))
@@ -190,14 +191,16 @@
                            (cons nil)
                            (partition 3 1)
                            (reverse))]
-      (bw1 lp l ln is-1st?))))
+      (bw1 lp l ln learning-rate is-1st?))))
 
-(defn run-minibatch [inputs labels]
+(defn run-minibatch
+ ([inputs labels] (run-minibatch inputs labels 0.1))
+ ([inputs labels learning-rate]
   (loop [i inputs l labels first? true]
     (if (or (empty? i) (empty? l))
       :done
       (do (fw (first i))
-          (bw (first i) (first l) first?)
+          (bw (first i) (first l) learning-rate first?)
           (recur (next i) (next l) false)
           )))
   (let [{q :queue} @cl-env
@@ -206,4 +209,4 @@
       (case t
         :dense  (cl/callk q sub nil [(* cr cc)] :m p :m p :m u)
         :offset (cl/callk q sub nil [   cr    ] :m p :m p :m u)
-        :do-nothing))))
+        :do-nothing)))))
