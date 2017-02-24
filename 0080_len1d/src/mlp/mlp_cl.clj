@@ -103,7 +103,9 @@
   (let [l (@mlp-config i)
         [cr cc] (l :size)
         [cr cc] (case (l :type)
-                  :dense         [cr cc]
+                  :dense         (cond (#{:u :p} k) [cr cc]
+                                       (= k :i)     [ 1 cr]
+                                       (= k :g)     [ 1 cc])
                   :offset        [ 1 cr]
                   :sigmoid       [ 1 cr]
                   :softmax       [ 1 cr]
@@ -129,7 +131,10 @@
   (doseq [[l0 l1] (->> (assoc-in @cl-mem [0 :i] i0)
                        (map into @mlp-config)
                        (partition 2 1))]
-    (fw1 l0 l1)))
+    (fw1 l0 l1))
+  ;(doseq [i (range 1 (count @mlp-config))]
+  ;  (dump i :i))
+  )
 
 (defn fw-err [input label]
   (fw input)
@@ -177,8 +182,8 @@
       (case t
         :dense   (bw-dense  lp l is-1st?)
         :offset  (bw-offset lp l is-1st?)
-        :sigmoid (cl/callk q smd nil [4] :m gp :m in :m g)
-        :softmax (cl/callk q smd nil [4] :m gp :m in :m g)
+        :sigmoid (cl/callk q smd nil [cr] :m gp :m in :m g)
+        :softmax (cl/callk q smd nil [cr] :m gp :m in :m g)
         ))))
 
 (defn bw
@@ -191,7 +196,11 @@
                            (cons nil)
                            (partition 3 1)
                            (reverse))]
-      (bw1 lp l ln learning-rate is-1st?))))
+      (bw1 lp l ln learning-rate is-1st?))
+    ;(doseq [i (range (- (count @mlp-config) 1) -1 -1)]
+    ;  (if (get-in @cl-mem [i :g]) (dump i :g))
+    ;  (if (get-in @cl-mem [i :u]) (dump i :u)))
+    ))
 
 (defn run-minibatch
  ([inputs labels] (run-minibatch inputs labels 0.1))
