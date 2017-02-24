@@ -3,7 +3,8 @@
 (ns mlp.core
   (:gen-class))
 
-(import '(org.jocl CL))
+(import '(org.jocl CL)
+        '(java.util Date))
 
 (require 'mlp.cl)
 (alias 'cl 'mlp.cl)
@@ -58,20 +59,23 @@
     {:type :cross-entropy :size [max-len           ]}]))
 
 (defn -main
-  [field-size max-len iter & hidden-layers]
-  (let [[field-size max-len iter] (mapv read-string [field-size max-len iter])
+  [field-size max-len iter learning-rate seed & hidden-layers]
+  (println "start: " (.toString (Date.)))
+  (let [[field-size max-len iter learning-rate seed]
+        (mapv read-string [field-size max-len iter learning-rate seed])
         hidden-layers (mapv read-string hidden-layers)
-        _ (mlp-cl/init (make-mlp-config field-size hidden-layers max-len))
+        _ (mlp-cl/init (make-mlp-config field-size hidden-layers max-len) seed)
         [in-nd lbl-nd] (make-input-labels field-size max-len)]
     (loop [i 0, [[inputs labels] & bs] (make-minibatches 16 in-nd lbl-nd)]
       (if (< iter i)
         :done
         (do
-          (mlp-cl/run-minibatch inputs labels)
+          (mlp-cl/run-minibatch inputs labels learning-rate)
           (when (= (mod i 200) 0)
-            (printf "i: %4d err: %8.2f\n" i
-             (mlp-cl/fw-err-subbatch inputs labels))
+            (printf "i: %6d err: %8.2f\n" i
+             (mlp-cl/fw-err-subbatch in-nd lbl-nd))
             (flush))
           (recur (+ i 1) bs))))
     (doseq [m (concat in-nd lbl-nd)] (CL/clReleaseMemObject m)))
+  (println "end  : " (.toString (Date.)))
   (mlp-cl/finalize))
