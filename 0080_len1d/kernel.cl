@@ -143,52 +143,11 @@ __kernel void conv(
     if (0 <= iy && iy < ih) {
       for (cx = 0; cx < cw; cx++) {
         ix = rx + cx - pl;
-        if (0 <= ix && ix <= iw) {
+        if (0 <= ix && ix < iw) {
           acc += input[iy*iw+ix] * coeff[cy*cw+cx];
         }
       }
     }
   }
-  result[ry*rw+rx] += acc;
-}
-
-__kernel void conv_fw(
- __global       float *result,
- __global const float *input,
- __global const float *core,
-                int    wr,   // width  of result
-                int    wi,   // width  of input
-                int    wc,   // width  of core
-                int    hc) { // height of core
-  uint x = get_global_id(0), y = get_global_id(1);
-  int xc, yc; // for core
-  float acc = 0.0f;
-
-  for (yc = 0; yc < hc; yc++) {
-    for (xc = 0; xc < wc; xc++) {
-      acc += core[yc*wc+xc] * input[(yc+y)*wi+(xc+x)];
-    }
-  }
-  result[y*wr+x] = acc;
-}
-
-__kernel void conv_bw_u(
- __global       float *result,
- __global const float *fw_input,
- __global const float *grad,
-                int    wr,   // width  of result
-                int    wi,   // width  of fw_input
-                int    wg,   // width  of grad
-                int    hg) { // height of grad
-  uint x = get_global_id(0), y = get_global_id(1);
-  int xg, yg; // for grad
-  float acc = 0.0f;
-
-  for (yg = 0; yg < hg; yg++) {
-    for (xg = 0; xg < wg; xg++) {
-      acc += grad[yg*wg+xg] * fw_input[(yg+y)*wi+(xg+x)];
-    }
-  }
-
-  result[y*wr+x] = acc;
+  result[ry*rw+rx] = acc;
 }

@@ -165,59 +165,29 @@
 (defn print-matrix [m]
   (doseq [s (map formatv m)] (println s)))
 
-(defn conv-fw [i c]
-  (let [hc (count c)
-        wc (count (first c))]
+(defn conv [i c]
+  (let [ch (count c)
+        cw (count (first c))]
     (map (fn [rows]
            (apply map (fn [& vs]
                         (apply + (map * (apply concat vs) (apply concat c))))
-                      (map (partial partition wc 1) rows)))
-         (partition hc 1 i))))
+                      (map (partial partition cw 1) rows)))
+         (partition ch 1 i))))
 
-(deftest conv-fw-test
+(deftest conv-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "conv_fw"} @mlp-cl/cl-ker
-        hi 5 wi 6 hc 3 wc 2
-        i (partition wi (map (partial * 0.1) (range (* hi wi))))
-        c (partition wc (map (partial * 0.1) (range (* hc wc))))
-        result (conv-fw i c)
-        hr (count result) wr (count (first result))
+        {k "conv"} @mlp-cl/cl-ker
+        ih 5 iw 6 ch 3 cw 2
+        i (partition iw (map (partial * 0.1) (range (* ih iw))))
+        c (partition cw (map (partial * 0.1) (range (* ch cw))))
+        result (conv i c)
+        rh (count result) rw (count (first result))
         [mem-result mem-i mem-c :as mems]
         (map (partial cl/create-buffer ctx :f)
-             [(* hr wr) (apply concat i) (apply concat c)])]
-    ;(print-matrix i)
-    ;(print-matrix c)
-    ;(print-matrix result)
-    (cl/callk q k nil [wr hr] :m mem-result :m mem-i :m mem-c
-     :i wr :i wi :i wc :i hc)
-    ;(mlp-cl/print-matrix mem-i      hi wi)
-    ;(mlp-cl/print-matrix mem-c      hc wc)
-    ;(mlp-cl/print-matrix mem-result hr wr)
+             [(* rh rw) (apply concat i) (apply concat c)])]
+    (cl/callk q k nil [rw rh] :m mem-result :m mem-i :m mem-c
+     :i rw :i ih :i iw :i ch :i cw :i 0 :i 0)
     (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-result (* hr wr))
-                       (apply concat result))))
-    (doseq [m mems] (CL/clReleaseMemObject m))))
-
-(deftest conv-bw-u-test
-  (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "conv_bw_u"} @mlp-cl/cl-ker
-        hi 5 wi 6 hg 3 wg 2
-        i (partition wi (map (partial * 0.1) (range (* hi wi))))
-        g (partition wg (map (partial * 0.1) (range (* hg wg))))
-        result (conv-fw i g)
-        hr (count result) wr (count (first result))
-        [mem-result mem-i mem-g :as mems]
-        (map (partial cl/create-buffer ctx :f)
-             [(* hr wr) (apply concat i) (apply concat g)])]
-    ;(print-matrix i)
-    ;(print-matrix c)
-    ;(print-matrix result)
-    (cl/callk q k nil [wr hr] :m mem-result :m mem-i :m mem-g
-     :i wr :i wi :i wg :i hg)
-    ;(mlp-cl/print-matrix mem-i      hi wi)
-    ;(mlp-cl/print-matrix mem-c      hc wc)
-    ;(mlp-cl/print-matrix mem-result hr wr)
-    (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-result (* hr wr))
+                (map - (cl/read-float q mem-result (* rh rw))
                        (apply concat result))))
     (doseq [m mems] (CL/clReleaseMemObject m))))
