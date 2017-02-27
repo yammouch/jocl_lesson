@@ -122,6 +122,36 @@ __kernel void cross_entropy_bw(
   result[i] = (fw_out[i] - expc[i])*learning_rate;
 }
 
+__kernel void conv(
+ __global       float *result,
+ __global const float *input,
+ __global const float *coeff,
+                int    rw,   // width  of result
+                int    ih,   // height of input
+                int    iw,   // width  of input
+                int    ch,   // height of coeff
+                int    cw,   // width  of coeff
+                int    pu,   // padding upside
+                int    pl) { // padding left
+  uint rx = get_global_id(0), ry = get_global_id(1); // indices of result
+  int cx, cy; // indices of coeff
+  int ix, iy; // indices of input
+  float acc = 0.0f;
+
+  for (cy = 0; cy < ch; cy++) {
+    iy = ry + cy - pu;
+    if (0 <= iy && iy < ih) {
+      for (cx = 0; cx < cw; cx++) {
+        ix = rx + cx - pl;
+        if (0 <= ix && ix <= iw) {
+          acc += input[iy*iw+ix] * coeff[cy*cw+cx];
+        }
+      }
+    }
+  }
+  result[ry*rw+rx] += acc;
+}
+
 __kernel void conv_fw(
  __global       float *result,
  __global const float *input,
