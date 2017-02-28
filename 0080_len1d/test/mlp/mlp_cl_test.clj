@@ -174,20 +174,35 @@
                       (map (partial partition cw 1) rows)))
          (partition ch 1 i))))
 
-(deftest conv-test
+(defn padding [m pu pd pl pr]
+  (let [w (+ pl pr (count (first m)))]
+    (concat (repeat pu (repeat w 0.0))
+            (map #(concat (repeat pl 0.0) % (repeat pr 0.0)) m)
+            (repeat pd (repeat w 0.0)))))
+
+(defn conv-test1 [ih iw ch cw pu pd pl pr]
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {k "conv"} @mlp-cl/cl-ker
         ih 5 iw 6 ch 3 cw 2
         i (partition iw (map (partial * 0.1) (range (* ih iw))))
         c (partition cw (map (partial * 0.1) (range (* ch cw))))
-        result (conv i c)
+        result (conv (padding i pu pd pl pr) c)
         rh (count result) rw (count (first result))
         [mem-result mem-i mem-c :as mems]
         (map (partial cl/create-buffer ctx :f)
              [(* rh rw) (apply concat i) (apply concat c)])]
     (cl/callk q k nil [rw rh] :m mem-result :m mem-i :m mem-c
-     :i rw :i ih :i iw :i ch :i cw :i 0 :i 0)
+     :i rw :i ih :i iw :i ch :i cw :i pu :i pl)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-result (* rh rw))
                        (apply concat result))))
     (doseq [m mems] (CL/clReleaseMemObject m))))
+
+(deftest conv-test
+  (conv-test1 5 6 3 2 0 0 0 0)
+  (conv-test1 5 6 3 2 1 0 0 0)
+  (conv-test1 5 6 3 2 0 1 0 0)
+  (conv-test1 5 6 3 2 0 0 1 0)
+  (conv-test1 5 6 3 2 0 0 0 1)
+  (conv-test1 5 6 3 2 1 2 3 4)
+  (conv-test1 5 6 3 2 2 2 2 2))
