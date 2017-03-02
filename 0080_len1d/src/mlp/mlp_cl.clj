@@ -27,8 +27,17 @@
                               ))))
       acc)))
 
+(defn prepare-mem-conv
+  [ctx init-p {[h w d] :size [ih iw id] :isize [pu pd pl pr] :pad}]
+  {:i (cl/create-buffer ctx :f (* ih iw id))
+   :p (cl/create-buffer ctx :f init-p)
+   :u (cl/create-buffer ctx :f (* h w id d))
+   :b (cl/create-buffer ctx :f (* (+ ih (- h) 1 pu pd)
+                                  (+ iw (- w) 1 pl pr)
+                                  d))})
+
 (defn prepare-mem [ctx conf seed]
-  (mapv (fn [{t :type [cr cc] :size} s]
+  (mapv (fn [s {t :type [cr cc] :size :as l}]
           (case t
             :dense (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
                                   [:i :g :p :u       ]
@@ -36,6 +45,7 @@
             :offset (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
                                    [:i :g :p            :u]
                                    [cr cr (repeat cr 0) cr]))
+            :conv (prepare-mem-conv ctx s l)
             :sigmoid (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
                                     [:i :g]
                                     [cr cr]))
@@ -43,8 +53,8 @@
                                     [:i :g      ]
                                     [cr (+ cr 1)]))
             :cross-entropy {:i (cl/create-buffer ctx :f cr)}))
-        conf
-        (initial-param conf seed)))
+        (initial-param conf seed)
+        conf))
 
 (def kernel-source-code (slurp "kernel.cl"))
 
