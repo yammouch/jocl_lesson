@@ -4,7 +4,7 @@
 (require 'mlp.cl)
 (alias 'cl 'mlp.cl)
 
-(import '(org.jocl CL Sizeof Pointer))
+(import '(org.jocl CL Sizeof Pointer cl_buffer_region))
 
 (defn xorshift [x y z w]
   (let [t  (bit-xor x (bit-shift-left x 11))
@@ -14,12 +14,13 @@
     (cons w (lazy-seq (xorshift y z w wn)))))
 
 (defn initial-param [conf seed]
-  (loop [[{t :type [cr cc] :size :as c} & cs] conf
+  (loop [[{t :type [h w d] :size [_ _ id] :isize :as c} & cs] conf
          rnd (drop 64 (apply xorshift (range seed (+ seed 4))))
          acc []]
     (if c
       (let [l (case t
-                :dense  (* cr cc)
+                :dense (* h w)
+                :conv  (* h w d id)
                 0)]
         (recur cs (drop l rnd)
                (conj acc (map #(/ (- (float %) 0x80000000) 0x80000000)
@@ -27,16 +28,42 @@
                               ))))
       acc)))
 
-(defn prepare-mem-conv
-  [ctx init-p {[h w d] :size [ih iw id] :isize [pu pd pl pr] :pad}]
-  {:i (cl/create-buffer ctx :f (* ih iw id))
-   :p (cl/create-buffer ctx :f init-p)
-   :u (cl/create-buffer ctx :f (* h w id d))
-   :b (cl/create-buffer ctx :f (* (+ ih (- h) 1 pu pd)
-                                  (+ iw (- w) 1 pl pr)
-                                  d))})
+(defn sub-buffers [m slen]
+  (let [mlen (quot (cl/parse-unsigned-info
+                    (cl/clGetAnInfo #(CL/clGetMemObjectInfo m %1 %2 %3 %4)
+                                    'CL_MEM_SIZE))
+                   Sizeof/cl_float)
+        loopc (quot mlen slen)]
+    (loop [i 0 acc [] ofs 0]
+      (if (<= loopc i)
+        acc
+        (cl/let-err err
+         [ms (CL/clCreateSubBuffer m CL/CL_MEM_READ_WRITE
+              CL/CL_BUFFER_CREATE_TYPE_REGION
+              (cl_buffer_region. (* Sizeof/cl_float ofs)
+                                 (* Sizeof/cl_float slen))
+              err)]
+          (recur (+ i 1) (conj acc ms) (+ ofs slen))
+          )))))
 
-(defn prepare-mem [ctx conf seed]
+(defn conv-oh [{[h _ d] :size [ih _ _] :isize [pu pd _ _] :pad}]
+  (* (+ ih (- h) 1 pu pd) d))
+(defn conv-ow  [{[_ w d] :size [_ iw _] :isize [_ _ pl pr] :pad}]
+  (* (+ iw (- w) 1 pl pr) d))
+
+(defn prepare-mem-conv
+  [ctx init-p {[h w d] :size [ih iw id] :isize [pu pd pl pr] :pad :as l}]
+  (let [i (cl/create-buffer ctx :f (* ih iw id))
+        p (cl/create-buffer ctx :f init-p)
+        u (cl/create-buffer ctx :f (* h w id d))
+        oh (conv-oh l) ow (conv-ow l)
+        g (cl/create-buffer ctx :f (* oh ow d))]
+    {:i i :is (sub-buffers i (* ih iw))
+     :p p :ps (partition id (sub-buffers i (* h w)))
+     :u u :us (partition id (sub-buffers u (* h w)))
+     :g g :gs (sub-buffers g (* oh ow))}))
+
+(defn prepare-mem-pass1 [ctx conf seed]
   (mapv (fn [s {t :type [cr cc] :size :as l}]
           (case t
             :dense (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
@@ -55,6 +82,20 @@
             :cross-entropy {:i (cl/create-buffer ctx :f cr)}))
         (initial-param conf seed)
         conf))
+
+(defn prepare-mem-pass2 [cl-mem conf]
+  (let [c (count conf)]
+    (loop [i 0 acc cl-mem]
+      (if (<= c i)
+        acc
+        (recur (+ i 1)
+               (let [l (conf i)]
+                 (if (= :conv (l :type))
+                   (assoc-in acc [i :os]
+                    (sub-buffers (get-in conf [(+ i 1) :i])
+                                 (* (conv-oh l) (conv-ow l))))
+                   acc)))))))
+
 
 (def kernel-source-code (slurp "kernel.cl"))
 
@@ -80,7 +121,8 @@
  ([conf seed]
   (dosync
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
-    (ref-set cl-mem (prepare-mem (@cl-env :context) conf seed))
+    (ref-set cl-mem (-> (prepare-mem-pass1 (@cl-env :context) conf seed)
+                        (prepare-mem-pass2 conf)))
     (ref-set mlp-config (vec conf))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
                      [(get-in @cl-env [:device :id])]
