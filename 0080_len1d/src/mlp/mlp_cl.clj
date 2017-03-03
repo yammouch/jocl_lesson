@@ -122,7 +122,7 @@
   (dosync
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
     (ref-set cl-mem (-> (prepare-mem-pass1 (@cl-env :context) conf seed)
-                        (prepare-mem-pass2 conf)))
+                        (prepare-mem-pass2 (vec conf))))
     (ref-set mlp-config (vec conf))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
                      [(get-in @cl-env [:device :id])]
