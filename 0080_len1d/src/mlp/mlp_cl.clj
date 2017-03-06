@@ -241,7 +241,7 @@
     is :is gbs :gbs gs :gs us :us ps :ps :as l}
    is-1st?]
   (let [{q :queue} @cl-env
-        {o "conv" a "conv-acc" ot "conv-t" at "conv-t-acc"} @cl-ker
+        {o "conv" a "conv_acc" ot "conv_t" at "conv_t_acc"} @cl-ker
         oh (conv-oh l) ow (conv-ow l)]
     (doseq [[i j] (for [i (range d) j (range id)] [i j])]
       (cl/callk q (if is-1st? o a) nil [h w]
