@@ -5,6 +5,35 @@
             [clojure.pprint            ])
   (:import  [org.jocl CL Sizeof Pointer]))
 
+(deftest ^:long-test comparator
+  (mlp-cl/init [;{:type :dense         :size [1 1]}
+                {:type :conv :size [1 1 1] :isize [1 1 1] :pad [0 0 0 0]}
+                {:type :offset        :size [1  ]}
+                {:type :sigmoid       :size [1  ]}
+                {:type :cross-entropy :size [1  ]}])
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {sub "sub"} @mlp-cl/cl-ker
+        {w :w b :b} @mlp-cl/cl-mem
+        inputs (map (partial cl/create-buffer ctx :f)
+                    [[0.0]
+                     [0.4]
+                     [0.6]
+                     [1.0]])
+        labels (map (partial cl/create-buffer ctx :f)
+                    [[0]
+                     [0]
+                     [1]
+                     [1]])]
+    (dotimes [i 501]
+      (mlp-cl/run-minibatch inputs labels)
+      (when (= (mod i 20) 0)
+        (printf "i: %4d err: %8.2f\n"
+         i
+         (mlp-cl/fw-err-subbatch inputs labels))
+        (flush)))
+    (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
+  (mlp-cl/finalize))
+
 (deftest ^:long-test ident-8
   (mlp-cl/init [{:type :dense         :size [3 4]}
                 {:type :offset        :size [4  ]}

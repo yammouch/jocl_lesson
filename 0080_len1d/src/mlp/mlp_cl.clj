@@ -59,8 +59,8 @@
         oh (conv-oh l) ow (conv-ow l)
         g (cl/create-buffer ctx :f (* oh ow d))]
     {:i i :is (sub-buffers i (* ih iw))
-     :p p :ps (partition id (sub-buffers i (* h w)))
-     :u u :us (partition id (sub-buffers u (* h w)))
+     :p p :ps (vec (map vec (partition id (sub-buffers p (* h w)))))
+     :u u :us (vec (map vec (partition id (sub-buffers u (* h w)))))
      :g g :gs (sub-buffers g (* oh ow))}))
 
 (defn prepare-mem-pass1 [ctx conf seed]
@@ -92,11 +92,11 @@
                (let [{[ih iw _] :isize :as l} (conf i)]
                  (if (= :conv (l :type))
                    (let [acc (assoc-in acc [i :os]
-                              (sub-buffers (get-in conf [(+ i 1) :i])
+                              (sub-buffers (get-in cl-mem [(+ i 1) :i])
                                            (* (conv-oh l) (conv-ow l))))]
                      (if (< 0 i)
                        (assoc-in acc [i :gbs]
-                        (sub-buffers (get-in conf [(- i 1) :g])
+                        (sub-buffers (get-in cl-mem [(- i 1) :g])
                                      (* ih iw)))
                        acc))
                    acc)))))))
@@ -174,7 +174,7 @@
   [{[ih iw id] :isize [h w d] :size [pu pd pl pr] :pad is :is ps :ps os :os
    :as l}]
   (let [{q :queue} @cl-env
-        {o "conv" a "conv-acc"} @cl-ker ; o: overwrite, a: accumulate
+        {o "conv" a "conv_acc"} @cl-ker ; o: overwrite, a: accumulate
         oh (conv-oh l) ow (conv-ow l)]
     (doseq [[i j] (for [i (range d) j (range id)] [i j])]
       (cl/callk q (if (= j 0) o a) nil [ow oh]
@@ -245,13 +245,14 @@
         oh (conv-oh l) ow (conv-ow l)]
     (doseq [[i j] (for [i (range d) j (range id)] [i j])]
       (cl/callk q (if is-1st? o a) nil [h w]
-       :m (get-in :us [i j]) :m (gs i) :m (is j)
+       :m (get-in us [i j]) :m (gs i) :m (is j)
        :i w :i ih :i iw :i oh :i ow :i pu :i pl))
-    (doseq [[i j] (for [i (range id) j (range d)] [i j])]
-      (cl/callk q (if (= j 0) ot at) nil [ih iw]
-       :m (gbs i) :m (:gs j) :m (get-in :ps [j i])
-       :i iw :i oh :i ow :i h :i w :i (- h 1 pu) :i (- w 1 pl)
-       ))))
+    (when gbs
+      (doseq [[i j] (for [i (range id) j (range d)] [i j])]
+        (cl/callk q (if (= j 0) ot at) nil [ih iw]
+         :m (gbs i) :m (gs j) :m (get-in ps [j i])
+         :i iw :i oh :i ow :i h :i w :i (- h 1 pu) :i (- w 1 pl)
+         )))))
 
 (defn bw1
  [{               gp :g            :as lp} ; previous layer
