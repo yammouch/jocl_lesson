@@ -4,7 +4,7 @@
 (require 'mlp.cl)
 (alias 'cl 'mlp.cl)
 
-(import '(org.jocl CL Sizeof Pointer cl_buffer_region))
+(import '(org.jocl CL Sizeof Pointer cl_buffer_region cl_mem))
 
 (defn xorshift [x y z w]
   (let [t  (bit-xor x (bit-shift-left x 11))
@@ -110,14 +110,18 @@
 (def cl-ker     (ref nil))
 (def mlp-config (ref nil))
 
+(defn release-mem [x]
+  (cond (coll? x) (do (release-mem (first x))
+                      (release-mem (next  x)))
+        (= (type x) cl_mem) (CL/clReleaseMemObject x)
+        :else :do-nothing))
+
 (defn finalize []
   (CL/clFlush (@cl-env :queue))
   (CL/clFinish (@cl-env :queue))
   (doseq [[_ v] @cl-ker] (CL/clReleaseKernel v))
   (CL/clReleaseProgram @cl-prg)
-  (doseq [x @cl-mem]
-    (doseq [[_ m] x]
-      (CL/clReleaseMemObject m)))
+  (release-mem @cl-mem)
   (CL/clReleaseCommandQueue (@cl-env :queue))
   (CL/clReleaseContext (@cl-env :context)))
 
