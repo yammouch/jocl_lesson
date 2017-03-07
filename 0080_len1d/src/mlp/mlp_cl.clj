@@ -317,8 +317,10 @@
           )))
   (let [{q :queue} @cl-env
         {sub "sub"} @cl-ker]
-    (doseq [{t :type u :u p :p [cr cc] :size} (mapv into @mlp-config @cl-mem)]
+    (doseq [{t :type u :u p :p [h w d] :size [_ _ id] :isize}
+            (mapv into @mlp-config @cl-mem)]
       (case t
-        :dense  (cl/callk q sub nil [(* cr cc)] :m p :m p :m u)
-        :offset (cl/callk q sub nil [   cr    ] :m p :m p :m u)
+        :dense  (cl/callk q sub nil [(* h w)  ] :m p :m p :m u)
+        :conv   (cl/callk q sub nil [(* h w d)] :m p :m p :m u)
+        :offset (cl/callk q sub nil [   h     ] :m p :m p :m u)
         :do-nothing)))))
