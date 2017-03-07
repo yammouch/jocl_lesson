@@ -34,9 +34,10 @@
         ij (for [i (range      field-size )
                  j (range (inc field-size)) :when (<= 1 (- j i) max-len)]
              [i j])]
-    [(mapv (comp (partial cl/create-buffer ctx :f)
-                 (partial apply a-field field-size))
-           ij)
+    [;(mapv (comp (partial cl/create-buffer ctx :f)
+     ;            (partial apply a-field field-size))
+     ;      ij)
+     (mlp-cl/pack ctx (map (partial apply a-field field-size) ij))
      (mapv (comp (partial cl/create-buffer ctx :f)
                  (fn [[i j]] (one-hot max-len (- j i))))
            ij)]))
@@ -80,6 +81,6 @@
              (mlp-cl/fw-err-subbatch in-nd lbl-nd))
             (flush))
           (recur (+ i 1) bs))))
-    (doseq [m (concat in-nd lbl-nd)] (CL/clReleaseMemObject m)))
+    (doseq [m [in-nd lbl-nd]] (mlp-cl/release-mem m)))
   (println "end  : " (.toString (Date.)))
   (mlp-cl/finalize))

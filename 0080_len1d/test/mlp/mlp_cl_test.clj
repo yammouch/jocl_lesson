@@ -7,7 +7,6 @@
 
 (use-fixtures :once
   (fn [f]
-    ;(mlp-cl/init [1 1])
     (mlp-cl/init nil)
     (f)
     (mlp-cl/finalize)))

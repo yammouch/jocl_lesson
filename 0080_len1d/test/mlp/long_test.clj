@@ -14,16 +14,9 @@
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
-        inputs (map (partial cl/create-buffer ctx :f)
-                    [[0.0]
-                     [0.4]
-                     [0.6]
-                     [1.0]])
+        inputs (mlp-cl/pack ctx [[0.0] [0.4] [0.6] [1.0]] 1)
         labels (map (partial cl/create-buffer ctx :f)
-                    [[0]
-                     [0]
-                     [1]
-                     [1]])]
+                    [[0  ] [0  ] [1  ] [1  ]])]
     (dotimes [i 501]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 20) 0)
@@ -31,7 +24,7 @@
          i
          (mlp-cl/fw-err-subbatch inputs labels))
         (flush)))
-    (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
+    (doseq [m [inputs labels]] (mlp-cl/release-mem m)))
   (mlp-cl/finalize))
 
 (deftest ^:long-test ident-8
@@ -45,15 +38,14 @@
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
-        inputs (map (partial cl/create-buffer ctx :f)
-                    [[0 0 0]
-                     [0 0 1]
-                     [0 1 0]
-                     [0 1 1]
-                     [1 0 0]
-                     [1 0 1]
-                     [1 1 0]
-                     [1 1 1]])
+        inputs (mlp-cl/pack ctx [[0 0 0]
+                                 [0 0 1]
+                                 [0 1 0]
+                                 [0 1 1]
+                                 [1 0 0]
+                                 [1 0 1]
+                                 [1 1 0]
+                                 [1 1 1]])
         labels (map (partial cl/create-buffer ctx :f)
                     [[0 0 0 0 1]
                      [0 0 1 0 1]
@@ -70,7 +62,7 @@
          i
          (mlp-cl/fw-err-subbatch inputs labels))
         (flush)))
-    (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
+    (doseq [m [inputs labels]] (mlp-cl/release-mem m)))
   (mlp-cl/finalize))
 
 (defn one-hot [field-size i]
@@ -85,7 +77,7 @@
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
         v (map (partial one-hot 64) (range 64))
-        inputs (mapv (partial cl/create-buffer ctx :f) v)
+        inputs (mlp-cl/pack ctx v)
         labels (mapv (partial cl/create-buffer ctx :f) v)]
     (dotimes [i 1001]
       (mlp-cl/run-minibatch inputs labels)
@@ -94,7 +86,7 @@
          i
          (mlp-cl/fw-err-subbatch inputs labels))
         (flush)))
-    (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
+    (doseq [m [inputs labels]] (mlp-cl/release-mem m)))
   (mlp-cl/finalize))
 
 (deftest ^:long-test ident-64-2-layers
@@ -109,7 +101,7 @@
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
         v (map (partial one-hot 64) (range 64))
-        inputs (mapv (partial cl/create-buffer ctx :f) v)
+        inputs (mlp-cl/pack ctx v)
         labels (mapv (partial cl/create-buffer ctx :f) v)]
     (dotimes [i 1501]
       (mlp-cl/run-minibatch inputs labels)
@@ -118,7 +110,7 @@
          i
          (mlp-cl/fw-err-subbatch inputs labels))
         (flush)))
-    (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
+    (doseq [m [inputs labels]] (mlp-cl/release-mem m)))
   (mlp-cl/finalize))
 
 (deftest ^:long-test xor
@@ -135,16 +127,9 @@
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
-        inputs (map (partial cl/create-buffer ctx :f)
-                    [[0 0]
-                     [0 1]
-                     [1 0]
-                     [1 1]])
+        inputs (mlp-cl/pack ctx [[0 0] [0 1] [1 0] [1 1]])
         labels (map (partial cl/create-buffer ctx :f)
-                    [[0]
-                     [1]
-                     [1]
-                     [0]])]
+                    [[0] [1] [1] [0]])]
     (dotimes [i 4001]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 200) 0)
@@ -152,7 +137,7 @@
          i
          (mlp-cl/fw-err-subbatch inputs labels))
         (flush)))
-    (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
+    (doseq [m [inputs labels]] (mlp-cl/release-mem m)))
   (mlp-cl/finalize))
 
 (deftest ^:long-test xor-softmax
@@ -169,16 +154,9 @@
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
-        inputs (map (partial cl/create-buffer ctx :f)
-                    [[0 0]
-                     [0 1]
-                     [1 0]
-                     [1 1]])
+        inputs (mlp-cl/pack ctx [[0 0] [0 1] [1 0] [1 1]])
         labels (map (partial cl/create-buffer ctx :f)
-                    [[0 1]
-                     [1 0]
-                     [1 0]
-                     [0 1]])]
+                    [[0 1] [1 0] [1 0] [0 1]])]
     (dotimes [i 4001]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 200) 0)
@@ -187,5 +165,5 @@
          (mlp-cl/fw-err-subbatch inputs labels))
         (flush)
         ))
-    (doseq [m (concat inputs labels)] (CL/clReleaseMemObject m)))
+    (doseq [m [inputs labels]] (mlp-cl/release-mem m)))
   (mlp-cl/finalize))
