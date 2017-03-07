@@ -28,7 +28,8 @@
   (mlp-cl/finalize))
 
 (deftest ^:long-test ident-8
-  (mlp-cl/init [{:type :dense         :size [3 4]}
+  (mlp-cl/init [;{:type :dense         :size [3 4]}
+                {:type :conv :size [1 3 4] :isize [1 3 1] :pad [0 0 0 0]}
                 {:type :offset        :size [4  ]}
                 {:type :sigmoid       :size [4  ]}
                 {:type :dense         :size [4 5]}

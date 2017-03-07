@@ -57,9 +57,9 @@
         m)))
 
 (defn conv-oh [{[h _ d] :size [ih _ _] :isize [pu pd _ _] :pad}]
-  (* (+ ih (- h) 1 pu pd) d))
+  (+ ih (- h) 1 pu pd))
 (defn conv-ow  [{[_ w d] :size [_ iw _] :isize [_ _ pl pr] :pad}]
-  (* (+ iw (- w) 1 pl pr) d))
+  (+ iw (- w) 1 pl pr))
 
 (defn prepare-mem-conv
   [ctx init-p {[h w d] :size [ih iw id] :isize [pu pd pl pr] :pad :as l}]
