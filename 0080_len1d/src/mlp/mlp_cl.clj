@@ -256,7 +256,7 @@
       (CL/clEnqueueCopyBuffer q g gp 0 0 (* n Sizeof/cl_float) 0 nil nil))))
 
 (defn bw-conv
-  [{[w h d] :size [ih iw id] :isize [pu _ pl _] :pad
+  [{[h w d] :size [ih iw id] :isize [pu _ pl _] :pad
     is :is gbs :gbs gs :gs us :us ps :ps :as l}
    is-1st?]
   (let [{q :queue} @cl-env

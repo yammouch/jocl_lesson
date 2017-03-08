@@ -47,7 +47,8 @@
                                  [1 0 0]
                                  [1 0 1]
                                  [1 1 0]
-                                 [1 1 1]])
+                                 [1 1 1]]
+                                3)
         labels (map (partial cl/create-buffer ctx :f)
                     [[0 0 0 0 1]
                      [0 0 1 0 1]
