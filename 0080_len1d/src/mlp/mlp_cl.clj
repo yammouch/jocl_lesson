@@ -7,7 +7,7 @@
 (import '(org.jocl CL Sizeof Pointer cl_buffer_region cl_mem))
 
 (def debug (ref false))
-(require 'clojure.pprint)
+;(require 'clojure.pprint)
 
 (defn xorshift [x y z w]
   (let [t  (bit-xor x (bit-shift-left x 11))
@@ -263,12 +263,17 @@
         {o "conv" a "conv_acc" ot "conv_t" at "conv_t_acc"} @cl-ker
         oh (conv-oh l) ow (conv-ow l)]
     (doseq [[i j] (for [i (range d) j (range id)] [i j])]
-      (cl/callk q (if is-1st? o a) nil [h w]
-       :m (get-in us [i j]) :m (gs i) :m (is j)
-       :i w :i ih :i iw :i oh :i ow :i pu :i pl))
+      ;(println "i: " i ", j: " j)
+      ;(print-matrix (get-in us [i j]) h w)
+      ;(print-matrix (gs i) oh ow)
+      ;(print-matrix (is j) ih iw)
+      (cl/callk q (if is-1st? o a) nil [w h]
+       :m (get-in us [i j]) :m (is j) :m (gs i)
+       :i w :i ih :i iw :i oh :i ow :i pu :i pl)
+      );(print-matrix (get-in us [i j]) h w))
     (when gbs
       (doseq [[i j] (for [i (range id) j (range d)] [i j])]
-        (cl/callk q (if (= j 0) ot at) nil [ih iw]
+        (cl/callk q (if (= j 0) ot at) nil [iw ih]
          :m (gbs i) :m (gs j) :m (get-in ps [j i])
          :i iw :i oh :i ow :i h :i w :i (- h 1 pu) :i (- w 1 pl)
          )))))
