@@ -29,10 +29,11 @@
 
 (deftest ^:long-test ident-8
   (mlp-cl/init [;{:type :dense         :size [3 4]}
-                {:type :conv :size [1 3 4] :isize [1 3 1] :pad [0 0 0 0]}
+                {:type :conv :size [3 1 4] :isize [3 1 1] :pad [0 0 0 0]}
                 {:type :offset        :size [4  ]}
                 {:type :sigmoid       :size [4  ]}
-                {:type :dense         :size [4 5]}
+                ;{:type :dense         :size [4 5]}
+                {:type :conv :size [1 4 5] :isize [1 4 1] :pad [0 0 0 0]}
                 {:type :offset        :size [5  ]}
                 {:type :sigmoid       :size [5  ]}
                 {:type :cross-entropy :size [5  ]}])
@@ -97,7 +98,8 @@
   (mlp-cl/init [{:type :dense         :size [64 64]}
                 {:type :offset        :size [64   ]}
                 {:type :sigmoid       :size [64   ]}
-                {:type :dense         :size [64 64]}
+                ;{:type :dense         :size [64 64]}
+                {:type :conv :size [4 16 64] :isize [4 16 1] :pad [0 0 0 0]}
                 {:type :offset        :size [64 64]}
                 {:type :sigmoid       :size [64   ]}
                 {:type :cross-entropy :size [64   ]}])
