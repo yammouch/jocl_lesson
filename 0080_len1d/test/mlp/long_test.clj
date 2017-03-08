@@ -36,6 +36,7 @@
                 {:type :offset        :size [5  ]}
                 {:type :sigmoid       :size [5  ]}
                 {:type :cross-entropy :size [5  ]}])
+  (dosync (ref-set mlp-cl/debug true))
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
@@ -56,7 +57,8 @@
                      [1 0 1 1 1]
                      [1 1 0 1 1]
                      [1 1 1 1 0]])]
-    (dotimes [i 501]
+    ;(dotimes [i 501]
+    (dotimes [i 1]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 20) 0)
         (printf "i: %4d err: %8.2f\n"

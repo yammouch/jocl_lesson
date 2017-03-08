@@ -6,6 +6,9 @@
 
 (import '(org.jocl CL Sizeof Pointer cl_buffer_region cl_mem))
 
+(def debug (ref false))
+(require 'clojure.pprint)
+
 (defn xorshift [x y z w]
   (let [t  (bit-xor x (bit-shift-left x 11))
         wn (bit-and 0xFFFFFFFF
@@ -111,7 +114,6 @@
                        acc))
                    acc)))))))
 
-
 (def kernel-source-code (slurp "kernel.cl"))
 
 (def cl-env     (ref nil))
@@ -169,19 +171,21 @@
                                             (* cr cc))))]
     (doseq [s strs] (println s))))
 
-(defn dump [i k]
+(defn dump [layers i k]
   (printf "layer %d name %s:\n" i (name k))
-  (let [l (@mlp-config i)
-        [cr cc] (l :size)
+  (let [{[h w d] :size [ih iw id] :isize :as l} (layers i)
         [cr cc] (case (l :type)
-                  :dense         (cond (#{:u :p} k) [cr cc]
-                                       (= k :i)     [ 1 cr]
-                                       (= k :g)     [ 1 cc])
-                  :offset        [ 1 cr]
-                  :sigmoid       [ 1 cr]
-                  :softmax       [ 1 cr]
-                  :cross-entropy [ 1 cr])]
-    (print-matrix (get-in @cl-mem [i k])
+                  :dense (cond (#{:u :p} k) [h w]
+                               (= k :i)     [1 h]
+                               (= k :g)     [1 h])
+                  :conv (cond (#{:u :p} k) [(*  h d id)        w         ]
+                              (= k :i)     [(* ih   id)       iw         ]
+                              (= k :g)     [(* (conv-oh l) d) (conv-ow l)])
+                  :offset        [1 h]
+                  :sigmoid       [1 h]
+                  :softmax       [1 h]
+                  :cross-entropy [1 h])]
+    (print-matrix (get-in layers [i k])
                   cr cc)))
 
 (defn fw1-conv
@@ -212,13 +216,14 @@
                    ))))
 
 (defn fw [i0]
-  (doseq [[l0 l1] (->> (update-in @cl-mem [0] #(into % i0))
-                       (map into @mlp-config)
-                       (partition 2 1))]
-    (fw1 l0 l1))
-  ;(doseq [i (range 1 (count @mlp-config))]
-  ;  (dump i :i))
-  )
+  (let [layers (->> (update-in @cl-mem [0] #(into % i0))
+                    (mapv into @mlp-config))]
+    (doseq [[l0 l1] (partition 2 1 layers)]
+      (fw1 l0 l1))
+    (when @debug
+      (doseq [i (range (count layers))]
+        (dump layers i :i)
+        ))))
 
 (defn fw-err [input label]
   (fw input)
@@ -292,22 +297,27 @@
 (defn bw
  ([in label learning-rate] (bw in label false))
  ([i0 label learning-rate is-1st?]
-    (doseq [[lp l ln] (->> (-> @cl-mem
-                               (assoc-in [(- (count @mlp-config) 1) :g] label)
-                               (update-in [0] #(into % i0)))
-                           (map into @mlp-config)
-                           (cons nil)
+  (let [layers (->> (-> @cl-mem
+                        (assoc-in [(- (count @mlp-config) 1) :g] label)
+                        (update-in [0] #(into % i0)))
+                    (mapv into @mlp-config))]
+    (doseq [[lp l ln] (->> (cons nil layers)
                            (partition 3 1)
                            (reverse))]
       (bw1 lp l ln learning-rate is-1st?))
-    ;(doseq [i (range (- (count @mlp-config) 1) -1 -1)]
-    ;  (if (get-in @cl-mem [i :g]) (dump i :g))
-    ;  (if (get-in @cl-mem [i :u]) (dump i :u)))
-    ))
+    (when @debug
+      (doseq [i (range (- (count layers) 1) -1 -1)]
+        (if (get-in layers [i :g]) (dump layers i :g))
+        (if (get-in layers [i :u]) (dump layers i :u))
+        )))))
 
 (defn run-minibatch
  ([inputs labels] (run-minibatch inputs labels 0.1))
  ([inputs labels learning-rate]
+  (when @debug
+    (doseq [i (range (count @mlp-config))]
+      (when (get-in @cl-mem [i :p])
+        (dump (mapv into @mlp-config @cl-mem) i :p))))
   (loop [i inputs l labels first? true]
     (if (or (empty? i) (empty? l))
       :done
@@ -320,7 +330,12 @@
     (doseq [{t :type u :u p :p [h w d] :size [_ _ id] :isize}
             (mapv into @mlp-config @cl-mem)]
       (case t
-        :dense  (cl/callk q sub nil [(* h w)  ] :m p :m p :m u)
-        :conv   (cl/callk q sub nil [(* h w d)] :m p :m p :m u)
-        :offset (cl/callk q sub nil [   h     ] :m p :m p :m u)
-        :do-nothing)))))
+        :dense  (cl/callk q sub nil [(* h w     )] :m p :m p :m u)
+        :conv   (cl/callk q sub nil [(* h w d id)] :m p :m p :m u)
+        :offset (cl/callk q sub nil [   h        ] :m p :m p :m u)
+        :do-nothing)))
+  (when @debug
+    (doseq [i (range (count @mlp-config))]
+      (when (get-in @cl-mem [i :p])
+        (dump (mapv into @mlp-config @cl-mem) i :p)
+        )))))
