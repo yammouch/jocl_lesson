@@ -336,18 +336,6 @@
         (every? coll? [x0 x1]) (cons (+r (first x0) (first x1))
                                      (+r (next  x0) (next  x1))
                                      )))
-;  (cond (and (not (coll? x0)) (not (coll? x1))) (+ x0 x1)
-;        (and (empty? x0) (empty? x1)) []
-;        (and (coll? x0) (coll? x1)) (cons (+r (first x0) (first x1))
-;                                          (+r (next  x0) (next  x1))
-;                                          )))
-
-;(defn +c [x0 x1]
-;  (case (map shape [x0 x1]
-;    (:scalar :scalar) (+ x0 x1)
-;    (:vector :vector) (map + x0 x1)
-;    (:matrix :matrix) (map (fn [v0 v1] (map + v0 v1)) x0 x1)
-;    ))
 
 (defn conv-cell [i c]
   (reduce +r (map *c (apply concat i) (apply concat c))))
@@ -384,18 +372,16 @@
         (map #(cl/create-buffer ctx :f (flatten %)) [addend i c])]
     (cl/callk q k nil [rw rh cd] :m mem-result :m mem-i :m mem-c
      :i rw :i ih :i iw :i id :i ch :i cw :i cd :i pu :i pl)
-    (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-result (* rh rw cd))
-                       (flatten result))))
+    (is (every? #(< -0.01 % 0.01) ; 1% of tolerance
+                (map (fn [cal ref]
+                       (if (< -1.0 ref 1.0)
+                         (- cal ref)
+                         (- (/ cal ref) 1.0)))
+                     (cl/read-float q mem-result (* rh rw cd))
+                     (flatten result))))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest conv-new-fw-test
-  (conv-new-fw-test1 5 6 1 3 2 1 0 0 0 0)
-  (conv-new-fw-test1 6 7 6 5 4 3 0 0 0 0)
-  (conv-new-fw-test1 7 6 6 5 4 3 0 0 0 0)
-  (conv-new-fw-test1 7 7 5 5 4 3 0 0 0 0)
-  (conv-new-fw-test1 7 7 6 4 4 3 0 0 0 0)
-  (conv-new-fw-test1 7 7 6 5 3 3 0 0 0 0)
-  (conv-new-fw-test1 7 7 6 5 4 2 0 0 0 0)
-  (conv-new-fw-test1 7 7 6 5 4 3 0 0 0 0)
-  )
+  (conv-new-fw-test1  6  6  3  3  3  6  1  1  1  1)
+  (conv-new-fw-test1 12 11 10  9  8  7  6  5  4  3)
+  (conv-new-fw-test1 11 10  9  8  7  6  5  4  3  2))
