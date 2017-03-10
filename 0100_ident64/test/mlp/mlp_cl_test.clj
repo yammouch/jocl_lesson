@@ -173,11 +173,17 @@
                       (map (partial partition cw 1) rows)))
          (partition ch 1 i))))
 
+(defn dimension [x]
+  (if (coll? x)
+    (conj (dimension (first x)) (count x))
+    []))
+
 (defn padding [m pu pd pl pr]
-  (let [w (+ pl pr (count (first m)))]
-    (concat (repeat pu (repeat w 0.0))
-            (map #(concat (repeat pl 0.0) % (repeat pr 0.0)) m)
-            (repeat pd (repeat w 0.0)))))
+  (let [w (+ pl pr (count (first m)))
+        zero (reduce #(repeat %2 %1) 0.0 (dimension (ffirst m)))]
+    (concat (repeat pu (repeat w zero))
+            (map #(concat (repeat pl zero) % (repeat pr zero)) m)
+            (repeat pd (repeat w zero)))))
 
 (defn conv-test1 [ih iw ch cw pu pd pl pr]
   (let [{q :queue ctx :context} @mlp-cl/cl-env
@@ -291,3 +297,105 @@
   (conv-t-acc-test1 5 6 3 2 0 0 0 1)
   (conv-t-acc-test1 5 6 3 2 1 2 3 4)
   (conv-t-acc-test1 5 6 3 2 2 2 2 2))
+
+; (* [i0 i1 i2 i3]
+;    [[c00 c01 c02]
+;     [c10 c11 c12]
+;     [c20 c21 c22]
+;     [c30 c31 c32]])
+; = [(+ (* i0 c00) (* i1 c10) (* i2 c20) (* i3 c30))
+;    (+ (* i0 c01) (* i1 c11) (* i2 c21) (* i3 c31))
+;    (+ (* i0 c02) (* i1 c12) (* i2 c22) (* i3 c32))]
+; (* [i0 i1 i2] [c0 c1 c2])
+; = [[(* i0 c0) (* i0 c1) (* i0 c2)]
+;    [(* i1 c0) (* i1 c1) (* i1 c2)]
+;    [(* i2 c0) (* i2 c1) (* i2 c2)]]
+
+(defn shape [x]
+  (cond (not (coll?        x )) :scalar
+        (not (coll? (first x))) :vector
+        :else                   :matrix))
+
+(defn *c [x0 x1]
+  (case (map shape [x0 x1])
+    [:scalar :scalar] (* x0 x1)
+    [:scalar :vector] (map (partial * x0) x1)
+    [:vector :scalar] (map (partial * x1) x0)
+    [:vector :vector] (map (fn [e0]
+                             (map (fn [e1] (* e0 e1))
+                                  x1))
+                           x0)
+    [:vector :matrix] (apply map (fn [& v] (apply + (map * x0 v))) x1)
+    [:matrix :vector] (apply map (fn [& v] (apply + (map * x1 v))) x0)
+    ))
+
+(defn +r [x0 x1]
+  (cond (every? (comp not coll?) [x0 x1])
+        (if (every? nil? [x0 x1]) [] (+ x0 x1))
+
+        (every? coll? [x0 x1]) (cons (+r (first x0) (first x1))
+                                     (+r (next  x0) (next  x1))
+                                     )))
+;  (cond (and (not (coll? x0)) (not (coll? x1))) (+ x0 x1)
+;        (and (empty? x0) (empty? x1)) []
+;        (and (coll? x0) (coll? x1)) (cons (+r (first x0) (first x1))
+;                                          (+r (next  x0) (next  x1))
+;                                          )))
+
+;(defn +c [x0 x1]
+;  (case (map shape [x0 x1]
+;    (:scalar :scalar) (+ x0 x1)
+;    (:vector :vector) (map + x0 x1)
+;    (:matrix :matrix) (map (fn [v0 v1] (map + v0 v1)) x0 x1)
+;    ))
+
+(defn conv-cell [i c]
+  (reduce +r (map *c (apply concat i) (apply concat c))))
+
+(defn conv-new-fw [i c]
+  (let [ch (count c)
+        cw (count (first c))]
+    (map (fn [rows]
+           (apply map (fn [& vs] (conv-cell vs c))
+                      (map (partial partition cw 1) rows)))
+         (partition ch 1 i))))
+
+(defn flatten [x]
+  (cond (not (coll? x)) (if (nil? x) [] [x])
+        (empty? x) []
+        :else (concat (flatten (first x)) (flatten (next x)))
+        ))
+
+(defn test-data-ramp [seed & dim]
+  (reduce #(partition %2 %1)
+          (map (partial * seed) (range (apply * dim)))
+          (butlast dim)))
+
+(defn conv-new-fw-test1 [ih iw id ch cw cd pu pd pl pr]
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k "conv_new_fw"} @mlp-cl/cl-ker
+        i (test-data-ramp 0.1    id iw ih)
+        c (test-data-ramp 0.1 cd id cw ch)
+        conved (conv-new-fw (padding i pu pd pl pr) c)
+        rh (count conved) rw (count (first conved))
+        addend (test-data-ramp 0.2 cd rw rh)
+        result (+r conved addend)
+        [mem-result mem-i mem-c :as mems]
+        (map #(cl/create-buffer ctx :f (flatten %)) [addend i c])]
+    (cl/callk q k nil [rw rh cd] :m mem-result :m mem-i :m mem-c
+     :i rw :i ih :i iw :i id :i ch :i cw :i cd :i pu :i pl)
+    (is (every? #(< -0.01 % 0.01)
+                (map - (cl/read-float q mem-result (* rh rw cd))
+                       (flatten result))))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
+
+(deftest conv-new-fw-test
+  (conv-new-fw-test1 5 6 1 3 2 1 0 0 0 0)
+  (conv-new-fw-test1 6 7 6 5 4 3 0 0 0 0)
+  (conv-new-fw-test1 7 6 6 5 4 3 0 0 0 0)
+  (conv-new-fw-test1 7 7 5 5 4 3 0 0 0 0)
+  (conv-new-fw-test1 7 7 6 4 4 3 0 0 0 0)
+  (conv-new-fw-test1 7 7 6 5 3 3 0 0 0 0)
+  (conv-new-fw-test1 7 7 6 5 4 2 0 0 0 0)
+  (conv-new-fw-test1 7 7 6 5 4 3 0 0 0 0)
+  )
