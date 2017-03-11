@@ -11,13 +11,26 @@
     (f)
     (mlp-cl/finalize)))
 
+(deftest set-val-test
+  (let [unit 256
+        n (/ 8192 unit)
+        v0 (range 1 (+ 1 (* unit n)))
+        {q :queue ctx :context} @mlp-cl/cl-env
+        {k "set_val"} @mlp-cl/cl-ker
+        mem-v0 (cl/create-buffer ctx :f v0)]
+    (doseq [i (range 0 (+ 1 (* unit n)) unit)]
+      (cl/callk q k [i] [unit] :m mem-v0 :f 0.0))
+    (is (every? #(< -0.01 % 0.01)
+                (cl/read-float q mem-v0 (* unit n))))
+    (CL/clReleaseMemObject mem-v0)))
+
 (deftest add-test
   (let [v0 [1 2 3 4]
         v1 [2 3 4 5]
         n (count v0)
         {q :queue ctx :context} @mlp-cl/cl-env
         {add "add" sub "sub"} @mlp-cl/cl-ker
-        [mem-result mem-v0 mem-v1]
+        [mem-result mem-v0 mem-v1 :as mems]
         (map (partial cl/create-buffer ctx :f) [n v0 v1])]
     (cl/callk q add nil [n] :m mem-result :m mem-v0 :m mem-v1)
     (is (every? #(< -0.01 % 0.01)
@@ -26,7 +39,8 @@
     (cl/callk q sub nil [n] :m mem-result :m mem-v0 :m mem-v1)
     (is (every? #(< -0.01 % 0.01)
                 (map - (cl/read-float q mem-result n)
-                       [-1 -1 -1 -1])))))
+                       [-1 -1 -1 -1])))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest mul-vm-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env

@@ -1,3 +1,10 @@
+__kernel void set_val(
+ __global float *out,
+          float  val) {
+  uint i = get_global_id(0);
+  out[i] = val;
+}
+
 __kernel void add(
  __global       float *sum,
  __global const float *v0,
