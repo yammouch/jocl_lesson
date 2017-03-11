@@ -326,7 +326,7 @@
                                   x1))
                            x0)
     [:vector :matrix] (apply map (fn [& v] (apply + (map * x0 v))) x1)
-    [:matrix :vector] (apply map (fn [& v] (apply + (map * x1 v))) x0)
+    [:matrix :vector] (      map (fn [  v] (apply + (map * v x1))) x0)
     ))
 
 (defn +r [x0 x1]
@@ -337,16 +337,20 @@
                                      (+r (next  x0) (next  x1))
                                      )))
 
-(defn conv-cell [i c]
-  (reduce +r (map *c (apply concat i) (apply concat c))))
+(defn conv-cell [i c bw?]
+  (let [[x0 x1] (if bw? [c i] [i c])]
+    (reduce +r (map *c (apply concat x0) (apply concat x1)))
+    ))
 
-(defn conv-new-fw [i c]
+(defn conv-new-fw
+ ([i c] (conv-new-fw i c false))
+ ([i c bw?]
   (let [ch (count c)
         cw (count (first c))]
     (map (fn [rows]
-           (apply map (fn [& vs] (conv-cell vs c))
+           (apply map (fn [& vs] (conv-cell vs c bw?))
                       (map (partial partition cw 1) rows)))
-         (partition ch 1 i))))
+         (partition ch 1 i)))))
 
 (defn flatten [x]
   (cond (not (coll? x)) (if (nil? x) [] [x])
@@ -412,3 +416,31 @@
   (conv-new-bw-u-test1  6  6  3  3  3  6  1  1  1  1)
   (conv-new-bw-u-test1 12 11 10  9  8  7  6  5  4  3)
   (conv-new-bw-u-test1 11 10  9  8  7  6  5  4  3  2))
+
+(defn conv-new-bw-g-test1 [ih iw id ch cw cd pu pd pl pr]
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k "conv_new_bw_g"} @mlp-cl/cl-ker
+        i (test-data-ramp 0.1    id iw ih)
+        c (test-data-ramp 0.1 cd id cw ch)
+        conved (conv-new-fw (padding i pu pd pl pr)
+                            (reverse (map reverse c)))
+        rh (count conved) rw (count (first conved))
+        addend (test-data-ramp 0.2 cd rw rh)
+        result (+r conved addend)
+        [mem-result mem-i mem-c :as mems]
+        (map #(cl/create-buffer ctx :f (flatten %)) [addend i c])]
+    (cl/callk q k nil [rw rh cd] :m mem-result :m mem-i :m mem-c
+     :i rw :i ih :i iw :i id :i ch :i cw :i cd :i pu :i pl)
+    (is (every? #(< -0.01 % 0.01) ; 1% of tolerance
+                (map (fn [cal ref]
+                       (if (< -1.0 ref 1.0)
+                         (- cal ref)
+                         (- (/ cal ref) 1.0)))
+                     (cl/read-float q mem-result (* rh rw cd))
+                     (flatten result))))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
+
+(deftest conv-new-bw-g-test
+  (conv-new-bw-g-test1  6  6  3  3  3  6  1  1  1  1)
+  (conv-new-bw-g-test1 12 11 10  9  8  7  6  5  4  3)
+  (conv-new-bw-g-test1 11 10  9  8  7  6  5  4  3  2))
