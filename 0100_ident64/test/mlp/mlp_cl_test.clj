@@ -388,7 +388,7 @@
 
 (defn conv-new-bw-u-test1 [ih iw id ch cw cd pu pd pl pr]
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "conv_new_fw"} @mlp-cl/cl-ker
+        {k "conv_new_bw_u"} @mlp-cl/cl-ker
         i (test-data-ramp 0.1 id iw ih)
         c (test-data-ramp 0.1 cd cw ch)
         conved (conv-new-fw (padding i pu pd pl pr) c)
