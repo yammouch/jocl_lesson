@@ -277,3 +277,40 @@ __kernel void conv_new_fw(
   }
   result[(ry*rw+rx)*cd+cz] += acc;
 }
+
+__kernel void conv_new_bw_u(
+ __global       float *result,
+ __global const float *input,
+ __global const float *coeff,
+                int    rw,   // width  of result
+                int    ih,   // height of input
+                int    iw,   // width  of input
+                int    id,   // depth  of input
+                int    ch,   // height of coeff
+                int    cw,   // width  of coeff
+                int    cd,   // depth  of coeff
+                int    pu,   // padding upside
+                int    pl) { // padding left
+  uint rx_iz = get_global_id(0);
+  int  rx    = rx_iz / id;       // an index of result
+  uint ry    = get_global_id(1); // an index of result
+  int cx, cy; // indices of coeff
+  uint cz = get_global_id(2);
+  int ix, iy, iz; // indices of input
+  iz = rx_iz % id;
+  float acc = 0.0f;
+
+  for (cy = 0; cy < ch; cy++) {
+    iy = ry + cy - pu;
+    if (0 <= iy && iy < ih) {
+      for (cx = 0; cx < cw; cx++) {
+        ix = rx + cx - pl;
+        if (0 <= ix && ix < iw) {
+          acc += input[(iy*iw+ix)*id+iz]
+              *  coeff[(cy*cw+cx)*cd+cz];
+        }
+      }
+    }
+  }
+  result[((ry*rw+rx)*id+iz)*cd+cz] += acc;
+}

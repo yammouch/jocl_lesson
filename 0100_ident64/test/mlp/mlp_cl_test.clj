@@ -385,3 +385,30 @@
   (conv-new-fw-test1  6  6  3  3  3  6  1  1  1  1)
   (conv-new-fw-test1 12 11 10  9  8  7  6  5  4  3)
   (conv-new-fw-test1 11 10  9  8  7  6  5  4  3  2))
+
+(defn conv-new-bw-u-test1 [ih iw id ch cw cd pu pd pl pr]
+  (let [{q :queue ctx :context} @mlp-cl/cl-env
+        {k "conv_new_fw"} @mlp-cl/cl-ker
+        i (test-data-ramp 0.1 id iw ih)
+        c (test-data-ramp 0.1 cd cw ch)
+        conved (conv-new-fw (padding i pu pd pl pr) c)
+        rh (count conved) rw (count (first conved))
+        addend (test-data-ramp 0.2 cd id rw rh)
+        result (+r conved addend)
+        [mem-result mem-i mem-c :as mems]
+        (map #(cl/create-buffer ctx :f (flatten %)) [addend i c])]
+    (cl/callk q k nil [(* rw id) rh cd] :m mem-result :m mem-i :m mem-c
+     :i rw :i ih :i iw :i id :i ch :i cw :i cd :i pu :i pl)
+    (is (every? #(< -0.01 % 0.01) ; 1% of tolerance
+                (map (fn [cal ref]
+                       (if (< -1.0 ref 1.0)
+                         (- cal ref)
+                         (- (/ cal ref) 1.0)))
+                     (cl/read-float q mem-result (* rh rw cd))
+                     (flatten result))))
+    (doseq [m mems] (CL/clReleaseMemObject m))))
+
+(deftest conv-new-bw-u-test
+  (conv-new-bw-u-test1  6  6  3  3  3  6  1  1  1  1)
+  (conv-new-bw-u-test1 12 11 10  9  8  7  6  5  4  3)
+  (conv-new-bw-u-test1 11 10  9  8  7  6  5  4  3  2))
