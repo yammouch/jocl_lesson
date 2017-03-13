@@ -14,9 +14,10 @@
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
-        inputs (mlp-cl/pack ctx [[0.0] [0.4] [0.6] [1.0]] 1)
-        labels (map (partial cl/create-buffer ctx :f)
-                    [[0  ] [0  ] [1  ] [1  ]])]
+        inputs (mapv (partial cl/create-buffer ctx :f)
+                     [[0.0] [0.4] [0.6] [1.0]])
+        labels (mapv (partial cl/create-buffer ctx :f)
+                     [[0  ] [0  ] [1  ] [1  ]])]
     (dotimes [i 501]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 20) 0)
@@ -37,30 +38,28 @@
                 {:type :offset        :size [5  ]}
                 {:type :sigmoid       :size [5  ]}
                 {:type :cross-entropy :size [5  ]}])
-  ;(dosync (ref-set mlp-cl/debug true))
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
-        inputs (mlp-cl/pack ctx [[0 0 0]
-                                 [0 0 1]
-                                 [0 1 0]
-                                 [0 1 1]
-                                 [1 0 0]
-                                 [1 0 1]
-                                 [1 1 0]
-                                 [1 1 1]]
-                                3)
-        labels (map (partial cl/create-buffer ctx :f)
-                    [[0 0 0 0 1]
-                     [0 0 1 0 1]
-                     [0 1 0 0 1]
-                     [0 1 1 1 1]
-                     [1 0 0 0 1]
-                     [1 0 1 1 1]
-                     [1 1 0 1 1]
-                     [1 1 1 1 0]])]
+        inputs (mapv (partial cl/create-buffer ctx :f)
+                     [[0 0 0]
+                      [0 0 1]
+                      [0 1 0]
+                      [0 1 1]
+                      [1 0 0]
+                      [1 0 1]
+                      [1 1 0]
+                      [1 1 1]])
+        labels (mapv (partial cl/create-buffer ctx :f)
+                     [[0 0 0 0 1]
+                      [0 0 1 0 1]
+                      [0 1 0 0 1]
+                      [0 1 1 1 1]
+                      [1 0 0 0 1]
+                      [1 0 1 1 1]
+                      [1 1 0 1 1]
+                      [1 1 1 1 0]])]
     (dotimes [i 501]
-    ;(dotimes [i 1]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 20) 0)
         (printf "i: %4d err: %8.2f\n"
@@ -82,7 +81,7 @@
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
         v (map (partial one-hot 64) (range 64))
-        inputs (mlp-cl/pack ctx v)
+        inputs (mapv (partial cl/create-buffer ctx :f) v)
         labels (mapv (partial cl/create-buffer ctx :f) v)]
     (dotimes [i 1001]
       (mlp-cl/run-minibatch inputs labels)
@@ -107,9 +106,9 @@
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
         v (map (partial one-hot 64) (range 64))
-        inputs (mlp-cl/pack ctx v)
+        inputs (mapv (partial cl/create-buffer ctx :f) v)
         labels (mapv (partial cl/create-buffer ctx :f) v)]
-    (dotimes [i 1501]
+    (dotimes [i 301]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 50) 0)
         (printf "i: %5d err: %8.2f\n"
@@ -133,9 +132,10 @@
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
-        inputs (mlp-cl/pack ctx [[0 0] [0 1] [1 0] [1 1]])
-        labels (map (partial cl/create-buffer ctx :f)
-                    [[0] [1] [1] [0]])]
+        inputs (mapv (partial cl/create-buffer ctx :f)
+                     [[0 0] [0 1] [1 0] [1 1]])
+        labels (mapv (partial cl/create-buffer ctx :f)
+                     [[0] [1] [1] [0]])]
     (dotimes [i 4001]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 200) 0)
@@ -160,9 +160,10 @@
   (let [{q :queue ctx :context} @mlp-cl/cl-env
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
-        inputs (mlp-cl/pack ctx [[0 0] [0 1] [1 0] [1 1]])
-        labels (map (partial cl/create-buffer ctx :f)
-                    [[0 1] [1 0] [1 0] [0 1]])]
+        inputs (mapv (partial cl/create-buffer ctx :f)
+                     [[0 0] [0 1] [1 0] [1 1]])
+        labels (mapv (partial cl/create-buffer ctx :f)
+                     [[0 1] [1 0] [1 0] [0 1]])]
     (dotimes [i 4001]
       (mlp-cl/run-minibatch inputs labels)
       (when (= (mod i 200) 0)

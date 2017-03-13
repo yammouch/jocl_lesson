@@ -48,16 +48,6 @@
           (recur (+ i 1) (conj acc ms) (+ ofs slen))
           )))))
 
-(defn pack
- ([ctx m]
-  (mapv (fn [v] {:i (cl/create-buffer ctx :f v)})
-        m))
- ([ctx m n]
-  (mapv (fn [v]
-          (let [mem (cl/create-buffer ctx :f v)]
-            {:i mem :is (sub-buffers mem n)}))
-        m)))
-
 (defn conv-oh [{[h _ d] :size [ih _ _] :isize [pu pd _ _] :pad}]
   (+ ih (- h) 1 pu pd))
 (defn conv-ow  [{[_ w d] :size [_ iw _] :isize [_ _ pl pr] :pad}]
@@ -212,7 +202,7 @@
                    ))))
 
 (defn fw [i0]
-  (let [layers (->> (update-in @cl-mem [0] #(into % i0))
+  (let [layers (->> (assoc-in @cl-mem [0 :i] i0)
                     (mapv into @mlp-config))]
     (doseq [[l0 l1] (partition 2 1 layers)]
       (fw1 l0 l1))
@@ -293,7 +283,7 @@
  ([i0 label learning-rate is-1st?]
   (let [layers (->> (-> @cl-mem
                         (assoc-in [(- (count @mlp-config) 1) :g] label)
-                        (update-in [0] #(into % i0)))
+                        (assoc-in [0 :i] i0))
                     (mapv into @mlp-config))]
     (doseq [[lp l ln] (->> (cons nil layers)
                            (partition 3 1)

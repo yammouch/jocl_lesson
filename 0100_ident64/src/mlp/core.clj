@@ -26,7 +26,7 @@
         {sub "sub"} @mlp-cl/cl-ker
         {w :w b :b} @mlp-cl/cl-mem
         v (map (partial one-hot 64) (range 64))
-        inputs (mlp-cl/pack ctx v)
+        inputs (mapv (partial cl/create-buffer ctx :f) v)
         labels (mapv (partial cl/create-buffer ctx :f) v)]
     (dotimes [i 1501]
       (mlp-cl/run-minibatch inputs labels)
