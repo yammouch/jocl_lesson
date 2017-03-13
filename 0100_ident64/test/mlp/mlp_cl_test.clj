@@ -385,7 +385,6 @@
         conved (conv-new-fw (padding i pu pd pl pr) c)
         rh (count conved) rw (count (first conved))
         addend (test-data-ramp 0.2 cd rw rh)
-        result (+r conved addend)
         [mem-result mem-i mem-c :as mems]
         (map #(cl/create-buffer ctx :f (flatten %)) [addend i c])]
     (cl/callk q k nil [rw rh cd] :m mem-result :m mem-i :m mem-c
@@ -396,7 +395,7 @@
                          (- cal ref)
                          (- (/ cal ref) 1.0)))
                      (cl/read-float q mem-result (* rh rw cd))
-                     (flatten result))))
+                     (flatten conved))))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest conv-new-fw-test
@@ -416,7 +415,7 @@
         [mem-result mem-i mem-c :as mems]
         (map #(cl/create-buffer ctx :f (flatten %)) [addend i c])]
     (cl/callk q k nil [(* rw id) rh cd] :m mem-result :m mem-i :m mem-c
-     :i rw :i ih :i iw :i id :i ch :i cw :i cd :i pu :i pl)
+     :i rw :i ih :i iw :i id :i ch :i cw :i cd :i pu :i pl :i 0)
     (is (every? #(< -0.01 % 0.01) ; 1% of tolerance
                 (map (fn [cal ref]
                        (if (< -1.0 ref 1.0)
@@ -424,6 +423,15 @@
                          (- (/ cal ref) 1.0)))
                      (cl/read-float q mem-result (* rh rw cd))
                      (flatten result))))
+    (cl/callk q k nil [(* rw id) rh cd] :m mem-result :m mem-i :m mem-c
+     :i rw :i ih :i iw :i id :i ch :i cw :i cd :i pu :i pl :i 1)
+    (is (every? #(< -0.01 % 0.01) ; 1% of tolerance
+                (map (fn [cal ref]
+                       (if (< -1.0 ref 1.0)
+                         (- cal ref)
+                         (- (/ cal ref) 1.0)))
+                     (cl/read-float q mem-result (* rh rw cd))
+                     (flatten conved))))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest conv-new-bw-u-test
@@ -441,7 +449,6 @@
                             true)
         rh (count conved) rw (count (first conved))
         addend (test-data-ramp 0.2 cd rw rh)
-        result (+r conved addend)
         [mem-result mem-i mem-c :as mems]
         (map #(cl/create-buffer ctx :f (flatten %)) [addend i c])]
     (cl/callk q k nil [rw rh cd] :m mem-result :m mem-i :m mem-c
@@ -452,7 +459,7 @@
                          cal
                          (- (/ cal ref) 1.0)))
                      (cl/read-float q mem-result (* rh rw cd))
-                     (flatten result))))
+                     (flatten conved))))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
 (deftest conv-new-bw-g-test

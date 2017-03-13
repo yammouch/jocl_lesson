@@ -282,22 +282,23 @@ __kernel void conv_new_fw(
       }
     }
   }
-  result[(ry*rw+rx)*cd+cz] += acc;
+  result[(ry*rw+rx)*cd+cz] = acc;
 }
 
 __kernel void conv_new_bw_u(
  __global       float *result,
  __global const float *input,
  __global const float *coeff,
-                int    rw,   // width  of result
-                int    ih,   // height of input
-                int    iw,   // width  of input
-                int    id,   // depth  of input
-                int    ch,   // height of coeff
-                int    cw,   // width  of coeff
-                int    cd,   // depth  of coeff
-                int    pu,   // padding upside
-                int    pl) { // padding left
+                int    rw, // width  of result
+                int    ih, // height of input
+                int    iw, // width  of input
+                int    id, // depth  of input
+                int    ch, // height of coeff
+                int    cw, // width  of coeff
+                int    cd, // depth  of coeff
+                int    pu, // padding upside
+                int    pl, // padding left
+                int    overwrite) {
   uint rx_iz = get_global_id(0);
   int  rx    = rx_iz / id;       // an index of result
   uint ry    = get_global_id(1); // an index of result
@@ -319,7 +320,8 @@ __kernel void conv_new_bw_u(
       }
     }
   }
-  result[((ry*rw+rx)*id+iz)*cd+cz] += acc;
+  if (overwrite) result[((ry*rw+rx)*id+iz)*cd+cz]  = acc;
+  else           result[((ry*rw+rx)*id+iz)*cd+cz] += acc;
 }
 
 __kernel void conv_new_bw_g(
@@ -355,5 +357,5 @@ __kernel void conv_new_bw_g(
       }
     }
   }
-  result[(ry*rw+rx)*cd+cz] += acc;
+  result[(ry*rw+rx)*cd+cz] = acc;
 }
