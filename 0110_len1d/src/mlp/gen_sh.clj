@@ -1,13 +1,15 @@
+; lein run -m mlp.gen-sh
+
 (ns mlp.gen-sh
   (:gen-class))
 
 (defn -main [& _]
   (dorun
-    (for [lr [0.001 0.002 0.005 0.01 0.02 0.05 0.1 0.2 0.3] ; learning rate
-          seed (range 1 11)]
-      (printf "lein run 10 10 100001 %5.3f %2d 30 30 | tee result/%s_%s.log\n"
-              lr seed
-              (apply str (map #(if (= % \.) \R %)
-                              (format "%5.3f" lr)))
+    (for [l1 [3 4 5 6 8 10 12 15 20 30]
+          l2 [3 4 5 6 8 10 12 15 20 30]]
+      (printf "lein run 10 10 100001 0.1 1 %2d %2d | tee result/%s_%s.log\n"
+              l1 l2
               (apply str (map #(if (= % \space) \_ %)
-                              (format "%2d" seed)))))))
+                              (format "%2d" l1)))
+              (apply str (map #(if (= % \space) \_ %)
+                              (format "%2d" l2)))))))
