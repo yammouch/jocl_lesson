@@ -30,58 +30,29 @@
                               ))))
       acc)))
 
-(defn sub-buffers [m slen]
-  (let [mlen (quot (cl/parse-unsigned-info
-                    (cl/clGetAnInfo #(CL/clGetMemObjectInfo m %1 %2 %3 %4)
-                                    'CL_MEM_SIZE))
-                   Sizeof/cl_float)
-        loopc (quot mlen slen)]
-    (loop [i 0 acc [] ofs 0]
-      (if (<= loopc i)
-        acc
-        (cl/let-err err
-         [ms (CL/clCreateSubBuffer m CL/CL_MEM_READ_WRITE
-              CL/CL_BUFFER_CREATE_TYPE_REGION
-              (cl_buffer_region. (* Sizeof/cl_float ofs)
-                                 (* Sizeof/cl_float slen))
-              err)]
-          (recur (+ i 1) (conj acc ms) (+ ofs slen))
-          )))))
-
 (defn conv-oh [{[h _ d] :size [ih _ _] :isize [pu pd _ _] :pad}]
   (+ ih (- h) 1 pu pd))
 (defn conv-ow  [{[_ w d] :size [_ iw _] :isize [_ _ pl pr] :pad}]
   (+ iw (- w) 1 pl pr))
 
+(defn prepare-mem1 [ctx & args]
+  (into {} (map (fn [[k x]] [k (cl/create-buffer ctx :f x)])
+                (partition 2 args))))
+
 (defn prepare-mem-conv
-  [ctx init-p {[h w d] :size [ih iw id] :isize [pu pd pl pr] :pad :as l}]
-  (let [i (cl/create-buffer ctx :f (* ih iw id))
-        p (cl/create-buffer ctx :f init-p)
-        u (cl/create-buffer ctx :f (* h w id d))
-        oh (conv-oh l) ow (conv-ow l)
-        g (cl/create-buffer ctx :f (* oh ow d))]
-    {:i i :is (sub-buffers i (* ih iw))
-     :p p :ps (vec (map vec (partition id (sub-buffers p (* h w)))))
-     :u u :us (vec (map vec (partition id (sub-buffers u (* h w)))))
-     :g g :gs (sub-buffers g (* oh ow))}))
+  [ctx init-p {[h w d] :size [ih iw id] :isize :as l}]
+  (prepare-mem1 ctx :i (* ih iw id) :p init-p :u (* h w id d)
+   :g (* (conv-oh l) (conv-ow l) d)))
 
 (defn prepare-mem [ctx conf seed]
   (mapv (fn [s {t :type [cr cc] :size :as l}]
           (case t
-            :dense (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
-                                  [:i :g :p :u       ]
-                                  [cr cc s  (* cr cc)]))
-            :offset (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
-                                   [:i :g :p            :u]
-                                   [cr cr (repeat cr 0) cr]))
+            :dense (prepare-mem1 ctx :i cr :g cc :p s :u (* cr cc))
+            :offset (prepare-mem1 ctx :i cr :g cr :p (repeat cr 0) :u cr)
             :conv (prepare-mem-conv ctx s l)
-            :sigmoid (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
-                                    [:i :g]
-                                    [cr cr]))
-            :softmax (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
-                                    [:i :g      ]
-                                    [cr (+ cr 1)]))
-            :cross-entropy {:i (cl/create-buffer ctx :f cr)}))
+            :sigmoid (prepare-mem1 ctx :i cr :g cr)
+            :softmax (prepare-mem1 ctx :i cr :g (+ cr 1))
+            :cross-entropy (prepare-mem1 ctx :i cr)))
         (initial-param conf seed)
         conf))
 
