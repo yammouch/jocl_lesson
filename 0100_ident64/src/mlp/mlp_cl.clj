@@ -7,7 +7,6 @@
 (import '(org.jocl CL Sizeof Pointer cl_buffer_region cl_mem))
 
 (def debug (ref false))
-;(require 'clojure.pprint)
 
 (defn xorshift [x y z w]
   (let [t  (bit-xor x (bit-shift-left x 11))
@@ -189,18 +188,15 @@
                   cr cc)))
 
 (defn fw1-conv
-  [{[ih iw id] :isize [h w d] :size [pu pd pl pr] :pad is :is ps :ps os :os
-   :as l}]
+  [{[h w d] :size [ih iw id] :isize [pu _ pl _] :pad i :i p :p :as l} {o :i}]
   (let [{q :queue} @cl-env
-        {o "conv" a "conv_acc"} @cl-ker ; o: overwrite, a: accumulate
+        {k "conv_new_fw"} @cl-ker
         oh (conv-oh l) ow (conv-ow l)]
-    (doseq [[i j] (for [i (range d) j (range id)] [i j])]
-      (cl/callk q (if (= j 0) o a) nil [ow oh]
-       :m (os i) :m (is j) :m (get-in ps [i j])
-       :i w :i ih :i iw :i h :i w :i pu :i pl
-       ))))
+    (cl/callk q k nil [ow oh d] :m o :m i :m p
+     :i ow :i ih :i iw :i id :i h :i w :i d :i pu :i pl
+     )))
 
-(defn fw1 [{t :type [cr cc] :size i :i p :p g :g :as l} {o :i}]
+(defn fw1 [{t :type [cr cc] :size i :i p :p g :g :as l} {o :i :as ln}]
   (let [{q :queue} @cl-env
         {vm "mul_vm" add "add" smd "sigmoid_fw"
          smx1 "softmax_fw_step1" smx2 "softmax_fw_step2"
@@ -208,7 +204,7 @@
     (case t
       :dense       (cl/callk q vm   nil [cc] :m o :m i :m p :i cr :i cc)
       :offset      (cl/callk q add  nil [cr] :m o :m i :m p)
-      :conv        (fw1-conv l)
+      :conv        (fw1-conv l ln)
       :sigmoid     (cl/callk q smd  nil [cr] :m o :m i)
       :softmax (do (cl/callk q smx1 nil [cr] :m g :m i)
                    (cl/callk q smx2 nil [ 1] :m g :i cr)
@@ -256,27 +252,20 @@
       (CL/clEnqueueCopyBuffer q g gp 0 0 (* n Sizeof/cl_float) 0 nil nil))))
 
 (defn bw-conv
-  [{[h w d] :size [ih iw id] :isize [pu _ pl _] :pad
-    is :is gbs :gbs gs :gs us :us ps :ps :as l}
+  [{gp :g}
+   {[h w d] :size [ih iw id] :isize [pu _ pl _] :pad
+    i :i g :g u :u p :p :as l}
    is-1st?]
   (let [{q :queue} @cl-env
-        {o "conv" a "conv_acc" ot "conv_t" at "conv_t_acc"} @cl-ker
-        oh (conv-oh l) ow (conv-ow l)]
-    (doseq [[i j] (for [i (range d) j (range id)] [i j])]
-      ;(println "i: " i ", j: " j)
-      ;(print-matrix (get-in us [i j]) h w)
-      ;(print-matrix (gs i) oh ow)
-      ;(print-matrix (is j) ih iw)
-      (cl/callk q (if is-1st? o a) nil [w h]
-       :m (get-in us [i j]) :m (is j) :m (gs i)
-       :i w :i ih :i iw :i oh :i ow :i pu :i pl)
-      );(print-matrix (get-in us [i j]) h w))
-    (when gbs
-      (doseq [[i j] (for [i (range id) j (range d)] [i j])]
-        (cl/callk q (if (= j 0) ot at) nil [iw ih]
-         :m (gbs i) :m (gs j) :m (get-in ps [j i])
-         :i iw :i oh :i ow :i h :i w :i (- h 1 pu) :i (- w 1 pl)
-         )))))
+        {ku "conv_new_bw_u" kg "conv_new_bw_g"} @cl-ker
+        ow (conv-ow l) oh (conv-oh l)]
+    (cl/callk q ku nil [(* w id) h d] :m u :m i :m g
+     :i w :i ih :i iw :i id :i oh :i ow :i d :i pu :i pl
+     :i (if is-1st? 1 0))
+    (when gp
+      (cl/callk q kg nil [iw ih id] :m gp :m g :m p
+       :i iw :i oh :i ow :i d :i h :i w :i id :i (- h 1 pu) :i (- w 1 pl)
+       ))))
 
 (defn bw1
  [{               gp :g            :as lp} ; previous layer
@@ -294,7 +283,7 @@
       (case t
         :dense   (bw-dense  lp l is-1st?)
         :offset  (bw-offset lp l is-1st?)
-        :conv    (bw-conv      l is-1st?)
+        :conv    (bw-conv   lp l is-1st?)
         :sigmoid (cl/callk q smd nil [cr] :m gp :m in :m g)
         :softmax (cl/callk q smd nil [cr] :m gp :m in :m g)
         ))))
