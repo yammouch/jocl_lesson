@@ -65,7 +65,7 @@
      :u u :us (vec (map vec (partition id (sub-buffers u (* h w)))))
      :g g :gs (sub-buffers g (* oh ow))}))
 
-(defn prepare-mem-pass1 [ctx conf seed]
+(defn prepare-mem [ctx conf seed]
   (mapv (fn [s {t :type [cr cc] :size :as l}]
           (case t
             :dense (into {} (mapv (fn [k x] [k (cl/create-buffer ctx :f x)])
@@ -84,24 +84,6 @@
             :cross-entropy {:i (cl/create-buffer ctx :f cr)}))
         (initial-param conf seed)
         conf))
-
-(defn prepare-mem-pass2 [cl-mem conf]
-  (let [c (count conf)]
-    (loop [i 0 acc cl-mem]
-      (if (<= c i)
-        acc
-        (recur (+ i 1)
-               (let [{[ih iw _] :isize :as l} (conf i)]
-                 (if (= :conv (l :type))
-                   (let [acc (assoc-in acc [i :os]
-                              (sub-buffers (get-in cl-mem [(+ i 1) :i])
-                                           (* (conv-oh l) (conv-ow l))))]
-                     (if (< 0 i)
-                       (assoc-in acc [i :gbs]
-                        (sub-buffers (get-in cl-mem [(- i 1) :g])
-                                     (* ih iw)))
-                       acc))
-                   acc)))))))
 
 (def kernel-source-code (slurp "kernel.cl"))
 
@@ -131,8 +113,7 @@
  ([conf seed]
   (dosync
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
-    (ref-set cl-mem (-> (prepare-mem-pass1 (@cl-env :context) conf seed)
-                        (prepare-mem-pass2 (vec conf))))
+    (ref-set cl-mem (prepare-mem (@cl-env :context) conf seed))
     (ref-set mlp-config (vec conf))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
                      [(get-in @cl-env [:device :id])]
