@@ -61,24 +61,36 @@
      {:type :softmax       :size [max-len]}
      {:type :cross-entropy :size [max-len]}]))
 
+(defn main-loop [iter learning-rate in-nd lbl-nd]
+  (loop [i 0
+         [[inputs labels] & bs] (make-minibatches 16 in-nd lbl-nd)
+         err-acc (repeat 4 1.0)]
+    (if (< iter i)
+      :done
+      (do
+        (mlp-cl/run-minibatch inputs labels learning-rate)
+        (if (= (mod i 200) 0)
+          (let [err (mlp-cl/fw-err-subbatch in-nd lbl-nd)]
+            (printf "i: %6d err: %8.2f\n" i err) (flush)
+            (if (every? (partial > 0.02) (cons err err-acc))
+              :done
+              (recur (+ i 1) bs (take 4 (cons err err-acc)))))
+          (recur (+ i 1) bs err-acc))))))
+
 (defn -main [& args]
-  (println "start: " (.toString (Date.)))
-  (let [[field-size max-len iter learning-rate seed conv-size conv-depth]
+  (let [start-time (Date.)
+        _ (println "start: " (.toString start-time))
+        [field-size max-len iter learning-rate seed conv-size conv-depth]
         (mapv read-string args)
         _ (mlp-cl/init
            (make-mlp-config max-len field-size conv-size conv-depth)
            seed)
         [in-nd lbl-nd] (make-input-labels field-size max-len)]
-    (loop [i 0, [[inputs labels] & bs] (make-minibatches 16 in-nd lbl-nd)]
-      (if (< iter i)
-        :done
-        (do
-          (mlp-cl/run-minibatch inputs labels learning-rate)
-          (when (= (mod i 200) 0)
-            (printf "i: %6d err: %8.2f\n" i
-             (mlp-cl/fw-err-subbatch in-nd lbl-nd))
-            (flush))
-          (recur (+ i 1) bs))))
-    (doseq [m [in-nd lbl-nd]] (mlp-cl/release-mem m)))
-  (println "end  : " (.toString (Date.)))
-  (mlp-cl/finalize))
+    (main-loop iter learning-rate in-nd lbl-nd)
+    (doseq [m [in-nd lbl-nd]] (mlp-cl/release-mem m))
+    (mlp-cl/finalize)
+    (let [end-time (Date.)]
+      (println "end  : " (.toString end-time))
+      (printf "%d seconds elapsed\n"
+              (quot (- (.getTime end-time) (.getTime start-time))
+                    1000)))))
