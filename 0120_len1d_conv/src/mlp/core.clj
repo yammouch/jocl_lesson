@@ -1,4 +1,4 @@
-; lein run  10 10 4001 0.1 1 30 # converges
+; lein run  4 4 1001 0.1 1 3 2 # converges
 
 (ns mlp.core
   (:gen-class))
@@ -54,7 +54,7 @@
     [{:type :conv
       :size  [cs 1 cd]
       :isize [fs 1  1]
-      :pad [cs-h 0 cs-h 0]}
+      :pad [cs-h cs-h 0 0]}
      {:type :sigmoid       :size [cosize]}
      {:type :dense         :size [cosize max-len]}
      {:type :offset        :size [max-len]}
@@ -69,7 +69,6 @@
            (make-mlp-config max-len field-size conv-size conv-depth)
            seed)
         [in-nd lbl-nd] (make-input-labels field-size max-len)]
-    (dosync (ref-set mlp-cl/debug true))
     (loop [i 0, [[inputs labels] & bs] (make-minibatches 16 in-nd lbl-nd)]
       (if (< iter i)
         :done
