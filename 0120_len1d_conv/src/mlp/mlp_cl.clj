@@ -118,10 +118,10 @@
         [cr cc] (case (l :type)
                   :dense (cond (#{:u :p} k) [h w]
                                (= k :i)     [1 h]
-                               (= k :g)     [1 h])
-                  :conv (cond (#{:u :p} k) [(*  h d id)        w         ]
-                              (= k :i)     [(* ih   id)       iw         ]
-                              (= k :g)     [(* (conv-oh l) d) (conv-ow l)])
+                               (= k :g)     [1 w])
+                  :conv (cond (#{:u :p} k) [       h          (*  w id d)]
+                              (= k :i)     [      ih          (* iw id  )]
+                              (= k :g)     [(conv-oh l) (* (conv-ow l) d)])
                   :offset        [1 h]
                   :sigmoid       [1 h]
                   :softmax       [1 h]

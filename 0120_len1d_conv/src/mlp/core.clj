@@ -47,34 +47,34 @@
                                (xorshift 2 4 6 8)
                                ))))
 
-(defn make-mlp-config [field-size hidden-layers max-len]
-  (concat
-   (mapcat (fn [[i0 i1]] [{:type :dense   :size [i0 i1]}
-                          {:type :offset  :size [i1   ]}
-                          {:type :sigmoid :size [i1   ]}])
-           (partition 2 1 (concat [field-size] hidden-layers)))
-   [{:type :dense         :size [(last hidden-layers) max-len]}
-    {:type :offset        :size [max-len                     ]}
-    {:type :softmax       :size [max-len                     ]}
-    {:type :cross-entropy :size [max-len                     ]}]))
+(defn make-mlp-config [max-len fs cs cd]
+  ; fs: field-size, cs: conv size, cd: conv depth
+  (let [cs-h (quot cs 2)
+        cosize (* cd (+ fs (if (even? cs) 1 0)))] ; conv out size
+    [{:type :conv
+      :size  [cs 1 cd]
+      :isize [fs 1  1]
+      :pad [cs-h 0 cs-h 0]}
+     {:type :sigmoid       :size [cosize]}
+     {:type :dense         :size [cosize max-len]}
+     {:type :offset        :size [max-len]}
+     {:type :softmax       :size [max-len]}
+     {:type :cross-entropy :size [max-len]}]))
 
-(defn -main
-  [field-size max-len iter learning-rate seed & hidden-layers]
+(defn -main [& args]
   (println "start: " (.toString (Date.)))
-  (let [[field-size max-len iter learning-rate seed]
-        (mapv read-string [field-size max-len iter learning-rate seed])
-        hidden-layers (mapv read-string hidden-layers)
-        _ (mlp-cl/init (make-mlp-config field-size hidden-layers max-len) seed)
+  (let [[field-size max-len iter learning-rate seed conv-size conv-depth]
+        (mapv read-string args)
+        _ (mlp-cl/init
+           (make-mlp-config max-len field-size conv-size conv-depth)
+           seed)
         [in-nd lbl-nd] (make-input-labels field-size max-len)]
-    ;(pr @mlp-cl/mlp-config)
+    (dosync (ref-set mlp-cl/debug true))
     (loop [i 0, [[inputs labels] & bs] (make-minibatches 16 in-nd lbl-nd)]
       (if (< iter i)
         :done
         (do
-          ;(prn inputs)
-          ;(mlp-cl/print-matrix (first inputs) 1 5)
           (mlp-cl/run-minibatch inputs labels learning-rate)
-          ;(mlp-cl/run-minibatch in-nd lbl-nd learning-rate)
           (when (= (mod i 200) 0)
             (printf "i: %6d err: %8.2f\n" i
              (mlp-cl/fw-err-subbatch in-nd lbl-nd))
