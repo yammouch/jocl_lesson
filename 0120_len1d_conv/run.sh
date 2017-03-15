@@ -1,48 +1,48 @@
-lein run  10 10 100001 0.1 1  2  2 | tee result/_10_10__2__2.log
-lein run  10 10 100001 0.1 1  2  5 | tee result/_10_10__2__5.log
-lein run  10 10 100001 0.1 1  2 10 | tee result/_10_10__2_10.log
-lein run  10 10 100001 0.1 1  2 20 | tee result/_10_10__2_20.log
-lein run  10 10 100001 0.1 1  5  2 | tee result/_10_10__5__2.log
-lein run  10 10 100001 0.1 1  5  5 | tee result/_10_10__5__5.log
-lein run  10 10 100001 0.1 1  5 10 | tee result/_10_10__5_10.log
-lein run  10 10 100001 0.1 1  5 20 | tee result/_10_10__5_20.log
-lein run  10 10 100001 0.1 1 10  2 | tee result/_10_10_10__2.log
-lein run  10 10 100001 0.1 1 10  5 | tee result/_10_10_10__5.log
-lein run  10 10 100001 0.1 1 10 10 | tee result/_10_10_10_10.log
-lein run  10 10 100001 0.1 1 10 20 | tee result/_10_10_10_20.log
-lein run  10 10 100001 0.1 1 20  2 | tee result/_10_10_20__2.log
-lein run  10 10 100001 0.1 1 20  5 | tee result/_10_10_20__5.log
-lein run  10 10 100001 0.1 1 20 10 | tee result/_10_10_20_10.log
-lein run  10 10 100001 0.1 1 20 20 | tee result/_10_10_20_20.log
-lein run  20 10 100001 0.1 1  5  5 | tee result/_20_10__5__5.log
-lein run  20 10 100001 0.1 1  5 10 | tee result/_20_10__5_10.log
-lein run  20 10 100001 0.1 1  5 20 | tee result/_20_10__5_20.log
-lein run  20 10 100001 0.1 1  5 40 | tee result/_20_10__5_40.log
-lein run  20 10 100001 0.1 1 10  5 | tee result/_20_10_10__5.log
-lein run  20 10 100001 0.1 1 10 10 | tee result/_20_10_10_10.log
-lein run  20 10 100001 0.1 1 10 20 | tee result/_20_10_10_20.log
-lein run  20 10 100001 0.1 1 10 40 | tee result/_20_10_10_40.log
-lein run  20 10 100001 0.1 1 20  5 | tee result/_20_10_20__5.log
-lein run  20 10 100001 0.1 1 20 10 | tee result/_20_10_20_10.log
-lein run  20 10 100001 0.1 1 20 20 | tee result/_20_10_20_20.log
-lein run  20 10 100001 0.1 1 20 40 | tee result/_20_10_20_40.log
-lein run  20 10 100001 0.1 1 40  5 | tee result/_20_10_40__5.log
-lein run  20 10 100001 0.1 1 40 10 | tee result/_20_10_40_10.log
-lein run  20 10 100001 0.1 1 40 20 | tee result/_20_10_40_20.log
-lein run  20 10 100001 0.1 1 40 40 | tee result/_20_10_40_40.log
-lein run 100 20 100001 0.1 1 10 10 | tee result/100_20_10_10.log
-lein run 100 20 100001 0.1 1 10 20 | tee result/100_20_10_20.log
-lein run 100 20 100001 0.1 1 10 40 | tee result/100_20_10_40.log
-lein run 100 20 100001 0.1 1 10 64 | tee result/100_20_10_64.log
-lein run 100 20 100001 0.1 1 20 10 | tee result/100_20_20_10.log
-lein run 100 20 100001 0.1 1 20 20 | tee result/100_20_20_20.log
-lein run 100 20 100001 0.1 1 20 40 | tee result/100_20_20_40.log
-lein run 100 20 100001 0.1 1 20 64 | tee result/100_20_20_64.log
-lein run 100 20 100001 0.1 1 40 10 | tee result/100_20_40_10.log
-lein run 100 20 100001 0.1 1 40 20 | tee result/100_20_40_20.log
-lein run 100 20 100001 0.1 1 40 40 | tee result/100_20_40_40.log
-lein run 100 20 100001 0.1 1 40 64 | tee result/100_20_40_64.log
-lein run 100 20 100001 0.1 1 80 10 | tee result/100_20_80_10.log
-lein run 100 20 100001 0.1 1 80 20 | tee result/100_20_80_20.log
-lein run 100 20 100001 0.1 1 80 40 | tee result/100_20_80_40.log
-lein run 100 20 100001 0.1 1 80 64 | tee result/100_20_80_64.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1  2  2 | tee result/_10_10__2__2.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1  2  5 | tee result/_10_10__2__5.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1  2 10 | tee result/_10_10__2_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1  2 20 | tee result/_10_10__2_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1  5  2 | tee result/_10_10__5__2.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1  5  5 | tee result/_10_10__5__5.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1  5 10 | tee result/_10_10__5_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1  5 20 | tee result/_10_10__5_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1 10  2 | tee result/_10_10_10__2.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1 10  5 | tee result/_10_10_10__5.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1 10 10 | tee result/_10_10_10_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1 10 20 | tee result/_10_10_10_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1 20  2 | tee result/_10_10_20__2.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1 20  5 | tee result/_10_10_20__5.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1 20 10 | tee result/_10_10_20_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  10 10 100001 0.1 1 20 20 | tee result/_10_10_20_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1  5  5 | tee result/_20_10__5__5.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1  5 10 | tee result/_20_10__5_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1  5 20 | tee result/_20_10__5_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1  5 40 | tee result/_20_10__5_40.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 10  5 | tee result/_20_10_10__5.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 10 10 | tee result/_20_10_10_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 10 20 | tee result/_20_10_10_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 10 40 | tee result/_20_10_10_40.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 20  5 | tee result/_20_10_20__5.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 20 10 | tee result/_20_10_20_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 20 20 | tee result/_20_10_20_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 20 40 | tee result/_20_10_20_40.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 40  5 | tee result/_20_10_40__5.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 40 10 | tee result/_20_10_40_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 40 20 | tee result/_20_10_40_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  20 10 100001 0.1 1 40 40 | tee result/_20_10_40_40.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 10 10 | tee result/100_20_10_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 10 20 | tee result/100_20_10_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 10 40 | tee result/100_20_10_40.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 10 64 | tee result/100_20_10_64.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 20 10 | tee result/100_20_20_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 20 20 | tee result/100_20_20_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 20 40 | tee result/100_20_20_40.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 20 64 | tee result/100_20_20_64.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 40 10 | tee result/100_20_40_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 40 20 | tee result/100_20_40_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 40 40 | tee result/100_20_40_40.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 40 64 | tee result/100_20_40_64.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 80 10 | tee result/100_20_80_10.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 80 20 | tee result/100_20_80_20.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 80 40 | tee result/100_20_80_40.log
+java -jar target/uberjar/mlp-0.1.0-SNAPSHOT-standalone.jar  100 20 100001 0.1 1 80 64 | tee result/100_20_80_64.log
