@@ -118,7 +118,7 @@
 
 (deftest softmax-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "softmax_new"} @mlp-cl/cl-ker
+        {k "softmax"} @mlp-cl/cl-ker
         v [1 2 3 4 99]
         n (- (count v) 1)
         [mem-result mem-v :as mems]
@@ -240,8 +240,8 @@
     (reduce +r (map *c (apply concat x0) (apply concat x1)))
     ))
 
-(defn conv-new-fw
- ([i c] (conv-new-fw i c false))
+(defn conv-fw
+ ([i c] (conv-fw i c false))
  ([i c bw?]
   (let [ch (count c)
         cw (count (first c))]
@@ -261,12 +261,12 @@
           (map (partial * seed) (range (apply * dim)))
           (butlast dim)))
 
-(defn conv-new-fw-test1 [ih iw id ch cw cd pu pd pl pr]
+(defn conv-fw-test1 [ih iw id ch cw cd pu pd pl pr]
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "conv_new_fw"} @mlp-cl/cl-ker
+        {k "conv_fw"} @mlp-cl/cl-ker
         i (test-data-ramp 0.1    id iw ih)
         c (test-data-ramp 0.1 cd id cw ch)
-        conved (conv-new-fw (padding i pu pd pl pr) c)
+        conved (conv-fw (padding i pu pd pl pr) c)
         rh (count conved) rw (count (first conved))
         addend (test-data-ramp 0.2 cd rw rh)
         [mem-result mem-i mem-c :as mems]
@@ -282,17 +282,17 @@
                      (flatten conved))))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
-(deftest conv-new-fw-test
-  (conv-new-fw-test1  6  6  3  3  3  6  1  1  1  1)
-  (conv-new-fw-test1 12 11 10  9  8  7  6  5  4  3)
-  (conv-new-fw-test1 11 10  9  8  7  6  5  4  3  2))
+(deftest conv-fw-test
+  (conv-fw-test1  6  6  3  3  3  6  1  1  1  1)
+  (conv-fw-test1 12 11 10  9  8  7  6  5  4  3)
+  (conv-fw-test1 11 10  9  8  7  6  5  4  3  2))
 
-(defn conv-new-bw-u-test1 [ih iw id ch cw cd pu pd pl pr]
+(defn conv-bw-u-test1 [ih iw id ch cw cd pu pd pl pr]
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "conv_new_bw_u"} @mlp-cl/cl-ker
+        {k "conv_bw_u"} @mlp-cl/cl-ker
         i (test-data-ramp 0.1 id iw ih)
         c (test-data-ramp 0.1 cd cw ch)
-        conved (conv-new-fw (padding i pu pd pl pr) c)
+        conved (conv-fw (padding i pu pd pl pr) c)
         rh (count conved) rw (count (first conved))
         addend (test-data-ramp 0.2 cd id rw rh)
         result (+r conved addend)
@@ -318,19 +318,19 @@
                      (flatten conved))))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
-(deftest conv-new-bw-u-test
-  (conv-new-bw-u-test1  6  6  3  3  3  6  1  1  1  1)
-  (conv-new-bw-u-test1 12 11 10  9  8  7  6  5  4  3)
-  (conv-new-bw-u-test1 11 10  9  8  7  6  5  4  3  2))
+(deftest conv-bw-u-test
+  (conv-bw-u-test1  6  6  3  3  3  6  1  1  1  1)
+  (conv-bw-u-test1 12 11 10  9  8  7  6  5  4  3)
+  (conv-bw-u-test1 11 10  9  8  7  6  5  4  3  2))
 
-(defn conv-new-bw-g-test1 [ih iw id ch cw cd pu pd pl pr]
+(defn conv-bw-g-test1 [ih iw id ch cw cd pu pd pl pr]
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "conv_new_bw_g"} @mlp-cl/cl-ker
+        {k "conv_bw_g"} @mlp-cl/cl-ker
         i (test-data-ramp 0.1 id    iw ih)
         c (test-data-ramp 0.1 id cd cw ch)
-        conved (conv-new-fw (padding i pu pd pl pr)
-                            (reverse (map reverse c))
-                            true)
+        conved (conv-fw (padding i pu pd pl pr)
+                        (reverse (map reverse c))
+                        true)
         rh (count conved) rw (count (first conved))
         addend (test-data-ramp 0.2 cd rw rh)
         [mem-result mem-i mem-c :as mems]
@@ -346,8 +346,8 @@
                      (flatten conved))))
     (doseq [m mems] (CL/clReleaseMemObject m))))
 
-(deftest conv-new-bw-g-test
-  (conv-new-bw-g-test1  1  1  2  1  1  1  0  0  0  0)
-  (conv-new-bw-g-test1  6  6  3  3  3  6  1  1  1  1)
-  (conv-new-bw-g-test1 12 11 10  9  8  7  6  5  4  3)
-  (conv-new-bw-g-test1 11 10  9  8  7  6  5  4  3  2))
+(deftest conv-bw-g-test
+  (conv-bw-g-test1  1  1  2  1  1  1  0  0  0  0)
+  (conv-bw-g-test1  6  6  3  3  3  6  1  1  1  1)
+  (conv-bw-g-test1 12 11 10  9  8  7  6  5  4  3)
+  (conv-bw-g-test1 11 10  9  8  7  6  5  4  3  2))

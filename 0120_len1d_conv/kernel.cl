@@ -85,7 +85,7 @@ __kernel void sigmoid_bw(
   result[i] = x*(1.0f - x)*grad[i];
 }
 
-__kernel void softmax_new(
+__kernel void softmax(
  __global float *result,
  __global float *in,
           int    len) {
@@ -134,7 +134,7 @@ __kernel void cross_entropy_bw(
   result[i] = (fw_out[i] - expc[i])*learning_rate;
 }
 
-__kernel void conv_new_fw(
+__kernel void conv_fw(
  __global       float *result,
  __global const float *input,
  __global const float *coeff,
@@ -170,7 +170,7 @@ __kernel void conv_new_fw(
   result[(ry*rw+rx)*cd+cz] = acc;
 }
 
-__kernel void conv_new_bw_u(
+__kernel void conv_bw_u(
  __global       float *result,
  __global const float *input,
  __global const float *coeff,
@@ -209,7 +209,7 @@ __kernel void conv_new_bw_u(
   else           result[((ry*rw+rx)*id+iz)*cd+cz] += acc;
 }
 
-__kernel void conv_new_bw_g(
+__kernel void conv_bw_g(
  __global       float *result,
  __global const float *input,
  __global const float *coeff,

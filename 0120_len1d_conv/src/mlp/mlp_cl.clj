@@ -132,7 +132,7 @@
 (defn fw1-conv
   [{[h w d] :size [ih iw id] :isize [pu _ pl _] :pad i :i p :p :as l} {o :i}]
   (let [{q :queue} @cl-env
-        {k "conv_new_fw"} @cl-ker
+        {k "conv_fw"} @cl-ker
         oh (conv-oh l) ow (conv-ow l)]
     (cl/callk q k nil [ow oh d] :m o :m i :m p
      :i ow :i ih :i iw :i id :i h :i w :i d :i pu :i pl
@@ -140,7 +140,7 @@
 
 (defn fw1 [{t :type [cr cc] :size i :i p :p g :g :as l} {o :i :as ln}]
   (let [{q :queue} @cl-env
-        {vm "mul_vm" add "add" smd "sigmoid_fw" smx "softmax_new"} @cl-ker]
+        {vm "mul_vm" add "add" smd "sigmoid_fw" smx "softmax"} @cl-ker]
     (case t
       :dense   (cl/callk q vm  nil [cc] :m o :m i :m p :i cr :i cc)
       :offset  (cl/callk q add nil [cr] :m o :m i :m p)
@@ -195,7 +195,7 @@
     i :i g :g u :u p :p :as l}
    is-1st?]
   (let [{q :queue} @cl-env
-        {ku "conv_new_bw_u" kg "conv_new_bw_g"} @cl-ker
+        {ku "conv_bw_u" kg "conv_bw_g"} @cl-ker
         ow (conv-ow l) oh (conv-oh l)]
     (cl/callk q ku nil [(* w id) h d] :m u :m i :m g
      :i w :i ih :i iw :i id :i oh :i ow :i d :i pu :i pl
