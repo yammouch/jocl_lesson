@@ -118,16 +118,13 @@
 
 (deftest softmax-test
   (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k1 "softmax_fw_step1" k2 "softmax_fw_step2" k3 "softmax_fw_step3"}
-        @mlp-cl/cl-ker
-        v [1 2 3 4]
-        n (count v)
-        [mem-result mem-v mem-b :as mems]
-        (map (partial cl/create-buffer ctx :f) [n v (+ 1 n)])]
-    (cl/callk q k1 nil [n] :m mem-b :m mem-v)
-    (cl/callk q k2 nil [1] :m mem-b :i n)
-    (cl/callk q k3 nil [n] :m mem-result :m mem-b :i n)
-    (let [exp-v (map #(Math/exp %) v)
+        {k "softmax_new"} @mlp-cl/cl-ker
+        v [1 2 3 4 99]
+        n (- (count v) 1)
+        [mem-result mem-v :as mems]
+        (map (partial cl/create-buffer ctx :f) [n v])]
+    (cl/callk q k nil [n] :m mem-result :m mem-v :i n)
+    (let [exp-v (map #(Math/exp %) (butlast v))
           sum (apply + exp-v)]
       (is (every? #(< -0.01 % 0.01)
                   (map #(- %1 (/ %2 sum))
@@ -198,119 +195,6 @@
     (concat (repeat pu (repeat w zero))
             (map #(concat (repeat pl zero) % (repeat pr zero)) m)
             (repeat pd (repeat w zero)))))
-
-(defn conv-test1 [ih iw ch cw pu pd pl pr]
-  (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "conv"} @mlp-cl/cl-ker
-        ih 5 iw 6 ch 3 cw 2
-        i (partition iw (map (partial * 0.1) (range (* ih iw))))
-        c (partition cw (map (partial * 0.1) (range (* ch cw))))
-        result (conv (padding i pu pd pl pr) c)
-        rh (count result) rw (count (first result))
-        [mem-result mem-i mem-c :as mems]
-        (map (partial cl/create-buffer ctx :f)
-             [(* rh rw) (apply concat i) (apply concat c)])]
-    (cl/callk q k nil [rw rh] :m mem-result :m mem-i :m mem-c
-     :i rw :i ih :i iw :i ch :i cw :i pu :i pl)
-    (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-result (* rh rw))
-                       (apply concat result))))
-    (doseq [m mems] (CL/clReleaseMemObject m))))
-
-(deftest conv-test
-  (conv-test1 5 6 3 2 0 0 0 0)
-  (conv-test1 1 3 1 1 0 0 0 0)
-  (conv-test1 5 6 3 2 1 0 0 0)
-  (conv-test1 5 6 3 2 0 1 0 0)
-  (conv-test1 5 6 3 2 0 0 1 0)
-  (conv-test1 5 6 3 2 0 0 0 1)
-  (conv-test1 5 6 3 2 1 2 3 4)
-  (conv-test1 5 6 3 2 2 2 2 2))
-
-(defn conv-acc-test1 [ih iw ch cw pu pd pl pr]
-  (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "conv_acc"} @mlp-cl/cl-ker
-        ih 5 iw 6 ch 3 cw 2
-        i (partition iw (map (partial * 0.1) (range (* ih iw))))
-        c (partition cw (map (partial * 0.1) (range (* ch cw))))
-        conved (conv (padding i pu pd pl pr) c)
-        rh (count conved) rw (count (first conved))
-        addend (map (partial * 0.2) (range (* rh rw)))
-        result (map + (apply concat conved) addend)
-        [mem-result mem-i mem-c :as mems]
-        (map (partial cl/create-buffer ctx :f)
-             [addend (apply concat i) (apply concat c)])]
-    (cl/callk q k nil [rw rh] :m mem-result :m mem-i :m mem-c
-     :i rw :i ih :i iw :i ch :i cw :i pu :i pl)
-    (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-result (* rh rw))
-                       result)))
-    (doseq [m mems] (CL/clReleaseMemObject m))))
-
-(deftest conv-acc-test
-  (conv-acc-test1 5 6 3 2 0 0 0 0)
-  (conv-acc-test1 5 6 3 2 1 0 0 0)
-  (conv-acc-test1 5 6 3 2 0 1 0 0)
-  (conv-acc-test1 5 6 3 2 0 0 1 0)
-  (conv-acc-test1 5 6 3 2 0 0 0 1)
-  (conv-acc-test1 5 6 3 2 1 2 3 4)
-  (conv-acc-test1 5 6 3 2 2 2 2 2))
-
-(defn conv-t-test1 [ih iw ch cw pu pd pl pr]
-  (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "conv_t"} @mlp-cl/cl-ker
-        ih 5 iw 6 ch 3 cw 2
-        i (partition iw (map (partial * 0.1) (range (* ih iw))))
-        c (partition cw (map (partial * 0.1) (range (* ch cw))))
-        result (conv (padding i pu pd pl pr) (reverse (map reverse c)))
-        rh (count result) rw (count (first result))
-        [mem-result mem-i mem-c :as mems]
-        (map (partial cl/create-buffer ctx :f)
-             [(* rh rw) (apply concat i) (apply concat c)])]
-    (cl/callk q k nil [rw rh] :m mem-result :m mem-i :m mem-c
-     :i rw :i ih :i iw :i ch :i cw :i pu :i pl)
-    (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-result (* rh rw))
-                       (apply concat result))))
-    (doseq [m mems] (CL/clReleaseMemObject m))))
-
-(deftest conv-t-test
-  (conv-t-test1 5 6 3 2 0 0 0 0)
-  (conv-t-test1 5 6 3 2 1 0 0 0)
-  (conv-t-test1 5 6 3 2 0 1 0 0)
-  (conv-t-test1 5 6 3 2 0 0 1 0)
-  (conv-t-test1 5 6 3 2 0 0 0 1)
-  (conv-t-test1 5 6 3 2 1 2 3 4)
-  (conv-t-test1 5 6 3 2 2 2 2 2))
-
-(defn conv-t-acc-test1 [ih iw ch cw pu pd pl pr]
-  (let [{q :queue ctx :context} @mlp-cl/cl-env
-        {k "conv_t_acc"} @mlp-cl/cl-ker
-        ih 5 iw 6 ch 3 cw 2
-        i (partition iw (map (partial * 0.1) (range (* ih iw))))
-        c (partition cw (map (partial * 0.1) (range (* ch cw))))
-        conved (conv (padding i pu pd pl pr) (reverse (map reverse c)))
-        rh (count conved) rw (count (first conved))
-        addend (map (partial * 0.2) (range (* rh rw)))
-        result (map + (apply concat conved) addend)
-        [mem-result mem-i mem-c :as mems]
-        (map (partial cl/create-buffer ctx :f)
-             [addend (apply concat i) (apply concat c)])]
-    (cl/callk q k nil [rw rh] :m mem-result :m mem-i :m mem-c
-     :i rw :i ih :i iw :i ch :i cw :i pu :i pl)
-    (is (every? #(< -0.01 % 0.01)
-                (map - (cl/read-float q mem-result (* rh rw))
-                       result)))
-    (doseq [m mems] (CL/clReleaseMemObject m))))
-
-(deftest conv-t-acc-test
-  (conv-t-acc-test1 5 6 3 2 0 0 0 0)
-  (conv-t-acc-test1 5 6 3 2 1 0 0 0)
-  (conv-t-acc-test1 5 6 3 2 0 1 0 0)
-  (conv-t-acc-test1 5 6 3 2 0 0 1 0)
-  (conv-t-acc-test1 5 6 3 2 0 0 0 1)
-  (conv-t-acc-test1 5 6 3 2 1 2 3 4)
-  (conv-t-acc-test1 5 6 3 2 2 2 2 2))
 
 ; (* [i0 i1 i2 i3]
 ;    [[c00 c01 c02]

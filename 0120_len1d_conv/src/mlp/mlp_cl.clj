@@ -51,7 +51,7 @@
             :offset (prepare-mem1 ctx :i cr :g cr :p (repeat cr 0) :u cr)
             :conv (prepare-mem-conv ctx s l)
             :sigmoid (prepare-mem1 ctx :i cr :g cr)
-            :softmax (prepare-mem1 ctx :i cr :g (+ cr 1))
+            :softmax (prepare-mem1 ctx :i (+ cr 1) :g cr)
             :cross-entropy (prepare-mem1 ctx :i cr)))
         (initial-param conf seed)
         conf))
@@ -140,18 +140,14 @@
 
 (defn fw1 [{t :type [cr cc] :size i :i p :p g :g :as l} {o :i :as ln}]
   (let [{q :queue} @cl-env
-        {vm "mul_vm" add "add" smd "sigmoid_fw"
-         smx1 "softmax_fw_step1" smx2 "softmax_fw_step2"
-         smx3 "softmax_fw_step3"} @cl-ker]
+        {vm "mul_vm" add "add" smd "sigmoid_fw" smx "softmax_new"} @cl-ker]
     (case t
-      :dense       (cl/callk q vm   nil [cc] :m o :m i :m p :i cr :i cc)
-      :offset      (cl/callk q add  nil [cr] :m o :m i :m p)
-      :conv        (fw1-conv l ln)
-      :sigmoid     (cl/callk q smd  nil [cr] :m o :m i)
-      :softmax (do (cl/callk q smx1 nil [cr] :m g :m i)
-                   (cl/callk q smx2 nil [ 1] :m g :i cr)
-                   (cl/callk q smx3 nil [cr] :m o :m g :i cr)
-                   ))))
+      :dense   (cl/callk q vm  nil [cc] :m o :m i :m p :i cr :i cc)
+      :offset  (cl/callk q add nil [cr] :m o :m i :m p)
+      :conv    (fw1-conv l ln)
+      :sigmoid (cl/callk q smd nil [cr] :m o :m i)
+      :softmax (cl/callk q smx nil [cr] :m o :m i :i cr)
+      )))
 
 (defn fw [i0]
   (let [layers (->> (assoc-in @cl-mem [0 :i] i0)

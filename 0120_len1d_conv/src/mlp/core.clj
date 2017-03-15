@@ -68,8 +68,11 @@
     (if (< iter i)
       :done
       (do
+        ;(when (= i 4) (dosync (ref-set mlp-cl/debug true )))
+        ;(when (= i 5) (dosync (ref-set mlp-cl/debug false)))
         (mlp-cl/run-minibatch inputs labels learning-rate)
         (if (= (mod i 200) 0)
+        ;(if true
           (let [err (mlp-cl/fw-err-subbatch in-nd lbl-nd)]
             (printf "i: %6d err: %8.2f\n" i err) (flush)
             (if (every? (partial > 0.02) (cons err err-acc))

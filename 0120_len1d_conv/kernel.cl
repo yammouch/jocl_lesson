@@ -71,7 +71,9 @@ __kernel void sigmoid_fw(
  __global       float *result,
  __global const float *v) {
   uint i = get_global_id(0);
-  result[i] = 1.0f/(1.0f + exp(-v[i]));
+  float x = v[i];
+  if (0 <= x) result[i] = 1.0f/(1.0f + exp(-x));
+  else        result[i] = exp(x)/(exp(x) + 1.0f);
 }
 
 __kernel void sigmoid_bw(
@@ -83,30 +85,33 @@ __kernel void sigmoid_bw(
   result[i] = x*(1.0f - x)*grad[i];
 }
 
-__kernel void softmax_fw_step1(
- __global       float *result,
- __global const float *v) {
-  uint i = get_global_id(0);
-  result[i] = exp(v[i]);
-}
-
-__kernel void softmax_fw_step2(
- __global float *v,
+__kernel void softmax_new(
+ __global float *result,
+ __global float *in,
           int    len) {
-  int i;
-  float acc = 0.0f;
-  for (i = 0; i < len; i++) {
-    acc += v[i];
-  }
-  v[len] = acc;
-}
-
-__kernel void softmax_fw_step3(
- __global       float *result,
- __global const float *in,
-                int    len) {
   uint i = get_global_id(0);
-  result[i] = in[i] / in[len];
+  int j;
+  float tmp;
+  if (i == 0) { // tmp holds max
+    tmp = in[0];
+    for (j = 1; j < len; j++) {
+      if (tmp < in[j]) tmp = in[j];
+    }
+    in[len] = tmp;
+  }
+  barrier(CLK_GLOBAL_MEM_FENCE);
+
+  result[i] = exp(in[i] - in[len]);
+  barrier(CLK_GLOBAL_MEM_FENCE);
+
+  if (i == 0) { // tmp holds sum
+    tmp = result[0];
+    for (j = 1; j < len; j++) tmp += result[j];
+    in[len] = tmp;
+  }
+  barrier(CLK_GLOBAL_MEM_FENCE);
+
+  result[i] /= in[len];
 }
 
 __kernel void quadratic_bw(
@@ -127,126 +132,6 @@ __kernel void cross_entropy_bw(
                 float  learning_rate) {
   uint i = get_global_id(0);
   result[i] = (fw_out[i] - expc[i])*learning_rate;
-}
-
-__kernel void conv(
- __global       float *result,
- __global const float *input,
- __global const float *coeff,
-                int    rw,   // width  of result
-                int    ih,   // height of input
-                int    iw,   // width  of input
-                int    ch,   // height of coeff
-                int    cw,   // width  of coeff
-                int    pu,   // padding upside
-                int    pl) { // padding left
-  uint rx = get_global_id(0), ry = get_global_id(1); // indices of result
-  int cx, cy; // indices of coeff
-  int ix, iy; // indices of input
-  float acc = 0.0f;
-
-  for (cy = 0; cy < ch; cy++) {
-    iy = ry + cy - pu;
-    if (0 <= iy && iy < ih) {
-      for (cx = 0; cx < cw; cx++) {
-        ix = rx + cx - pl;
-        if (0 <= ix && ix < iw) {
-          acc += input[iy*iw+ix] * coeff[cy*cw+cx];
-        }
-      }
-    }
-  }
-  result[ry*rw+rx] = acc;
-}
-
-__kernel void conv_acc(
- __global       float *result,
- __global const float *input,
- __global const float *coeff,
-                int    rw,   // width  of result
-                int    ih,   // height of input
-                int    iw,   // width  of input
-                int    ch,   // height of coeff
-                int    cw,   // width  of coeff
-                int    pu,   // padding upside
-                int    pl) { // padding left
-  uint rx = get_global_id(0), ry = get_global_id(1); // indices of result
-  int cx, cy; // indices of coeff
-  int ix, iy; // indices of input
-  float acc = 0.0f;
-
-  for (cy = 0; cy < ch; cy++) {
-    iy = ry + cy - pu;
-    if (0 <= iy && iy < ih) {
-      for (cx = 0; cx < cw; cx++) {
-        ix = rx + cx - pl;
-        if (0 <= ix && ix < iw) {
-          acc += input[iy*iw+ix] * coeff[cy*cw+cx];
-        }
-      }
-    }
-  }
-  result[ry*rw+rx] += acc;
-}
-
-__kernel void conv_t(
- __global       float *result,
- __global const float *input,
- __global const float *coeff,
-                int    rw,   // width  of result
-                int    ih,   // height of input
-                int    iw,   // width  of input
-                int    ch,   // height of coeff
-                int    cw,   // width  of coeff
-                int    pu,   // padding upside
-                int    pl) { // padding left
-  uint rx = get_global_id(0), ry = get_global_id(1); // indices of result
-  int cx, cy; // indices of coeff
-  int ix, iy; // indices of input
-  float acc = 0.0f;
-
-  for (cy = 0; cy < ch; cy++) {
-    iy = ry + cy - pu;
-    if (0 <= iy && iy < ih) {
-      for (cx = 0; cx < cw; cx++) {
-        ix = rx + cx - pl;
-        if (0 <= ix && ix < iw) {
-          acc += input[iy*iw+ix] * coeff[(ch-1-cy)*cw+(cw-1-cx)];
-        }
-      }
-    }
-  }
-  result[ry*rw+rx] = acc;
-}
-
-__kernel void conv_t_acc(
- __global       float *result,
- __global const float *input,
- __global const float *coeff,
-                int    rw,   // width  of result
-                int    ih,   // height of input
-                int    iw,   // width  of input
-                int    ch,   // height of coeff
-                int    cw,   // width  of coeff
-                int    pu,   // padding upside
-                int    pl) { // padding left
-  uint rx = get_global_id(0), ry = get_global_id(1); // indices of result
-  int cx, cy; // indices of coeff
-  int ix, iy; // indices of input
-  float acc = 0.0f;
-
-  for (cy = 0; cy < ch; cy++) {
-    iy = ry + cy - pu;
-    if (0 <= iy && iy < ih) {
-      for (cx = 0; cx < cw; cx++) {
-        ix = rx + cx - pl;
-        if (0 <= ix && ix < iw) {
-          acc += input[iy*iw+ix] * coeff[(ch-1-cy)*cw+(cw-1-cx)];
-        }
-      }
-    }
-  }
-  result[ry*rw+rx] += acc;
 }
 
 __kernel void conv_new_fw(
