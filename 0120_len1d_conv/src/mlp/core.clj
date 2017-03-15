@@ -93,4 +93,5 @@
       (println "end  : " (.toString end-time))
       (printf "%d seconds elapsed\n"
               (quot (- (.getTime end-time) (.getTime start-time))
-                    1000)))))
+                    1000))
+      (flush))))
