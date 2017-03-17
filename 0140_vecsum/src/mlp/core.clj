@@ -1,15 +1,19 @@
 (ns mlp.core
-  (:gen-class))
+  (:gen-class)
+  (:require [mlp.cl :as cl]
+            [clojure.pprint])
+  (:import  [org.jocl CL Pointer Sizeof cl_event]))
 
-(require 'mlp.cl)
-(alias 'cl 'mlp.cl)
+(set! *warn-on-reflection* true)
 
-(import '(org.jocl CL cl_event))
-
-(defn prepare-mem [ctx n]
-  {:out (cl/create-buffer ctx :f n)
-   :in0 (cl/create-buffer ctx :f (range n))
-   :in1 (cl/create-buffer ctx :f (range 1 (+ 1 n)))})
+(defn prepare-mem [ctx n ^floats a0 ^floats a1]
+  (cl/let-err err
+    [in0 (CL/clCreateBuffer ctx CL/CL_MEM_COPY_HOST_PTR (* Sizeof/cl_float n)
+          (Pointer/to a0) err)
+     in1 (CL/clCreateBuffer ctx CL/CL_MEM_COPY_HOST_PTR (* Sizeof/cl_float n)
+          (Pointer/to a1) err)]
+    {:out (cl/create-buffer ctx :f n)
+     :in0 in0 :in1 in1}))
 
 (def kernel-source-code "
 __kernel void k(
@@ -39,10 +43,10 @@ __kernel void k(
   (CL/clReleaseCommandQueue (@cl-env :queue))
   (CL/clReleaseContext (@cl-env :context)))
 
-(defn init [n]
+(defn init [n a0 a1]
   (dosync
     (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
-    (ref-set cl-mem (prepare-mem (@cl-env :context) n))
+    (ref-set cl-mem (prepare-mem (@cl-env :context) n a0 a1))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
                      [(get-in @cl-env [:device :id])]
                      kernel-source-code))
@@ -78,18 +82,77 @@ __kernel void k(
                              full-name))]))
        '[QUEUED SUBMIT START END]))
 
-(defn -main [& _]
+(defn format-profile [prf]
+  (apply format "%8.2e %8.2e %8.2e"
+   (->> prf
+        (partition 2 1)
+        (map (fn [[[_ t0] [_ t1]]] (- t1 t0)))
+        (map double)
+        )))
+
+(defn print-profile [ev]
+  (-> ev get-profile format-profile println))
+ 
+(defn prepare-arrays [n]
+  (let [a0 ^floats (make-array Float/TYPE n)
+        a1 ^floats (make-array Float/TYPE n)
+        ar (make-array Float/TYPE n)  ; array of result
+        ak (make-array Float/TYPE n)] ; data for kernel
+    (loop [i 0]
+      (if (<= n i)
+        [a0 a1 ar ak]
+        (do (aset a0 i (float i))
+            (aset a1 i (float (unchecked-add i 1)))
+            (recur (unchecked-add i 1))
+            )))))
+
+(defn vecsum-host [n ^floats ar ^floats a0 ^floats a1]
+  (loop [i 0]
+    (if (<= n i)
+      :done
+      (do (aset ar i (unchecked-add (aget a0 i) (aget a1 i)))
+          (recur (unchecked-add i 1))
+          ))))
+
+(defn compare [n mem ^floats ar ^floats ak]
+  (let [{q :queue} @cl-env]
+    (cl/handle-cl-error
+     (CL/clEnqueueReadBuffer q mem CL/CL_TRUE
+      0 (* n Sizeof/cl_float) (Pointer/to ak) 0 nil nil)))
+  (loop [i 0]
+    (if (<= n i)
+      (println "Comparison successful.")
+      (if (== (aget ar i) (aget ak i))
+        (recur (unchecked-add i 1))
+        (printf "Comparison failed at index %d\n" i))))
+  (flush))
+
+(defn call-kernel [gws lws n]
   (cl/let-err err
-    [n 8
-     _ (init n)
-     {q :queue ctx :context} @cl-env
+    [{q :queue ctx :context} @cl-env
      {k "k"} @cl-ker
      {out :out in0 :in0 in1 :in1} @cl-mem
      ev (CL/clCreateUserEvent ctx err)]
     (cl/set-args k :m out :m in0 :m in1 :i n)
-    (CL/clEnqueueNDRangeKernel q k 1 nil (long-array [n]) nil
+    (CL/clEnqueueNDRangeKernel q k (count gws)
+     nil
+     (long-array gws)
+     (if lws (long-array lws) nil)
      0 nil ev)
     (CL/clWaitForEvents 1 (into-array cl_event [ev]))
-    (println (get-profile ev))
-    (print-matrix out n 1))
+    (print-profile ev)
+    ))
+
+(defn -main [& _]
+  (cl/let-err err
+    [;gws [(bit-shift-left 1 24)] ; global work size
+     gws [512 512 64]
+     lws [ 64   1  1]
+     n (apply * gws)
+     [a0 a1 ar ak] (time (prepare-arrays n))
+     _ (init n a0 a1)
+     ev (CL/clCreateUserEvent (:context @cl-env) err)]
+    (call-kernel gws lws n)
+    (time (vecsum-host n ar a0 a1))
+    (time (compare n (:out @cl-mem) ar ak)))
   (finalize))
