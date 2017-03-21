@@ -95,11 +95,14 @@
   (cl/let-err err
     [{q :queue ctx :context} @cl-env
      ;{k "reduceInterleaved"} @cl-ker
-     {k "reduceCompleteUnrollWarps8"} @cl-ker
+     ;{k "reduceCompleteUnrollWarps8"} @cl-ker
+     {k "reduceSmemUnroll"} @cl-ker
      {out :out in0 :in0} @cl-mem
      ;read-a (int-array (/ gws lws))]
      read-a (int-array (/ gws lws 8))]
     (cl/set-args k :m in0 :m out :i gws)
+    (cl/handle-cl-error
+      (CL/clSetKernelArg k 3 (* 1024 Sizeof/cl_int) nil))
     (CL/clEnqueueNDRangeKernel q k 1
      nil
      ;(long-array [gws])
