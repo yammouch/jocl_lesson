@@ -88,25 +88,29 @@
             (println acc)
             @elapsed) 
         (recur (unchecked-add i 1)
-               (unchecked-add acc 1)
+               (unchecked-add acc (aget a0 i))
                )))))
 
 (defn call-kernel [gws lws ev]
   (cl/let-err err
     [{q :queue ctx :context} @cl-env
-     {k "reduceInterleaved"} @cl-ker
+     ;{k "reduceInterleaved"} @cl-ker
+     {k "reduceCompleteUnrollWarps8"} @cl-ker
      {out :out in0 :in0} @cl-mem
-     read-a (int-array (/ gws lws))]
+     ;read-a (int-array (/ gws lws))]
+     read-a (int-array (/ gws lws 8))]
     (cl/set-args k :m in0 :m out :i gws)
     (CL/clEnqueueNDRangeKernel q k 1
      nil
-     (long-array [gws])
+     ;(long-array [gws])
+     (long-array [(/ gws 8)])
      (if lws (long-array [lws]) nil)
      0 nil ev)
     (CL/clWaitForEvents 1 (into-array cl_event [ev]))
     (cl/handle-cl-error
      (CL/clEnqueueReadBuffer q out CL/CL_TRUE
-      0 (* (/ gws lws) Sizeof/cl_int) (Pointer/to read-a) 0 nil nil))
+      ;0 (* (/ gws lws) Sizeof/cl_int) (Pointer/to read-a) 0 nil nil))
+      0 (* (/ gws lws 8) Sizeof/cl_int) (Pointer/to read-a) 0 nil nil))
     (println (apply + read-a))
     (->> ev
          get-profile
@@ -127,7 +131,11 @@
 (defn -main [& _]
   (cl/let-err err
     [size (bit-shift-left 1 24)
-     conf [{:gws size :lws 512}]
+     conf [{:gws size :lws 1024}
+           {:gws size :lws  512}
+           {:gws size :lws  256}
+           {:gws size :lws  128}
+           {:gws size :lws   64}]
      n (apply max (map :gws conf))
      m (apply max (map #(/ (:gws %) (:lws %)) conf))
      [a0 ak] (time (prepare-arrays n m))
