@@ -1,7 +1,8 @@
-; lein run  4 4 1001 0.1 1 3 2 # converges
+; lein run  4 4 10001 0.1 1 3 32 # converges
 
 (ns mlp.core
-  (:gen-class))
+  (:gen-class)
+  (:require [mlp.field :as fld]))
 
 (import '(org.jocl CL)
         '(java.util Date))
@@ -31,15 +32,19 @@
 
 (defn make-input-labels [field-size max-len]
   (let [{ctx :context} @mlp-cl/cl-env
-        ij (for [i (range      field-size )
-                 j (range (inc field-size)) :when (<= 1 (- j i) max-len)]
-             [i j])]
+        confs (for [d [:v :h]
+                    [start stop] (fld/start-stops field-size max-len)
+                    q (range field-size)]
+                [start stop q d])]
     [(mapv (comp (partial cl/create-buffer ctx :f)
-                 (partial apply a-field field-size))
-           ij)
+                 (partial apply concat)
+                 (partial apply fld/field1 field-size))
+           confs)
      (mapv (comp (partial cl/create-buffer ctx :f)
-                 (fn [[i j]] (one-hot max-len (- j i))))
-           ij)]))
+                 (fn [[start stop]]
+                   (fld/one-hot field-size
+                                (+ stop (- start) 1))))
+           confs)]))
 
 (defn make-minibatches [sb-size in-nd lbl-nd]
   (map (fn [idx] [(mapv in-nd idx) (mapv lbl-nd idx)])
@@ -52,11 +57,11 @@
   (let [cs-h (quot cs 2)
         cosize (* cd (+ fs (if (even? cs) 1 0)))] ; conv out size
     [{:type :conv
-      :size  [cs 1 cd]
-      :isize [fs 1  1]
-      :pad [cs-h cs-h 0 0]}
-     {:type :sigmoid       :size [cosize]}
-     {:type :dense         :size [cosize max-len]}
+      :size  [cs cs cd]
+      :isize [fs fs  1]
+      :pad [cs-h cs-h cs-h cs-h]}
+     {:type :sigmoid       :size [(* cosize cosize)]}
+     {:type :dense         :size [(* cosize cosize) max-len]}
      {:type :offset        :size [max-len]}
      {:type :softmax       :size [max-len]}
      {:type :cross-entropy :size [max-len]}]))
