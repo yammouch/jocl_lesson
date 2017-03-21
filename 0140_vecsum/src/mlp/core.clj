@@ -107,32 +107,40 @@ __kernel void k(
             )))))
 
 (defn vecsum-host [n ^floats ar ^floats a0 ^floats a1]
-  (loop [i 0]
-    (if (<= n i)
-      :done
-      (do (aset ar i (unchecked-add (aget a0 i) (aget a1 i)))
-          (recur (unchecked-add i 1))
-          ))))
+  (let [start-time (System/nanoTime)]
+    (loop [i 0]
+      (if (<= n i)
+        (- (System/nanoTime) start-time)
+        (do (aset ar i (unchecked-add (aget a0 i) (aget a1 i)))
+            (recur (unchecked-add i 1))
+            )))))
 
 (defn compare [n mem ^floats ar ^floats ak]
-  (let [{q :queue} @cl-env]
+  (let [{q :queue} @cl-env
+        start-time    (atom nil)
+        read-end-time (atom nil)
+        comp-end-time (atom nil)]
+    (reset! start-time (System/nanoTime))
     (cl/handle-cl-error
      (CL/clEnqueueReadBuffer q mem CL/CL_TRUE
-      0 (* n Sizeof/cl_float) (Pointer/to ak) 0 nil nil)))
-  (loop [i 0]
-    (if (<= n i)
-      (println "Comparison successful.")
-      (if (== (aget ar i) (aget ak i))
-        (recur (unchecked-add i 1))
-        (printf "Comparison failed at index %d\n" i))))
-  (flush))
+      0 (* n Sizeof/cl_float) (Pointer/to ak) 0 nil nil))
+    (reset! read-end-time (System/nanoTime))
+    (loop [i 0]
+      (if (<= n i)
+        :done
+        (if (== (aget ar i) (aget ak i))
+          (recur (unchecked-add i 1))
+          (printf "Comparison failed at index %d\n" i))))
+    (reset! comp-end-time (System/nanoTime))
+    (flush)
+    [(- @read-end-time @start-time)
+     (- @comp-end-time @read-end-time)]))
 
-(defn call-kernel [gws lws n]
+(defn call-kernel [gws lws n ev]
   (cl/let-err err
     [{q :queue ctx :context} @cl-env
      {k "k"} @cl-ker
-     {out :out in0 :in0 in1 :in1} @cl-mem
-     ev (CL/clCreateUserEvent ctx err)]
+     {out :out in0 :in0 in1 :in1} @cl-mem]
     (cl/set-args k :m out :m in0 :m in1 :i n)
     (CL/clEnqueueNDRangeKernel q k (count gws)
      nil
@@ -140,19 +148,41 @@ __kernel void k(
      (if lws (long-array lws) nil)
      0 nil ev)
     (CL/clWaitForEvents 1 (into-array cl_event [ev]))
-    (print-profile ev)
-    ))
+    (->> ev
+         get-profile
+         (partition 2 1)
+         (map (fn [[[_ t0] [_ t1]]] (- t1 t0)))
+         )))
+
+(defn run1 [gws lws ev a0 a1 ar ak]
+  (let [n (apply * gws)
+        gpu  (call-kernel gws lws n ev)
+        host (vecsum-host n ar a0 a1)]
+    (println
+     (apply str
+            (map #(format %1 %2)
+                 (concat (repeat 6 "%5d") (repeat 4 "%10d"))
+                 (concat gws lws gpu [host])
+                 )))))
 
 (defn -main [& _]
   (cl/let-err err
-    [;gws [(bit-shift-left 1 24)] ; global work size
-     gws [512 512 64]
-     lws [ 64   1  1]
-     n (apply * gws)
+    [conf [{:gws [512 512 16] :lws [ 64 1 1]}
+           {:gws [512 512 32] :lws [ 64 1 1]}
+           {:gws [512 512 64] :lws [  1 1 1]}
+           {:gws [512 512 64] :lws [  2 1 1]}
+           {:gws [512 512 64] :lws [  4 1 1]}
+           {:gws [512 512 64] :lws [  8 1 1]}
+           {:gws [512 512 64] :lws [ 16 1 1]}
+           {:gws [512 512 64] :lws [ 32 1 1]}
+           {:gws [512 512 64] :lws [ 64 1 1]}
+           {:gws [512 512 64] :lws [128 1 1]}
+           {:gws [512 512 64] :lws [256 1 1]}]
+     n (apply max (map #(apply * (:gws %)) conf))
      [a0 a1 ar ak] (time (prepare-arrays n))
      _ (init n a0 a1)
      ev (CL/clCreateUserEvent (:context @cl-env) err)]
-    (call-kernel gws lws n)
-    (time (vecsum-host n ar a0 a1))
-    (time (compare n (:out @cl-mem) ar ak)))
+    (doseq [{gws :gws lws :lws} conf]
+      (run1 gws lws ev a0 a1 ar ak))
+    (CL/clReleaseEvent ev))
   (finalize))
