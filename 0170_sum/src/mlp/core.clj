@@ -2,7 +2,7 @@
   (:gen-class)
   (:require [mlp.cl :as cl]
             [clojure.pprint])
-  (:import  [org.jocl CL Pointer Sizeof cl_event]))
+  (:import  [org.jocl CL NativePointerObject Pointer Sizeof cl_event]))
 
 (set! *warn-on-reflection* true)
 
@@ -131,6 +131,20 @@
                  (concat [gws lws] gpu [host])
                  )))))
 
+(defn clGetBinaries [prg]
+  (let [param-value-size 65536
+        param-value-body (byte-array param-value-size)
+        param-value (Pointer/to (into-array NativePointerObject
+                                            [(Pointer/to param-value-body)])) 
+        param-value-size-ret (long-array 1)
+        errcode-ret (CL/clGetProgramInfo prg CL/CL_PROGRAM_BINARIES
+                     65536 param-value param-value-size-ret)]
+    (if (= errcode-ret CL/CL_SUCCESS)
+      (take 10000 param-value-body)
+      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
+      )))
+
+
 (defn -main [& _]
   (cl/let-err err
     [size (bit-shift-left 1 24)
@@ -144,6 +158,13 @@
      [a0 ak] (time (prepare-arrays n m))
      _ (init n m a0)
      ev (CL/clCreateUserEvent (:context @cl-env) err)]
+    (println
+     (cl/parse-size-t-array
+      (cl/clGetProgramInfo @cl-prg 'CL_PROGRAM_BINARY_SIZES)))
+    (doseq [bytes-16 (partition 16 (clGetBinaries @cl-prg))]
+      (println
+       (apply format (apply str (interpose " " (repeat 16 "%02X")))
+              (map #(bit-and 0xFF (short %)) bytes-16))))
     (doseq [{gws :gws lws :lws} conf]
       (run1 gws lws ev a0 ak))
     (CL/clReleaseEvent ev))
