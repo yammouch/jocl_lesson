@@ -1,7 +1,8 @@
 (ns mlp.core
   (:gen-class)
   (:require [mlp.cl :as cl]
-            [clojure.pprint])
+            [clojure.pprint]
+            [clojure.java.io])
   (:import  [org.jocl CL NativePointerObject Pointer Sizeof cl_event]))
 
 (set! *warn-on-reflection* true)
@@ -161,10 +162,9 @@
     (println
      (cl/parse-size-t-array
       (cl/clGetProgramInfo @cl-prg 'CL_PROGRAM_BINARY_SIZES)))
-    (doseq [bytes-16 (partition 16 (clGetBinaries @cl-prg))]
-      (println
-       (apply format (apply str (interpose " " (repeat 16 "%02X")))
-              (map #(bit-and 0xFF (short %)) bytes-16))))
+    (with-open [o (clojure.java.io/output-stream "kernel.bin")]
+      (let [ar (byte-array (clGetBinaries @cl-prg))]
+        (.write o ar 0 (count ar))))
     (doseq [{gws :gws lws :lws} conf]
       (run1 gws lws ev a0 ak))
     (CL/clReleaseEvent ev))
