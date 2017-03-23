@@ -29,12 +29,17 @@
 
 ; very thin wrapper of OpenCL API
 
-(defn query [f t]
-  (let [size (int-array 1)
+(defn query
+ ([f]      (query f Byte/TYPE Long/TYPE   ))
+ ([f tret] (query f tret      Integer/TYPE))
+ ([f tret tsize]
+  (let [size (make-array tsize 1)
         _ (handle-cl-error (f 0 nil size))
-        body (make-array t (first size))]
-    (handle-cl-error (f (first size) body nil))
-    body))
+        body (make-array tret (first size))]
+    (handle-cl-error (f (first size)
+                        (if (= tret Byte/TYPE) (Pointer/to body) body)
+                        nil))
+    body)))
 
 (defn clGetPlatformIDs []
   (query #(CL/clGetPlatformIDs %1 %2 %3) org.jocl.cl_platform_id))
@@ -57,23 +62,16 @@
             CL/CL_QUEUE_PROFILING_ENABLE err)]
     queue))
 
-(defn info [f]
-  (let [size (long-array 1)
-        _ (handle-cl-error (f 0 nil size))
-        body (byte-array (first size))]
-    (handle-cl-error (f (first size) (Pointer/to body) nil))
-    body))
-
 (defn clGetDeviceInfo [device param-name]
-  (info #(CL/clGetDeviceInfo device param-name %1 %2 %3)))
+  (query #(CL/clGetDeviceInfo device param-name %1 %2 %3)))
 (defn clGetPlatformInfo [platform param-name]
-  (info #(CL/clGetPlatformInfo platform param-name %1 %2 %3)))
+  (query #(CL/clGetPlatformInfo platform param-name %1 %2 %3)))
 (defn clGetProgramInfo [program param-name]
-  (info #(CL/clGetProgramInfo program param-name %1 %2 %3)))
+  (query #(CL/clGetProgramInfo program param-name %1 %2 %3)))
 (defn clGetProgramBuildInfo [program device param-name]
-  (info #(CL/clGetProgramBuildInfo program device param-name %1 %2 %3)))
+  (query #(CL/clGetProgramBuildInfo program device param-name %1 %2 %3)))
 (defn clGetKernelInfo [kernel param-name]
-  (info #(CL/clGetKernelInfo kernel param-name %1 %2 %3)))
+  (query #(CL/clGetKernelInfo kernel param-name %1 %2 %3)))
 
 ; subroutines for get bunch of OpenCL infomation
 
