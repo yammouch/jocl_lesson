@@ -27,7 +27,7 @@
                  (partition 2 binds)))]
      ~@body))
 
-; very thin wrapper of OpenCL API
+; thin wrappers
 
 (defn query
  ([f]      (query f Byte/TYPE Long/TYPE   ))
@@ -45,6 +45,9 @@
   (query #(CL/clGetPlatformIDs %1 %2 %3) org.jocl.cl_platform_id))
 (defn clCreateKernelsInProgram [program]
   (query #(CL/clCreateKernelsInProgram program %1 %2 %3) org.jocl.cl_kernel))
+
+; very thin wrapper of OpenCL API
+
 (defn clGetDeviceIDs [platform]
   (query #(CL/clGetDeviceIDs platform CL/CL_DEVICE_TYPE_ALL %1 %2 %3)
          cl_device_id))
@@ -73,55 +76,7 @@
 (defn clGetKernelInfo [kernel param-name]
   (query #(CL/clGetKernelInfo kernel param-name %1 %2 %3)))
 
-; subroutines for get bunch of OpenCL infomation
-
-(def long-props (map #(symbol (str "CL_DEVICE_" %))
-                '[VENDOR_ID
-                  MAX_COMPUTE_UNITS
-                  MAX_WORK_ITEM_DIMENSIONS
-                  MAX_WORK_GROUP_SIZE
-                  PREFERRED_VECTOR_WIDTH_CHAR
-                  PREFERRED_VECTOR_WIDTH_SHORT
-                  PREFERRED_VECTOR_WIDTH_INT
-                  PREFERRED_VECTOR_WIDTH_FLOAT
-                  PREFERRED_VECTOR_WIDTH_DOUBLE
-                  MAX_CLOCK_FREQUENCY
-                  ADDRESS_BITS
-                  MAX_MEM_ALLOC_SIZE
-                  IMAGE_SUPPORT
-                  MAX_READ_IMAGE_ARGS
-                  MAX_WRITE_IMAGE_ARGS
-                  IMAGE2D_MAX_WIDTH
-                  IMAGE2D_MAX_HEIGHT
-                  IMAGE3D_MAX_WIDTH
-                  IMAGE3D_MAX_HEIGHT
-                  IMAGE3D_MAX_DEPTH
-                  MAX_SAMPLERS
-                  MAX_PARAMETER_SIZE
-                  MEM_BASE_ADDR_ALIGN
-                  MIN_DATA_TYPE_ALIGN_SIZE
-                  GLOBAL_MEM_CACHELINE_SIZE
-                  GLOBAL_MEM_CACHE_SIZE
-                  GLOBAL_MEM_SIZE
-                  MAX_CONSTANT_BUFFER_SIZE
-                  MAX_CONSTANT_ARGS
-                  LOCAL_MEM_SIZE
-                  ERROR_CORRECTION_SUPPORT
-                  PROFILING_TIMER_RESOLUTION
-                  ENDIAN_LITTLE
-                  AVAILABLE
-                  COMPILER_AVAILABLE]))
-
-(def str-props (map #(symbol (str "CL_DEVICE_" %))
-               '[NAME
-                 VENDOR
-                 PROFILE
-                 VERSION
-                 EXTENSIONS]))
-
-(def hex-props (map #(symbol (str "CL_DEVICE_" %))
-               '[SINGLE_FP_CONFIG
-                 QUEUE_PROPERTIES]))
+; parser for queried info
 
 (defn parse-unsigned-info [array]
   (reduce (fn [acc x] (+ (* 256 acc) x))
@@ -144,70 +99,35 @@
             (partition Sizeof/size_t array)
             )))
 
-(defn get-device [device]
-  (let [long-info (map #(clGetDeviceInfo device
-                                         (.get (.getField CL (str %)) nil))
-                       long-props)
-        str-info (map #(clGetDeviceInfo device
-                                        (.get (.getField CL (str %)) nil))
-                      str-props)
-        hex-info (map #(clGetDeviceInfo device
-                                        (.get (.getField CL (str %)) nil))
-                      hex-props)]
-    {:id   device
-     :info (concat (map vector long-props (map parse-unsigned-info long-info))
-                   (map vector str-props (map parse-str-info str-info))
-                   (map vector hex-props (map parse-unsigned-info hex-info))
-                   [['CL_DEVICE_TYPE
-                    (parse-device-type
-                     (clGetDeviceInfo device CL/CL_DEVICE_TYPE))]
-                    ['CL_DEVICE_MAX_WORK_ITEM_SIZES
-                     (parse-size-t-array
-                      (clGetDeviceInfo device
-                       CL/CL_DEVICE_MAX_WORK_ITEM_SIZES))]])}))
+; for program initialization
 
-(defn get-platform [platform]
-  (let [names '[CL_PLATFORM_PROFILE
-                CL_PLATFORM_VERSION
-                CL_PLATFORM_NAME
-                CL_PLATFORM_VENDOR
-                CL_PLATFORM_EXTENSIONS]]
-    {:id      platform
-     :info    (concat 
-               (map vector
-                names
-                (map #(parse-str-info (clGetPlatformInfo platform %))
-                     names)))
-     :devices (map get-device (clGetDeviceIDs platform))
-     }))
-
-(defn get-platforms [] (map get-platform (clGetPlatformIDs)))
-
-(defn find-devices [type platform]
-  (let [ds (platform :devices)
+(defn find-devices [device-type platform]
+  (let [ds (clGetDeviceIDs platform)
         pred (fn [d]
-               (some #(= % type)
-                     ((into {} (d :info)) 'CL_DEVICE_TYPE)
-                     ))]
+               (not= 0 (bit-and device-type
+                        (parse-unsigned-info
+                         (clGetDeviceInfo d CL/CL_DEVICE_TYPE)))))]
     (concat (filter pred ds)
             (filter (complement pred) ds)
             )))
 
 (defn context [device-type]
-  (loop [pfs (get-platforms)]
+  (loop [pfs (clGetPlatformIDs)]
     (if (empty? pfs)
       nil
       (let [pf (first pfs)
-            cpu (first (find-devices device-type pf))]
-        (if cpu
-          (let [context (clCreateContext [(cpu :id)])
-                queue   (clCreateCommandQueue context (cpu :id))]
+            dev (first (find-devices device-type pf))]
+        (if dev
+          (let [context (clCreateContext [dev])
+                queue   (clCreateCommandQueue context dev)]
             {:platform pf
-             :device   cpu
+             :device   dev 
              :context  context
              :queue    queue})
           (recur (next pfs))
           )))))
+
+; thick wrappers
 
 (defn read-float [q mem n]
   (let [dbg-array (float-array n)]

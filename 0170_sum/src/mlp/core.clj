@@ -33,11 +33,10 @@
 
 (defn init [n a0 a1]
   (dosync
-    (ref-set cl-env (cl/context 'CL_DEVICE_TYPE_GPU))
+    (ref-set cl-env (cl/context CL/CL_DEVICE_TYPE_GPU))
     (ref-set cl-mem (prepare-mem (@cl-env :context) n a0 a1))
     (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
-                     [(get-in @cl-env [:device :id])]
-                     kernel-source-code))
+                     [(:device @cl-env)] kernel-source-code))
     (ref-set cl-ker (cl/create-kernels-in-program @cl-prg))
     ))
 
