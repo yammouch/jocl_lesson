@@ -67,15 +67,11 @@
     queue))
 
 (defn info [f]
-  (let [param-value-size 65536
-        param-value-body (byte-array param-value-size)
-        param-value (Pointer/to param-value-body)
-        param-value-size-ret (long-array 1)
-        errcode-ret (f param-value-size param-value param-value-size-ret)]
-    (if (= errcode-ret CL/CL_SUCCESS)
-      (take (nth param-value-size-ret 0) param-value-body)
-      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-      )))
+  (let [size (long-array 1)
+        _ (handle-cl-error (f 0 nil size))
+        body (byte-array (first size))]
+    (handle-cl-error (f (first size) (Pointer/to body) nil))
+    body))
 
 (defn clGetDeviceInfo [device param-name]
   (info #(CL/clGetDeviceInfo device param-name %1 %2 %3)))
