@@ -163,9 +163,9 @@
     (println
      (cl/parse-size-t-array
       (cl/clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARY_SIZES)))
-    (with-open [o (clojure.java.io/output-stream "kernel.bin")]
-      (let [ar (byte-array (clGetBinaries @cl-prg))]
-        (.write o ar 0 (count ar))))
+    ;(with-open [o (clojure.java.io/output-stream "kernel.bin")]
+    ;  (let [ar (byte-array (clGetBinaries @cl-prg))]
+    ;    (.write o ar 0 (count ar))))
     (doseq [{gws :gws lws :lws} conf]
       (run1 gws lws ev a0 ak))
     (CL/clReleaseEvent ev))

@@ -29,29 +29,20 @@
 
 ; very thin wrapper of OpenCL API
 
-(defn clGetViaPointer [f type]
-  (let [num 1024
-        ar (make-array type num)
-        num-ret (int-array 1)
-        err (f num ar num-ret)]
-    (handle-cl-error err)
-    (take (nth num-ret 0) ar)))
+(defn query [f t]
+  (let [size (int-array 1)
+        _ (handle-cl-error (f 0 nil size))
+        body (make-array t (first size))]
+    (handle-cl-error (f (first size) body nil))
+    body))
 
 (defn clGetPlatformIDs []
-  (clGetViaPointer #(CL/clGetPlatformIDs %1 %2 %3) org.jocl.cl_platform_id))
+  (query #(CL/clGetPlatformIDs %1 %2 %3) org.jocl.cl_platform_id))
 (defn clCreateKernelsInProgram [program]
-  (clGetViaPointer #(CL/clCreateKernelsInProgram program %1 %2 %3)
-                   org.jocl.cl_kernel))
-
+  (query #(CL/clCreateKernelsInProgram program %1 %2 %3) org.jocl.cl_kernel))
 (defn clGetDeviceIDs [platform]
-  (let [num-devices (int-array 1)
-        _ (CL/clGetDeviceIDs
-           platform CL/CL_DEVICE_TYPE_ALL 0 nil num-devices)
-        devices (make-array cl_device_id (nth num-devices 0))
-        err (CL/clGetDeviceIDs platform CL/CL_DEVICE_TYPE_ALL
-             (nth num-devices 0) devices num-devices)]
-    (handle-cl-error err)
-    (seq devices)))
+  (query #(CL/clGetDeviceIDs platform CL/CL_DEVICE_TYPE_ALL %1 %2 %3)
+         cl_device_id))
 
 (defn clCreateContext [devices]
   (let-err err
