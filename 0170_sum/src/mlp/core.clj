@@ -63,11 +63,13 @@
 
 (defn get-profile [ev]
   (map (fn [name]
-         (let [full-name (str "CL_PROFILING_COMMAND_" name)]
+         (let [full-name (.get (.getField CL
+                                (str "CL_PROFILING_COMMAND_" name))
+                               nil)]
            [name
             (cl/parse-unsigned-info
-             (cl/clGetAnInfo #(CL/clGetEventProfilingInfo ev %1 %2 %3 %4)
-                             full-name))]))
+             (cl/clGetAnInfo #(CL/clGetEventProfilingInfo
+                               ev full-name %1 %2 %3)))]))
        '[QUEUED SUBMIT START END]))
 
 (defn prepare-arrays [n m]
@@ -145,11 +147,11 @@
       (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
-
 (defn -main [& _]
   (cl/let-err err
-    [size (bit-shift-left 1 24)
-     conf [{:gws size :lws 1024}
+    [;size (bit-shift-left 1 24)
+     size (bit-shift-left 1 13)
+     conf [;{:gws size :lws 1024}
            {:gws size :lws  512}
            {:gws size :lws  256}
            {:gws size :lws  128}
@@ -161,7 +163,7 @@
      ev (CL/clCreateUserEvent (:context @cl-env) err)]
     (println
      (cl/parse-size-t-array
-      (cl/clGetProgramInfo @cl-prg 'CL_PROGRAM_BINARY_SIZES)))
+      (cl/clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARY_SIZES)))
     (with-open [o (clojure.java.io/output-stream "kernel.bin")]
       (let [ar (byte-array (clGetBinaries @cl-prg))]
         (.write o ar 0 (count ar))))

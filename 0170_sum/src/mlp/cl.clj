@@ -2,17 +2,40 @@
 
 (import '(org.jocl CL Sizeof Pointer cl_device_id cl_event))
 
+; utilities for this namespace
+
+(defn handle-cl-error [err-code]
+  (when (not= err-code CL/CL_SUCCESS)
+    (throw (Exception. (CL/stringFor_errorCode err-code)))))
+
+(defn find-symbol [s x]
+  (if (coll? x)
+    (or (find-symbol s (first x))
+        (find-symbol s (next  x)))
+    (= x s)))
+
+(defmacro let-err [err-name binds & body]
+  `(let [~err-name (int-array 1)
+         ~@(apply concat
+            (map (fn [[var clause]]
+                   (if (find-symbol err-name clause)
+                     `(~var (let [ret# ~clause]
+                              (handle-cl-error (first ~err-name))
+                              ret#))
+                     `(~var ~clause)
+                     ))
+                 (partition 2 binds)))]
+     ~@body))
+
 ; very thin wrapper of OpenCL API
 
 (defn clGetViaPointer [f type]
   (let [num 1024
         ar (make-array type num)
         num-ret (int-array 1)
-        errcode-ret (f num ar num-ret)]
-    (if (= errcode-ret CL/CL_SUCCESS)
-      (take (nth num-ret 0) ar)
-      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-      )))
+        err (f num ar num-ret)]
+    (handle-cl-error err)
+    (take (nth num-ret 0) ar)))
 
 (defn clGetPlatformIDs []
   (clGetViaPointer #(CL/clGetPlatformIDs %1 %2 %3) org.jocl.cl_platform_id))
@@ -25,75 +48,60 @@
         _ (CL/clGetDeviceIDs
            platform CL/CL_DEVICE_TYPE_ALL 0 nil num-devices)
         devices (make-array cl_device_id (nth num-devices 0))
-        errcode-ret (CL/clGetDeviceIDs
-                     platform
-                     CL/CL_DEVICE_TYPE_ALL
-                     (nth num-devices 0)
-                     devices
-                     num-devices)]
-    (if (= errcode-ret CL/CL_SUCCESS)
-      (seq devices)
-      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-      )))
+        err (CL/clGetDeviceIDs platform CL/CL_DEVICE_TYPE_ALL
+             (nth num-devices 0) devices num-devices)]
+    (handle-el-error err)
+    (seq devices)))
 
 (defn clCreateContext [devices]
-  (let [errcode-ret (int-array 1)
-        context
-        (CL/clCreateContext
-          nil             ; const cl_context_properties *properties
-          (count devices) ; cl_uint num_devices
-          (into-array cl_device_id devices)
-          ; const cl_device_id *devices
-          nil             ; (void CL_CALLBACK *pfn_notiry) (
-                          ;   const char *errinfo,
-                          ;   const void *private_info,
-                          ;   size_t cb,
-                          ;   void *user_data)
-          nil             ; void *user_data
-          errcode-ret     ; cl_int *errcode_ret
-          )]
-    (if (= (nth errcode-ret 0) CL/CL_SUCCESS)
-      context
-      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-      )))
+  (let-err err
+    [context (CL/clCreateContext nil (count devices)
+              (into-array cl_device_id devices)
+              nil nil err)]
+    context))
 
 (defn clCreateCommandQueue [context device]
-  (let [errcode-ret (int-array 1)
-        queue (CL/clCreateCommandQueue
-               context device
-               CL/CL_QUEUE_PROFILING_ENABLE
-               errcode-ret)]
-    (if (= (nth errcode-ret 0) CL/CL_SUCCESS)
-      queue
-      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-      )))
+  (let-err err
+    [queue (CL/clCreateCommandQueue context device
+            CL/CL_QUEUE_PROFILING_ENABLE err)]
+    queue))
 
-(defn clGetAnInfo [f param-name]
+;(defn clGetAnInfo [f param-name]
+;  (let [param-value-size 65536
+;        param-value-body (byte-array param-value-size)
+;        param-value (Pointer/to param-value-body)
+;        param-value-size-ret (long-array 1)
+;        errcode-ret (f
+;                     (.get (.getField CL (str param-name)) nil)
+;                     param-value-size
+;                     param-value
+;                     param-value-size-ret)]
+;    (if (= errcode-ret CL/CL_SUCCESS)
+;      (take (nth param-value-size-ret 0) param-value-body)
+;      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
+;      )))
+
+(defn clGetAnInfo [f]
   (let [param-value-size 65536
         param-value-body (byte-array param-value-size)
         param-value (Pointer/to param-value-body)
         param-value-size-ret (long-array 1)
-        errcode-ret (f
-                     (.get (.getField CL (str param-name)) nil)
-                     param-value-size
-                     param-value
-                     param-value-size-ret)]
+        errcode-ret (f param-value-size param-value param-value-size-ret)]
     (if (= errcode-ret CL/CL_SUCCESS)
       (take (nth param-value-size-ret 0) param-value-body)
       (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
       )))
 
 (defn clGetDeviceInfo [device param-name]
-  (clGetAnInfo #(CL/clGetDeviceInfo device %1 %2 %3 %4) param-name))
+  (clGetAnInfo #(CL/clGetDeviceInfo device param-name %1 %2 %3)))
 (defn clGetPlatformInfo [platform param-name]
-  (clGetAnInfo #(CL/clGetPlatformInfo platform %1 %2 %3 %4) param-name))
+  (clGetAnInfo #(CL/clGetPlatformInfo platform param-name %1 %2 %3)))
 (defn clGetProgramInfo [program param-name]
-  (clGetAnInfo #(CL/clGetProgramInfo program %1 %2 %3 %4) param-name))
+  (clGetAnInfo #(CL/clGetProgramInfo program param-name %1 %2 %3)))
 (defn clGetProgramBuildInfo [program device param-name]
-  (clGetAnInfo #(CL/clGetProgramBuildInfo program device %1 %2 %3 %4)
-               param-name))
+  (clGetAnInfo #(CL/clGetProgramBuildInfo program device param-name %1 %2 %3)))
 (defn clGetKernelInfo [kernel param-name]
-  (clGetAnInfo #(CL/clGetKernelInfo kernel %1 %2 %3 %4) param-name))
+  (clGetAnInfo #(CL/clGetKernelInfo kernel param-name %1 %2 %3)))
 
 ; subroutines for get bunch of OpenCL infomation
 
@@ -167,11 +175,14 @@
             )))
 
 (defn get-device [device]
-  (let [long-info (map #(clGetDeviceInfo device %)
+  (let [long-info (map #(clGetDeviceInfo device
+                                         (.get (.getField CL (str %)) nil))
                        long-props)
-        str-info (map #(clGetDeviceInfo device %)
+        str-info (map #(clGetDeviceInfo device
+                                        (.get (.getField CL (str %)) nil))
                       str-props)
-        hex-info (map #(clGetDeviceInfo device %)
+        hex-info (map #(clGetDeviceInfo device
+                                        (.get (.getField CL (str %)) nil))
                       hex-props)]
     {:id   device
      :info (concat (map vector long-props (map parse-unsigned-info long-info))
@@ -179,11 +190,11 @@
                    (map vector hex-props (map parse-unsigned-info hex-info))
                    [['CL_DEVICE_TYPE
                     (parse-device-type
-                     (clGetDeviceInfo device 'CL_DEVICE_TYPE))]
+                     (clGetDeviceInfo device CL/CL_DEVICE_TYPE))]
                     ['CL_DEVICE_MAX_WORK_ITEM_SIZES
                      (parse-size-t-array
                       (clGetDeviceInfo device
-                       'CL_DEVICE_MAX_WORK_ITEM_SIZES))]])}))
+                       CL/CL_DEVICE_MAX_WORK_ITEM_SIZES))]])}))
 
 (defn get-platform [platform]
   (let [names '[CL_PLATFORM_PROFILE
@@ -228,10 +239,6 @@
           (recur (next pfs))
           )))))
 
-(defn handle-cl-error [err-code]
-  (when (not= err-code CL/CL_SUCCESS)
-    (throw (Exception. (CL/stringFor_errorCode err-code)))))
-
 (defn read-float [q mem n]
   (let [dbg-array (float-array n)]
     (handle-cl-error
@@ -240,37 +247,17 @@
       0 nil nil))
     dbg-array))
 
-(defn find-symbol [s x]
-  (if (coll? x)
-    (or (find-symbol s (first x))
-        (find-symbol s (next  x)))
-    (= x s)))
-
-(defmacro let-err [err-name binds & body]
-  `(let [~err-name (int-array 1)
-         ~@(apply concat
-            (map (fn [[var clause]]
-                   (if (find-symbol err-name clause)
-                     `(~var (let [ret# ~clause]
-                              (handle-cl-error (first ~err-name))
-                              ret#))
-                     `(~var ~clause)
-                     ))
-                 (partition 2 binds)))]
-     ~@body))
-
 (defn create-buffer [context type src]
-  (let [err (int-array 1)
-        [unit-size ar-fn]
-        (case type
-          :f [Sizeof/cl_float float-array]
-          (throw (Exception. "Illegal type in 'create-buffer'")))
-        [ptr size flag]
-        (if (coll? src)
-          [(Pointer/to (ar-fn src)) (count src) CL/CL_MEM_COPY_HOST_PTR]
-          [nil                      src         CL/CL_MEM_READ_WRITE   ])
-        ret (CL/clCreateBuffer context flag (* unit-size size) ptr err)]
-    (handle-cl-error (first err))
+  (let-err err
+    [[unit-size ar-fn]
+     (case type
+       :f [Sizeof/cl_float float-array]
+       (throw (Exception. "Illegal type in 'create-buffer'")))
+     [ptr size flag]
+     (if (coll? src)
+       [(Pointer/to (ar-fn src)) (count src) CL/CL_MEM_COPY_HOST_PTR]
+       [nil                      src         CL/CL_MEM_READ_WRITE   ])
+     ret (CL/clCreateBuffer context flag (* unit-size size) ptr err)]
     ret))
 
 (defn set-args [kernel & args]
@@ -292,24 +279,22 @@
                  (long-array [(count source)]) err)
         er (CL/clBuildProgram
             program 1 (into-array cl_device_id devices)
-            nil ;(if simd "-D SIMD=1" nil)
-            nil nil)]
+            nil nil nil)]
     (doseq [d devices]
       (println (parse-str-info
                 (clGetProgramBuildInfo program d
-                 'CL_PROGRAM_BUILD_LOG))))
+                 CL/CL_PROGRAM_BUILD_LOG))))
     (handle-cl-error er)
     program))
 
 (defn create-kernel [p name]
-  (let [err (int-array 1)
-        ret (CL/clCreateKernel p name err)]
-    (handle-cl-error (first err))
+  (let-err err
+    [ret (CL/clCreateKernel p name err)]
     ret))
 
 (defn create-kernels-in-program [p]
   (into {}
-        (map (fn [k] [(-> (clGetKernelInfo k 'CL_KERNEL_FUNCTION_NAME)
+        (map (fn [k] [(-> (clGetKernelInfo k CL/CL_KERNEL_FUNCTION_NAME)
                           parse-str-info)
                       k])
              (clCreateKernelsInProgram p))))
