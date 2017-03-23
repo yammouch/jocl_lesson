@@ -50,7 +50,7 @@
         devices (make-array cl_device_id (nth num-devices 0))
         err (CL/clGetDeviceIDs platform CL/CL_DEVICE_TYPE_ALL
              (nth num-devices 0) devices num-devices)]
-    (handle-el-error err)
+    (handle-cl-error err)
     (seq devices)))
 
 (defn clCreateContext [devices]
@@ -66,22 +66,7 @@
             CL/CL_QUEUE_PROFILING_ENABLE err)]
     queue))
 
-;(defn clGetAnInfo [f param-name]
-;  (let [param-value-size 65536
-;        param-value-body (byte-array param-value-size)
-;        param-value (Pointer/to param-value-body)
-;        param-value-size-ret (long-array 1)
-;        errcode-ret (f
-;                     (.get (.getField CL (str param-name)) nil)
-;                     param-value-size
-;                     param-value
-;                     param-value-size-ret)]
-;    (if (= errcode-ret CL/CL_SUCCESS)
-;      (take (nth param-value-size-ret 0) param-value-body)
-;      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-;      )))
-
-(defn clGetAnInfo [f]
+(defn info [f]
   (let [param-value-size 65536
         param-value-body (byte-array param-value-size)
         param-value (Pointer/to param-value-body)
@@ -93,15 +78,15 @@
       )))
 
 (defn clGetDeviceInfo [device param-name]
-  (clGetAnInfo #(CL/clGetDeviceInfo device param-name %1 %2 %3)))
+  (info #(CL/clGetDeviceInfo device param-name %1 %2 %3)))
 (defn clGetPlatformInfo [platform param-name]
-  (clGetAnInfo #(CL/clGetPlatformInfo platform param-name %1 %2 %3)))
+  (info #(CL/clGetPlatformInfo platform param-name %1 %2 %3)))
 (defn clGetProgramInfo [program param-name]
-  (clGetAnInfo #(CL/clGetProgramInfo program param-name %1 %2 %3)))
+  (info #(CL/clGetProgramInfo program param-name %1 %2 %3)))
 (defn clGetProgramBuildInfo [program device param-name]
-  (clGetAnInfo #(CL/clGetProgramBuildInfo program device param-name %1 %2 %3)))
+  (info #(CL/clGetProgramBuildInfo program device param-name %1 %2 %3)))
 (defn clGetKernelInfo [kernel param-name]
-  (clGetAnInfo #(CL/clGetKernelInfo kernel param-name %1 %2 %3)))
+  (info #(CL/clGetKernelInfo kernel param-name %1 %2 %3)))
 
 ; subroutines for get bunch of OpenCL infomation
 

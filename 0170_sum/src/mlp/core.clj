@@ -68,8 +68,7 @@
                                nil)]
            [name
             (cl/parse-unsigned-info
-             (cl/clGetAnInfo #(CL/clGetEventProfilingInfo
-                               ev full-name %1 %2 %3)))]))
+             (cl/info #(CL/clGetEventProfilingInfo ev full-name %1 %2 %3)))]))
        '[QUEUED SUBMIT START END]))
 
 (defn prepare-arrays [n m]
