@@ -7,6 +7,29 @@
 
 (set! *warn-on-reflection* true)
 
+; OpenCL wappers
+
+(defn clGetEventProfilingInfo [ev param-name]
+  (cl/parse-unsigned-info
+   (cl/query #(CL/clGetEventProfilingInfo ev param-name %1 %2 %3))))
+
+(defn clGetProgramInfo [prg param-name]
+  (cond 
+    (== param-name CL/CL_PROGRAM_BINARIES)
+    (let [body (mapv #(byte-array %)
+                     (clGetProgramInfo prg CL/CL_PROGRAM_BINARY_SIZES))]
+      (cl/ret-err (CL/clGetProgramInfo prg CL/CL_PROGRAM_BINARIES
+                   (apply max (map count body))
+                   (Pointer/to (into-array NativePointerObject
+                                           (map #(Pointer/to %) body)))
+                   nil))
+      body)
+    (== param-name CL/CL_PROGRAM_BINARY_SIZES)
+    (cl/parse-size-t-array
+     (cl/clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARY_SIZES))))
+
+; subroutines
+
 (defn prepare-mem [ctx n m ^ints a0]
   (cl/let-err err
     [in0 (CL/clCreateBuffer ctx CL/CL_MEM_COPY_HOST_PTR (* Sizeof/cl_int n)
@@ -40,34 +63,11 @@
     (ref-set cl-ker (cl/create-kernels-in-program @cl-prg))
     ))
 
-(defn formatv [v]
-  (apply str
-   (interpose " "
-    (map (partial format "%16.2e")
-         v))))
-
-; comma separated, for analyzing on Google Sheet
-;(defn formatv [v]
-;  (apply str
-;   (map (partial format ",%.2f")
-;        v)))
-
-(defn print-matrix [cl-mem cr cc] ; column count
-  (let [strs (map formatv
-                  (partition cc
-                             (cl/read-float (@cl-env :queue)
-                                            cl-mem
-                                            (* cr cc))))]
-    (doseq [s strs] (println s))))
-
 (defn get-profile [ev]
   (map (fn [name]
-         (let [full-name (.get (.getField CL
-                                (str "CL_PROFILING_COMMAND_" name))
-                               nil)]
-           [name
-            (cl/parse-unsigned-info
-             (cl/query #(CL/clGetEventProfilingInfo ev full-name %1 %2 %3)))]))
+         [name
+          (clGetEventProfilingInfo ev
+           (.get (.getField CL (str "CL_PROFILING_COMMAND_" name)) nil))])
        '[QUEUED SUBMIT START END]))
 
 (defn prepare-arrays [n m]
@@ -132,19 +132,6 @@
                  (concat [gws lws] gpu [host])
                  )))))
 
-(defn clGetBinaries [prg]
-  (let [param-value-size 65536
-        param-value-body (byte-array param-value-size)
-        param-value (Pointer/to (into-array NativePointerObject
-                                            [(Pointer/to param-value-body)])) 
-        param-value-size-ret (long-array 1)
-        errcode-ret (CL/clGetProgramInfo prg CL/CL_PROGRAM_BINARIES
-                     65536 param-value param-value-size-ret)]
-    (if (= errcode-ret CL/CL_SUCCESS)
-      (take 10000 param-value-body)
-      (throw (Exception. (CL/stringFor_errorCode errcode-ret)))
-      )))
-
 (defn -main [& _]
   (cl/let-err err
     [;size (bit-shift-left 1 24)
@@ -159,12 +146,9 @@
      [a0 ak] (time (prepare-arrays n m))
      _ (init n m a0)
      ev (CL/clCreateUserEvent (:context @cl-env) err)]
-    (println
-     (cl/parse-size-t-array
-      (cl/clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARY_SIZES)))
-    ;(with-open [o (clojure.java.io/output-stream "kernel.bin")]
-    ;  (let [ar (byte-array (clGetBinaries @cl-prg))]
-    ;    (.write o ar 0 (count ar))))
+    (with-open [o (clojure.java.io/output-stream "kernel.bin")]
+      (let [ar (first (clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARIES))]
+        (.write o ar 0 (count ar))))
     (doseq [{gws :gws lws :lws} conf]
       (run1 gws lws ev a0 ak))
     (CL/clReleaseEvent ev))
