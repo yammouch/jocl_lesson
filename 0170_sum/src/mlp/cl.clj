@@ -1,10 +1,9 @@
-(ns mlp.cl)
-
-(import '(org.jocl CL Sizeof Pointer cl_device_id cl_event))
+(ns mlp.cl
+  (:import [org.jocl CL Sizeof Pointer cl_device_id cl_event]))
 
 ; utilities for this namespace
 
-(defn handle-cl-error [err-code]
+(defn ret-err [err-code]
   (when (not= err-code CL/CL_SUCCESS)
     (throw (Exception. (CL/stringFor_errorCode err-code)))))
 
@@ -14,18 +13,21 @@
         (find-symbol s (next  x)))
     (= x s)))
 
+(defmacro let-err1 [err-name clause]
+  (if (find-symbol err-name clause)
+    `(let [ret# ~clause]
+       (ret-err (first ~err-name))
+       ret#)
+    clause))
+
 (defmacro let-err [err-name binds & body]
   `(let [~err-name (int-array 1)
          ~@(apply concat
             (map (fn [[var clause]]
-                   (if (find-symbol err-name clause)
-                     `(~var (let [ret# ~clause]
-                              (handle-cl-error (first ~err-name))
-                              ret#))
-                     `(~var ~clause)
-                     ))
+                   `(~var (let-err1 ~err-name ~clause)))
                  (partition 2 binds)))]
-     ~@body))
+     ~@(map (fn [clause] `(let-err1 ~err-name ~clause))
+            body)))
 
 ; thin wrappers
 
@@ -34,11 +36,11 @@
  ([f tret] (query f tret      Integer/TYPE))
  ([f tret tsize]
   (let [size (make-array tsize 1)
-        _ (handle-cl-error (f 0 nil size))
+        _ (ret-err (f 0 nil size))
         body (make-array tret (first size))]
-    (handle-cl-error (f (first size)
-                        (if (= tret Byte/TYPE) (Pointer/to body) body)
-                        nil))
+    (ret-err (f (first size)
+                (if (= tret Byte/TYPE) (Pointer/to body) body)
+                nil))
     body)))
 
 (defn clGetPlatformIDs []
@@ -46,24 +48,18 @@
 (defn clCreateKernelsInProgram [program]
   (query #(CL/clCreateKernelsInProgram program %1 %2 %3) org.jocl.cl_kernel))
 
-; very thin wrapper of OpenCL API
-
 (defn clGetDeviceIDs [platform]
   (query #(CL/clGetDeviceIDs platform CL/CL_DEVICE_TYPE_ALL %1 %2 %3)
          cl_device_id))
 
 (defn clCreateContext [devices]
-  (let-err err
-    [context (CL/clCreateContext nil (count devices)
-              (into-array cl_device_id devices)
-              nil nil err)]
-    context))
+  (let-err err []
+    (CL/clCreateContext nil (count devices) (into-array cl_device_id devices)
+                        nil nil err)))
 
 (defn clCreateCommandQueue [context device]
-  (let-err err
-    [queue (CL/clCreateCommandQueue context device
-            CL/CL_QUEUE_PROFILING_ENABLE err)]
-    queue))
+  (let-err err []
+    (CL/clCreateCommandQueue context device CL/CL_QUEUE_PROFILING_ENABLE err)))
 
 (defn clGetDeviceInfo [device param-name]
   (query #(CL/clGetDeviceInfo device param-name %1 %2 %3)))
@@ -131,7 +127,7 @@
 
 (defn read-float [q mem n]
   (let [dbg-array (float-array n)]
-    (handle-cl-error
+    (ret-err
      (CL/clEnqueueReadBuffer q mem CL/CL_TRUE
       0 (* (count dbg-array) Sizeof/cl_float) (Pointer/to dbg-array)
       0 nil nil))
@@ -146,9 +142,8 @@
      [ptr size flag]
      (if (coll? src)
        [(Pointer/to (ar-fn src)) (count src) CL/CL_MEM_COPY_HOST_PTR]
-       [nil                      src         CL/CL_MEM_READ_WRITE   ])
-     ret (CL/clCreateBuffer context flag (* unit-size size) ptr err)]
-    ret))
+       [nil                      src         CL/CL_MEM_READ_WRITE   ])]
+    (CL/clCreateBuffer context flag (* unit-size size) ptr err)))
 
 (defn set-args [kernel & args]
   (doseq [[i type arg] (map cons (range) (partition 2 args))]
@@ -158,29 +153,26 @@
                           :m [Sizeof/cl_mem                 arg  ]
                           (throw (Exception. "Illegal type in 'set-args'"))
                           )]
-      (handle-cl-error
-        (CL/clSetKernelArg kernel i size (Pointer/to pt-src))
-        ))))
+      (ret-err (CL/clSetKernelArg kernel i size (Pointer/to pt-src)))
+      )))
 
 (defn compile-kernel-source [context devices source]
-  (let [err (int-array 1)
-        program (CL/clCreateProgramWithSource
-                 context 1 (into-array String [source])
-                 (long-array [(count source)]) err)
-        er (CL/clBuildProgram
-            program 1 (into-array cl_device_id devices)
-            nil nil nil)]
+  (let-err err
+    [program (CL/clCreateProgramWithSource
+              context 1 (into-array String [source])
+              (long-array [(count source)]) err)
+     er (CL/clBuildProgram
+         program 1 (into-array cl_device_id devices)
+         nil nil nil)]
     (doseq [d devices]
       (println (parse-str-info
                 (clGetProgramBuildInfo program d
                  CL/CL_PROGRAM_BUILD_LOG))))
-    (handle-cl-error er)
+    (ret-err er)
     program))
 
 (defn create-kernel [p name]
-  (let-err err
-    [ret (CL/clCreateKernel p name err)]
-    ret))
+  (let-err err [] (CL/clCreateKernel p name err)))
 
 (defn create-kernels-in-program [p]
   (into {}
@@ -191,7 +183,7 @@
 
 (defn callk [q k global-work-offset global-work-size & args]
   (apply set-args k args)
-  (handle-cl-error
+  (ret-err
    (CL/clEnqueueNDRangeKernel q k (count global-work-size)
     (if global-work-offset (long-array global-work-offset) nil)
     (long-array global-work-size) nil

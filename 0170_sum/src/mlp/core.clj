@@ -102,7 +102,7 @@
      ;read-a (int-array (/ gws lws))]
      read-a (int-array (/ gws lws 8))]
     (cl/set-args k :m in0 :m out :i gws)
-    (cl/handle-cl-error
+    (cl/ret-err
       (CL/clSetKernelArg k 3 (* 1024 Sizeof/cl_int) nil))
     (CL/clEnqueueNDRangeKernel q k 1
      nil
@@ -111,7 +111,7 @@
      (if lws (long-array [lws]) nil)
      0 nil ev)
     (CL/clWaitForEvents 1 (into-array cl_event [ev]))
-    (cl/handle-cl-error
+    (cl/ret-err
      (CL/clEnqueueReadBuffer q out CL/CL_TRUE
       ;0 (* (/ gws lws) Sizeof/cl_int) (Pointer/to read-a) 0 nil nil))
       0 (* (/ gws lws 8) Sizeof/cl_int) (Pointer/to read-a) 0 nil nil))
