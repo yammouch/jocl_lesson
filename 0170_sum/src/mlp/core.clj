@@ -26,9 +26,16 @@
       body)
     (== param-name CL/CL_PROGRAM_BINARY_SIZES)
     (cl/parse-size-t-array
-     (cl/clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARY_SIZES))))
+     (cl/query #(CL/clGetProgramInfo prg
+                 CL/CL_PROGRAM_BINARY_SIZES %1 %2 %3)))))
+     ;(cl/clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARY_SIZES))))
 
-; subroutines
+(defn clGetDeviceInfo [dev param-name]
+  (cl/parse-unsigned-info ; it may differ from param-name to param-name
+   (cl/query #(CL/clGetDeviceInfo dev param-name %1 %2 %3))
+   ))
+
+; subroutines which do not refer global variables
 
 (defn prepare-mem [ctx n m ^ints a0]
   (cl/let-err err
@@ -37,31 +44,6 @@
      out (CL/clCreateBuffer ctx CL/CL_MEM_READ_WRITE (* Sizeof/cl_int m)
           nil err)]
     {:out out :in0 in0}))
-
-(def kernel-source-code (slurp "kernel.cl"))
-
-(def cl-env (ref nil))
-(def cl-mem (ref nil))
-(def cl-prg (ref nil))
-(def cl-ker (ref nil))
-
-(defn finalize []
-  (CL/clFlush (@cl-env :queue))
-  (CL/clFinish (@cl-env :queue))
-  (doseq [[_ v] @cl-ker] (CL/clReleaseKernel v))
-  (CL/clReleaseProgram @cl-prg)
-  (doseq [[_ m] @cl-mem] (CL/clReleaseMemObject m))
-  (CL/clReleaseCommandQueue (@cl-env :queue))
-  (CL/clReleaseContext (@cl-env :context)))
-
-(defn init [n a0 a1]
-  (dosync
-    (ref-set cl-env (cl/context CL/CL_DEVICE_TYPE_GPU))
-    (ref-set cl-mem (prepare-mem (@cl-env :context) n a0 a1))
-    (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
-                     [(:device @cl-env)] kernel-source-code))
-    (ref-set cl-ker (cl/create-kernels-in-program @cl-prg))
-    ))
 
 (defn get-profile [ev]
   (map (fn [name]
@@ -91,6 +73,43 @@
         (recur (unchecked-add i 1)
                (unchecked-add acc (aget a0 i))
                )))))
+
+(defn make-test-config [dev size]
+  (let [max-group-size (clGetDeviceInfo dev CL/CL_DEVICE_MAX_WORK_GROUP_SIZE)]
+    (filter #(<= (:lws %) max-group-size)
+            [{:gws size :lws 1024}
+             {:gws size :lws  512}
+             {:gws size :lws  256}
+             {:gws size :lws  128}
+             {:gws size :lws   64}])))
+
+; global variables
+
+(def kernel-source-code (slurp "kernel.cl"))
+
+(def cl-env (ref nil))
+(def cl-mem (ref nil))
+(def cl-prg (ref nil))
+(def cl-ker (ref nil))
+
+; followings refer global variables
+
+(defn finalize []
+  (CL/clFlush (@cl-env :queue))
+  (CL/clFinish (@cl-env :queue))
+  (doseq [[_ v] @cl-ker] (CL/clReleaseKernel v))
+  (CL/clReleaseProgram @cl-prg)
+  (doseq [[_ m] @cl-mem] (CL/clReleaseMemObject m))
+  (CL/clReleaseCommandQueue (@cl-env :queue))
+  (CL/clReleaseContext (@cl-env :context)))
+
+(defn init []
+  (dosync
+    (ref-set cl-env (cl/context CL/CL_DEVICE_TYPE_GPU))
+    (ref-set cl-prg (cl/compile-kernel-source (@cl-env :context)
+                     [(:device @cl-env)] kernel-source-code))
+    (ref-set cl-ker (cl/create-kernels-in-program @cl-prg))
+    ))
 
 (defn call-kernel [gws lws ev]
   (cl/let-err err
@@ -134,18 +153,14 @@
 
 (defn -main [& _]
   (cl/let-err err
-    [;size (bit-shift-left 1 24)
-     size (bit-shift-left 1 13)
-     conf [;{:gws size :lws 1024}
-           {:gws size :lws  512}
-           {:gws size :lws  256}
-           {:gws size :lws  128}
-           {:gws size :lws   64}]
+    [size (bit-shift-left 1 24)
+     conf (do (init)
+              (make-test-config (:device @cl-env) size))
      n (apply max (map :gws conf))
      m (apply max (map #(/ (:gws %) (:lws %)) conf))
      [a0 ak] (time (prepare-arrays n m))
-     _ (init n m a0)
      ev (CL/clCreateUserEvent (:context @cl-env) err)]
+    (dosync (ref-set cl-mem (prepare-mem (@cl-env :context) n m a0)))
     (with-open [o (clojure.java.io/output-stream "kernel.bin")]
       (let [ar (first (clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARIES))]
         (.write o ar 0 (count ar))))
