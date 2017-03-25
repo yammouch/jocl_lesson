@@ -35,6 +35,10 @@
    (cl/query #(CL/clGetDeviceInfo dev param-name %1 %2 %3))
    ))
 
+(defn clGetPlatformInfo [platform param-name]
+  (cl/parse-str-info
+   (cl/query #(CL/clGetPlatformInfo platform param-name %1 %2 %3))))
+
 ; subroutines which do not refer global variables
 
 (defn prepare-mem [ctx n m ^ints a0]
@@ -161,9 +165,12 @@
      [a0 ak] (time (prepare-arrays n m))
      ev (CL/clCreateUserEvent (:context @cl-env) err)]
     (dosync (ref-set cl-mem (prepare-mem (@cl-env :context) n m a0)))
-    (with-open [o (clojure.java.io/output-stream "kernel.bin")]
-      (let [ar (first (clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARIES))]
-        (.write o ar 0 (count ar))))
+    (when (not= "OpenCL 1.1 ATI-Stream-v2.3 (451)"
+                (clGetPlatformInfo (:platform @cl-env) CL/CL_PLATFORM_VERSION))
+      (println "dumping...")
+      (with-open [o (clojure.java.io/output-stream "kernel.bin")]
+        (let [ar (first (clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARIES))]
+          (.write o ar 0 (count ar)))))
     (doseq [{gws :gws lws :lws} conf]
       (run1 gws lws ev a0 ak))
     (CL/clReleaseEvent ev))
