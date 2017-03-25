@@ -145,15 +145,48 @@
          (map (fn [[[_ t0] [_ t1]]] (- t1 t0)))
          )))
 
+(defn run1-k [k size gws lws ev a0]
+  (cl/let-err err
+    [{q :queue ctx :context} @cl-env
+     {out :out in0 :in0} @cl-mem
+     read-a (int-array (/ gws lws))]
+    (CL/clEnqueueWriteBuffer q in0 CL/CL_TRUE
+     0 (* size Sizeof/cl_float) (Pointer/to a0)
+     0 nil nil)
+    (CL/clEnqueueNDRangeKernel q k 1
+     nil (long-array [gws]) (long-array [lws]) 0 nil ev)
+    (CL/clWaitForEvents 1 (into-array cl_event [ev]))
+    (cl/ret-err
+     (CL/clEnqueueReadBuffer q out CL/CL_TRUE
+      0 (* (/ gws lws) Sizeof/cl_int) (Pointer/to read-a) 0 nil nil))
+    (println (apply + read-a))
+    (->> ev
+         get-profile
+         (partition 2 1)
+         (map (fn [[[_ t0] [_ t1]]] (- t1 t0)))
+         )))
+
 (defn run1 [gws lws ev a0 ak]
-  (let [gpu  (call-kernel gws lws ev)
-        host (sum-host gws a0)]
+  (let [gpu  (call-kernel gws lws ev)]
     (println
      (apply str
             (map #(format %1 %2)
-                 (concat (repeat 2 "%5d") (repeat 4 "%10d"))
-                 (concat [gws lws] gpu [host])
+                 (concat (repeat 2 "%5d") (repeat 3 "%11d"))
+                 (concat [gws lws] gpu)
                  )))))
+
+(defn main-loop [size conf ev a0 ak]
+  (prn @cl-ker)
+  (cl/set-args (@cl-ker "reduceInterleaved") :m (:in0 @cl-mem)
+   :m (:out @cl-mem) :i size)
+  (println
+   (run1-k (@cl-ker "reduceInterleaved") size size 256 ev a0))
+  (cl/set-args (@cl-ker "reduceCompleteUnrollWarps8") :m (:in0 @cl-mem)
+   :m (:out @cl-mem) :i size)
+  (println
+   (run1-k (@cl-ker "reduceCompleteUnrollWarps8") size (/ size 8) 256 ev a0))
+  (doseq [{gws :gws lws :lws} conf]
+    (run1 gws lws ev a0 ak)))
 
 (defn -main [& _]
   (cl/let-err err
@@ -167,11 +200,11 @@
     (dosync (ref-set cl-mem (prepare-mem (@cl-env :context) n m a0)))
     (when (not= "OpenCL 1.1 ATI-Stream-v2.3 (451)"
                 (clGetPlatformInfo (:platform @cl-env) CL/CL_PLATFORM_VERSION))
-      (println "dumping...")
       (with-open [o (clojure.java.io/output-stream "kernel.bin")]
         (let [ar (first (clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARIES))]
           (.write o ar 0 (count ar)))))
-    (doseq [{gws :gws lws :lws} conf]
-      (run1 gws lws ev a0 ak))
+    (dotimes [_ 10]
+      (printf "host: %d\n" (sum-host size a0)))
+    (main-loop size conf ev a0 ak)
     (CL/clReleaseEvent ev))
   (finalize))
