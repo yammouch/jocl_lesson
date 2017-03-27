@@ -167,7 +167,8 @@
       0 (* cc Sizeof/cl_float) (Pointer/to av) 0 nil nil))
     (cl/ret-err
      (CL/clEnqueueNDRangeKernel q k 1
-      nil (long-array [(* cr cc)]) (long-array [(min cc 256)]) 0 nil ev))
+      ;nil (long-array [(* cr cc)]) (long-array [(min cc 256)]) 0 nil ev))
+      nil (long-array [(* cr cc)]) (long-array [(min cc 64)]) 0 nil ev))
     (cl/ret-err
      (CL/clWaitForEvents 1 (into-array cl_event [ev])))
     (cl/ret-err
@@ -181,15 +182,21 @@
          )))
 
 (defn main-loop [cr cc ev aov am av]
-  (cl/set-args (@cl-ker "mul_mv") :m (:ov @cl-mem)
-   :m (:m @cl-mem) :m (:v @cl-mem) :i cc)
+  (cl/set-args (@cl-ker "mul_mv_local_mem") :m (:ov @cl-mem)
+   :m (:m @cl-mem) :m (:v @cl-mem))
+  (cl/ret-err
+   (CL/clSetKernelArg (@cl-ker "mul_mv_local_mem") 3
+    (* (+ (* 64 64) (quot (* 64 64) 32)) Sizeof/cl_float) nil))
+  (cl/ret-err
+   (CL/clSetKernelArg (@cl-ker "mul_mv_local_mem") 4
+    (* 64 Sizeof/cl_float) nil))
   (println
-   (run1-k (@cl-ker "mul_mv") cr cc ev aov am av)))
+   (run1-k (@cl-ker "mul_mv_local_mem") cr cc ev aov am av)))
 
 (defn -main [& _]
   (cl/let-err err
-    [cr (bit-shift-left 1 10)
-     cc (bit-shift-left 1 10)
+    [cr (bit-shift-left 1 6)
+     cc (bit-shift-left 1 6)
      conf (do (init)
               (make-test-config (:device @cl-env) cr cc))
      [am av aov] (time (prepare-arrays cr cc))
