@@ -5,7 +5,7 @@
             [clojure.java.io])
   (:import  [org.jocl CL NativePointerObject Pointer Sizeof cl_event]))
 
-(set! *warn-on-reflection* true)
+;(set! *warn-on-reflection* true)
 
 ; OpenCL wappers
 
@@ -28,7 +28,6 @@
     (cl/parse-size-t-array
      (cl/query #(CL/clGetProgramInfo prg
                  CL/CL_PROGRAM_BINARY_SIZES %1 %2 %3)))))
-     ;(cl/clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARY_SIZES))))
 
 (defn clGetDeviceInfo [dev param-name]
   (cl/parse-unsigned-info ; it may differ from param-name to param-name
@@ -103,14 +102,26 @@
           (recur (unchecked-add i 1))
           )))))
 
-(defn compare [cc ^floats ak ^floats ah]
+(defn print-matrix [cc ar]
+  (doseq [r (map (partial map (partial format "%10.5f"))
+                 (partition cc ar))]
+    (println r)))
+
+(defn compare [len ^floats ak ^floats ah]
+  ;(print-matrix len ak)
+  ;(print-matrix len ah)
   (loop [i 0]
-    (if (<= cc i)
-      (println "comparison succeeded")
-      (if (<= 0.01 (- (aget ak i)  (aget ah i)) 0.01)
-        (recur (+ i 1))
-        (printf "comparison failed at %d\n" i)
-        ))))
+    (if (<= len i)
+      ;(println "comparison succeeded")
+      :done
+      (if (<= -0.01 (aget ah i) 0.01)
+        (if (<= -0.01 (aget ah i) 0.01)
+          (recur (+ i 1))
+          (printf "comparison failed at %d\n" i))
+        (if (<= 0.99 (/ (aget ak i) (aget ak i)) 1.01)
+          (recur (+ i 1))
+          (printf "comparison failed at %d\n" i)
+          )))))
 
 (defn make-test-config [dev cr cc]
   [{:gws cc :lws (min 256 cc)}])
@@ -162,7 +173,7 @@
     (cl/ret-err
      (CL/clEnqueueReadBuffer q ov CL/CL_TRUE
       0 (* cr Sizeof/cl_float) (Pointer/to read-ov) 0 nil nil))
-    (compare cc read-ov aov)
+    (compare cr read-ov aov)
     (->> ev
          get-profile
          (partition 2 1)
@@ -170,7 +181,6 @@
          )))
 
 (defn main-loop [cr cc ev aov am av]
-  (prn @cl-ker)
   (cl/set-args (@cl-ker "mul_mv") :m (:ov @cl-mem)
    :m (:m @cl-mem) :m (:v @cl-mem) :i cc)
   (println
@@ -178,20 +188,21 @@
 
 (defn -main [& _]
   (cl/let-err err
-    [cr (bit-shift-left 1 2)
-     cc (bit-shift-left 1 2)
+    [cr (bit-shift-left 1 10)
+     cc (bit-shift-left 1 10)
      conf (do (init)
               (make-test-config (:device @cl-env) cr cc))
      [am av aov] (time (prepare-arrays cr cc))
      ev (CL/clCreateUserEvent (:context @cl-env) err)]
-    (dosync (ref-set cl-mem (prepare-mem (@cl-env :context) cc cr am av)))
+    (dosync (ref-set cl-mem (prepare-mem (@cl-env :context) cr cc am av)))
     (when (not= "OpenCL 1.1 ATI-Stream-v2.3 (451)"
                 (clGetPlatformInfo (:platform @cl-env) CL/CL_PLATFORM_VERSION))
       (with-open [o (clojure.java.io/output-stream "kernel.bin")]
         (let [ar (first (clGetProgramInfo @cl-prg CL/CL_PROGRAM_BINARIES))]
           (.write o ar 0 (count ar)))))
-    (dotimes [_ 10]
-      (printf "host: %d\n" (mul-mv-host cr cc aov am av)))
+    ;(print-matrix cc am)
+    ;(print-matrix cc av)
+    (printf "host: %d\n" (mul-mv-host cr cc aov am av))
     (main-loop cr cc ev aov am av)
     (CL/clReleaseEvent ev))
   (finalize))
