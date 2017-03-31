@@ -31,4 +31,17 @@ public class JKernel {
       }
     }
   }
+
+  public static void sigmoid_fw(int len, float[] ov, float[] v) {
+    for (int i = 0; i < len; i++) {
+      ov[i] = 1.0f / (1.0f + (float)Math.exp(-v[i]));
+    }
+  }
+
+  public static void sigmoid_bw(
+   int len, float[] ov, float[] fw_out, float[] back_grad) {
+    for (int i = 0; i < len; i++) {
+      ov[i] = (1.0f - fw_out[i])*fw_out[i]*back_grad[i];
+    }
+  }
 }
