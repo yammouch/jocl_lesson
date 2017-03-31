@@ -223,8 +223,7 @@
         addend (test-data-ramp 0.2 cd rw rh)
         [mem-result mem-i mem-c]
         (map #(into-array Float/TYPE (flatten %)) [addend i c])]
-    (time
-      (JKernel/conv_fw rh rw ih iw id ch cw cd pu pl mem-result mem-i mem-c))
+    (JKernel/conv_fw rh rw ih iw id ch cw cd pu pl mem-result mem-i mem-c)
     (is (every? #(< -0.01 % 0.01) ; 1% of tolerance
                 (map (fn [cal ref]
                        (if (< -1.0 ref 1.0)
@@ -234,7 +233,18 @@
                      (flatten conved))))))
 
 (deftest conv-fw-test
-  (println "time for conv_fw")
   (conv-fw-test1  6  6  3  3  3  6  1  1  1  1)
   (conv-fw-test1 12 11 10  9  8  7  6  5  4  3)
   (conv-fw-test1 11 10  9  8  7  6  5  4  3  2))
+
+(deftest conv-fw-time
+  (let [len 4096
+        ih 20 iw 20 id 20 ch 10 cw 10 cd 20 pu 5 pd 5 pl 5 pr 5
+        rh (+ ih (- ch) 1 pu pd)
+        rw (+ iw (- cw) 1 pl pr)
+        result (make-array Float/TYPE (* rh rw cd))
+        input  (make-array Float/TYPE (* ih iw id))
+        coeff  (make-array Float/TYPE (* ch cw cd id))]
+    (println "time for conv_fw")
+    (time
+      (JKernel/conv_fw rh rw ih iw id ch cw cd pu pl result input coeff))))
