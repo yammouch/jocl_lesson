@@ -8,3 +8,10 @@
     (JKernel/mul_mv 3 4 ov m v)
     (is (every? #(< -0.01 % 0.01)
                 (map - ov [20 40 60])))))
+
+(deftest mul-mv-test-time
+  (let [cr 4096 cc 4096
+        ov (make-array Float/TYPE cr)
+        m  (make-array Float/TYPE (* cr cc))
+        v  (make-array Float/TYPE cc)]
+    (time (JKernel/mul_mv cr cc ov m v))))
