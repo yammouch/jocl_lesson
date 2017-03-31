@@ -69,4 +69,11 @@ public class JKernel {
       ov[i] = (x - expc[i])*learning_rate*x*(1.0f - x);
     }
   }
+
+  public static void cross_entropy_bw(
+   int len, float[] ov, float[] fw_out, float[] expc, float learning_rate) {
+    for (int i = 0; i < len; i++) {
+      ov[i] = (fw_out[i] - expc[i])*learning_rate;
+    }
+  }
 }

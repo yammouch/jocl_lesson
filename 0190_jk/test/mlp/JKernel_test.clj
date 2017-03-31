@@ -125,3 +125,21 @@
         expc   (make-array Float/TYPE len)]
     (println "time for quadratic_bw")
     (time (JKernel/quadratic_bw len ov fw-out expc (float 0.1)))))
+
+(deftest cross-entropy-bw-test
+  (let [fw-out (into-array Float/TYPE [0.5 0.5 0.5 0.5])
+        expc   (into-array Float/TYPE [0   0   1   1  ])
+        n (count fw-out)
+        ov (make-array Float/TYPE n)
+        learning-rate (float 0.1)]
+    (JKernel/cross_entropy_bw n ov fw-out expc learning-rate)
+    (is (every? #(< -0.01 % 0.01)
+                (map - ov [0.05 0.05 -0.05 -0.05])))))
+
+(deftest cross-entropy-bw-time
+  (let [len 4096
+        ov     (make-array Float/TYPE len)
+        fw-out (make-array Float/TYPE len)
+        expc   (make-array Float/TYPE len)]
+    (println "time for cross_entropy_bw")
+    (time (JKernel/cross_entropy_bw len ov fw-out expc (float 0.1)))))
