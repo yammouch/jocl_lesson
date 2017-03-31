@@ -89,3 +89,21 @@
         back-grad (make-array Float/TYPE len)]
     (println "time for sigmoid_bw")
     (time (JKernel/sigmoid_bw len ov fw-out back-grad))))
+
+(deftest softmax-test
+  (let [v (into-array Float/TYPE [1 2 3 4])
+        n (- (count v) 1)
+        ov (make-array Float/TYPE n)]
+    (JKernel/softmax n ov v)
+    (let [exp-v (map #(Math/exp %) (butlast v))
+          sum (apply + exp-v)]
+      (is (every? #(< -0.01 % 0.01)
+                  (map #(- %1 (/ %2 sum)) ov exp-v)
+                  )))))
+
+(deftest softmax-time
+  (let [len 4096
+        ov (make-array Float/TYPE len)
+        v  (make-array Float/TYPE len)]
+    (println "time for softmax")
+    (time (JKernel/softmax len ov v))))
