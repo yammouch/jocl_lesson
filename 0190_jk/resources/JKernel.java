@@ -44,4 +44,29 @@ public class JKernel {
       ov[i] = (1.0f - fw_out[i])*fw_out[i]*back_grad[i];
     }
   }
+
+  public static void softmax(int len, float[] ov, float[] v) {
+    float max = v[0];
+    for (int i = 1; i < len; i++) {
+      if (max < v[i]) max = v[i];
+    }
+    float tmp, sum = 0.0f;
+    for (int i = 0; i < len; i++) { // avoids overflow
+      tmp = (float)Math.exp(v[i] - max);
+      ov[i] = tmp;
+      sum += tmp;
+    }
+    for (int i = 0; i < len; i++) {
+      ov[i] /= sum;
+    }
+  }
+
+  public static void quadratic_bw(
+   int len, float[] ov, float[] fw_out, float[] expc, float learning_rate) {
+    float x;
+    for (int i = 0; i < len; i++) {
+      x = fw_out[i];
+      ov[i] = (x - expc[i])*learning_rate*x*(1.0f - x);
+    }
+  }
 }

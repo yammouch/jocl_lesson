@@ -107,3 +107,21 @@
         v  (make-array Float/TYPE len)]
     (println "time for softmax")
     (time (JKernel/softmax len ov v))))
+
+(deftest quadratic-bw-test
+  (let [fw-out (into-array Float/TYPE [0.5 0.5 0.5 0.5])
+        expc   (into-array Float/TYPE [0   0   1   1  ])
+        n (count fw-out)
+        ov (make-array Float/TYPE n)
+        learning-rate (float 0.1)]
+    (JKernel/quadratic_bw n ov fw-out expc learning-rate)
+    (is (every? #(< -0.01 % 0.01)
+                (map - ov [0.0125 0.0125 -0.0125 -0.0125])))))
+
+(deftest quadratic-bw-time
+  (let [len 4096
+        ov     (make-array Float/TYPE len)
+        fw-out (make-array Float/TYPE len)
+        expc   (make-array Float/TYPE len)]
+    (println "time for quadratic_bw")
+    (time (JKernel/quadratic_bw len ov fw-out expc (float 0.1)))))
