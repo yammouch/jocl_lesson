@@ -13,11 +13,12 @@ public class JKernel {
   public static void mul_vm(
    int cr, int cc, float[] ov, float[] v, float[] m) {
     for (int j = 0; j < cc; j++) {
-      float acc = 0.0f;
-      for (int i = 0; i < cr; i++) {
-        acc += v[i]*m[i*cc+j];
+      ov[j] = 0.0f;
+    }
+    for (int i = 0; i < cr; i++) {
+      for (int j = 0; j < cc; j++) {
+        ov[j] += v[i]*m[i*cc+j];
       }
-      ov[j] = acc;
     }
   }
 }
