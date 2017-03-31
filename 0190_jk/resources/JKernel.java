@@ -78,16 +78,16 @@ public class JKernel {
   }
 
   public static void conv_fw(
-   int rh, // height of result
-   int rw, // width  of result
-   int ih, // height of input
-   int iw, // width  of input
-   int id, // depth  of input
-   int ch, // height of coeff
-   int cw, // width  of coeff
-   int cd, // depth  of coeff
-   int pu, // padding upside
-   int pl, // padding left
+   int     rh, // height of result
+   int     rw, // width  of result
+   int     ih, // height of input
+   int     iw, // width  of input
+   int     id, // depth  of input
+   int     ch, // height of coeff
+   int     cw, // width  of coeff
+   int     cd, // depth  of coeff
+   int     pu, // padding upside
+   int     pl, // padding left
    float[] result,
    float[] input,
    float[] coeff) {
@@ -110,6 +110,47 @@ public class JKernel {
             }
           }
           result[(ry*rw+rx)*cd+cz] = acc;
+        }
+      }
+    }
+  }
+
+  public static void conv_bw_u(
+   int     rh, // height of result
+   int     rw, // width  of result
+   int     ih, // height of input
+   int     iw, // width  of input
+   int     id, // depth  of input
+   int     ch, // height of coeff
+   int     cw, // width  of coeff
+   int     cd, // depth  of coeff
+   int     pu, // padding upside
+   int     pl, // padding left
+   boolean overwrite,
+   float[] result,
+   float[] input,
+   float[] coeff) {
+
+    for (int ry = 0; ry < rh; ry++) {
+      for (int rx = 0; rx < rw; rx++) {
+        for (int cz = 0; cz < cd; cz++) {
+          for (int iz = 0; iz < id; iz++) {
+            float acc = 0.0f;
+            for (int cy = 0; cy < ch; cy++) {
+              int iy = ry + cy - pu;
+              if (0 <= iy && iy < ih) {
+                for (int cx = 0; cx < cw; cx++) {
+                  int ix = rx + cx - pl;
+                  if (0 <= ix && ix < iw) {
+                    acc += input[(iy*iw+ix)*id+iz]
+                        *  coeff[(cy*cw+cx)*cd+cz];
+                  }
+                }
+              }
+            }
+            if (overwrite) result[((ry*rw+rx)*id+iz)*cd+cz]  = acc;
+            else           result[((ry*rw+rx)*id+iz)*cd+cz] += acc;
+          }
         }
       }
     }

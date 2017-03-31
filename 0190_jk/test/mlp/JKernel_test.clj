@@ -238,8 +238,7 @@
   (conv-fw-test1 11 10  9  8  7  6  5  4  3  2))
 
 (deftest conv-fw-time
-  (let [len 4096
-        ih 20 iw 20 id 20 ch 10 cw 10 cd 20 pu 5 pd 5 pl 5 pr 5
+  (let [ih 20 iw 20 id 20 ch 10 cw 10 cd 20 pu 5 pd 5 pl 5 pr 5
         rh (+ ih (- ch) 1 pu pd)
         rw (+ iw (- cw) 1 pl pr)
         result (make-array Float/TYPE (* rh rw cd))
@@ -248,3 +247,47 @@
     (println "time for conv_fw")
     (time
       (JKernel/conv_fw rh rw ih iw id ch cw cd pu pl result input coeff))))
+
+(defn conv-bw-u-test1 [ih iw id ch cw cd pu pd pl pr]
+  (let [i (test-data-ramp 0.1 id iw ih)
+        c (test-data-ramp 0.1 cd cw ch)
+        conved (conv-fw (padding i pu pd pl pr) c)
+        rh (count conved) rw (count (first conved))
+        addend (test-data-ramp 0.2 cd id rw rh)
+        result (+r conved addend)
+        [mem-result mem-i mem-c]
+        (map #(into-array Float/TYPE (flatten %)) [addend i c])]
+    (JKernel/conv_bw_u rh rw ih iw id ch cw cd pu pl false
+     mem-result mem-i mem-c)
+    (is (every? #(< -0.01 % 0.01) ; 1% of tolerance
+                (map (fn [cal ref]
+                       (if (< -1.0 ref 1.0)
+                         (- cal ref)
+                         (- (/ cal ref) 1.0)))
+                     mem-result (flatten result))))
+    (JKernel/conv_bw_u rh rw ih iw id ch cw cd pu pl true
+     mem-result mem-i mem-c)
+    (is (every? #(< -0.01 % 0.01) ; 1% of tolerance
+                (map (fn [cal ref]
+                       (if (< -1.0 ref 1.0)
+                         (- cal ref)
+                         (- (/ cal ref) 1.0)))
+                     mem-result (flatten conved)
+                     )))))
+
+(deftest conv-bw-u-test
+  (conv-bw-u-test1  6  6  3  3  3  6  1  1  1  1)
+  (conv-bw-u-test1 12 11 10  9  8  7  6  5  4  3)
+  (conv-bw-u-test1 11 10  9  8  7  6  5  4  3  2))
+
+(deftest conv-bw-u-time
+  (let [ih 20 iw 20 id 20 ch 10 cw 10 cd 20 pu 5 pd 5 pl 5 pr 5
+        rh (+ ih (- ch) 1 pu pd)
+        rw (+ iw (- cw) 1 pl pr)
+        result (make-array Float/TYPE (* rh rw id cd))
+        input  (make-array Float/TYPE (* ih iw id))
+        coeff  (make-array Float/TYPE (* ch cw cd))]
+    (println "time for conv_bw_u")
+    (time
+      (JKernel/conv_bw_u rh rw ih iw id ch cw cd pu pl false
+       result input coeff))))
