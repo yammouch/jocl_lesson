@@ -21,4 +21,14 @@ public class JKernel {
       }
     }
   }
+
+  public static void mul_vv(
+   int cr, int cc, float[] om, float[] vr, float[] vc, boolean is_acc) {
+    for (int i = 0; i < cr; i++) {
+      for (int j = 0; j < cc; j++) {
+        if (is_acc) om[i*cc+j] += vr[i]*vc[j];
+        else        om[i*cc+j]  = vr[i]*vc[j];
+      }
+    }
+  }
 }
