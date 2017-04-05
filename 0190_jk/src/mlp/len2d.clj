@@ -64,7 +64,7 @@
       :done
       (do
         (mlp/run-minibatch inputs labels learning-rate)
-        (if (= (mod i 200) 0)
+        (if (= (mod i 5000) 0)
           (let [err (mlp/fw-err-subbatch in-nd lbl-nd)]
             (printf "i: %6d err: %8.2f\n" i err) (flush)
             (if (every? (partial > 0.02) (cons err err-acc))
