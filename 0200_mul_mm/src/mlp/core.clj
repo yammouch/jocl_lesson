@@ -43,9 +43,9 @@
 (defn prepare-mem [ctx am0 am1]
   (cl/let-err err
     [m0 (CL/clCreateBuffer ctx CL/CL_MEM_COPY_HOST_PTR
-         (* Sizeof/cl_float 32) (Pointer/to am0) err)
+         (* Sizeof/cl_float 32 32) (Pointer/to am0) err)
      m1 (CL/clCreateBuffer ctx CL/CL_MEM_COPY_HOST_PTR
-         (* Sizeof/cl_float 32) (Pointer/to am1) err)
+         (* Sizeof/cl_float 32 32) (Pointer/to am1) err)
      om (CL/clCreateBuffer ctx CL/CL_MEM_READ_WRITE
          (* Sizeof/cl_float 32 32) nil err)]
     {:om om :m0 m0 :m1 m1}))
@@ -59,10 +59,10 @@
 
 (defn prepare-arrays []
   (let [aom ^floats (make-array Float/TYPE (* 32 32))
-        am0 ^floats (make-array Float/TYPE 32)
-        am1 ^floats (make-array Float/TYPE 32)]
+        am0 ^floats (make-array Float/TYPE (* 32 32))
+        am1 ^floats (make-array Float/TYPE (* 32 32))]
     (loop [i 0]
-      (if (<= 32 i)
+      (if (<= (* 32 32) i)
         [aom am0 am1]
         (do (aset am0 i (float i))
             (aset am1 i (float (+ i 1)))
@@ -129,11 +129,16 @@
         (do (loop [j 0]
               (if (<= 32 j)
                 :done
-                (do (aset aom (+ (* i 32) j)
-                              (* (aget am0 i) (aget am1 j)))
+                (do (loop [k 0 acc (float 0.0)]
+                      (if (<= 32 k)
+                        (aset aom (+ (* 32 i) j) acc)
+                        (recur (+ k 1)
+                               (+ acc
+                                  (* (aget am0 (+ (* 32 i) k))
+                                     (aget am1 (+ (* 32 k) j))
+                                     )))))
                     (recur (+ j 1)))))
-            (recur (+ i 1))
-            )))))
+            (recur (+ i 1)))))))
 
 (defn run1-k [k ev aom am0 am1]
   (let [{q :queue ctx :context} @cl-env
@@ -141,9 +146,9 @@
         read-om (make-array Float/TYPE (* 32 32))]
     (cl/ret-err
      (CL/clEnqueueWriteBuffer q m0 CL/CL_TRUE
-      0 (* 32 Sizeof/cl_float) (Pointer/to am0) 0 nil nil)
+      0 (* 32 32 Sizeof/cl_float) (Pointer/to am0) 0 nil nil)
      (CL/clEnqueueWriteBuffer q m1 CL/CL_TRUE
-      0 (* 32 Sizeof/cl_float) (Pointer/to am1) 0 nil nil)
+      0 (* 32 32 Sizeof/cl_float) (Pointer/to am1) 0 nil nil)
      (CL/clEnqueueNDRangeKernel q k 1
       nil (long-array [32]) (long-array [32]) 0 nil ev)
      (CL/clWaitForEvents 1 (into-array cl_event [ev]))
