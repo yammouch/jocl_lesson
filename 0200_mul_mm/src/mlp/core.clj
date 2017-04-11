@@ -163,7 +163,7 @@
 
 (defn main-loop [ev aom am0 am1]
   (cl/set-args (@cl-ker "mul_mm") :m (:om @cl-mem)
-   :m (:m0 @cl-mem) :m (:m1 @cl-mem))
+   :m (:m0 @cl-mem) :m (:m1 @cl-mem) :i 32 :i 32)
   (println
    (run1-k (@cl-ker "mul_mm") ev aom am0 am1)))
 
