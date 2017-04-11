@@ -82,10 +82,10 @@
       ;(println "comparison succeeded")
       :done
       (if (<= -0.01 (aget ah i) 0.01)
-        (if (<= -0.01 (aget ah i) 0.01)
+        (if (<= -0.01 (aget ak i) 0.01)
           (recur (+ i 1))
           (printf "comparison failed at %d\n" i))
-        (if (<= 0.99 (/ (aget ak i) (aget ak i)) 1.01)
+        (if (<= 0.99 (/ (aget ak i) (aget ah i)) 1.01)
           (recur (+ i 1))
           (printf "comparison failed at %d\n" i)
           )))))
