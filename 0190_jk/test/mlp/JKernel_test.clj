@@ -90,16 +90,29 @@
     (println "time for sigmoid_bw")
     (time (JKernel/sigmoid_bw len ov fw-out back-grad))))
 
+(defn softmax [v]
+  (let [max-v (apply max v)
+        exp-v (map #(Math/exp (- % max-v)) v)
+        sum (apply + exp-v)]
+    (map #(/ % sum) exp-v)))
+
 (deftest softmax-test
   (let [v (into-array Float/TYPE [1 2 3 4])
-        n (- (count v) 1)
+        n (count v)
         ov (make-array Float/TYPE n)]
     (JKernel/softmax (int-array [n]) ov v)
-    (let [exp-v (map #(Math/exp %) (butlast v))
-          sum (apply + exp-v)]
-      (is (every? #(< -0.01 % 0.01)
-                  (map #(- %1 (/ %2 sum)) ov exp-v)
-                  )))))
+    (is (every? #(< -0.01 % 0.01)
+                (map #(- %1 %2) ov (softmax v))
+                ))))
+
+(deftest softmax-partial-test
+  (let [v [[1 2 3] [4 5 6] [7 8]]
+        n (map count v)
+        ov (make-array Float/TYPE (apply + n))]
+    (JKernel/softmax (int-array n) ov (float-array (apply concat v)))
+    (is (every? #(< -0.01 % 0.01)
+                (map #(- %1 %2) ov (mapcat softmax v))
+                ))))
 
 (deftest softmax-time
   (let [len 4096
