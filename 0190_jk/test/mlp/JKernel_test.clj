@@ -94,7 +94,7 @@
   (let [v (into-array Float/TYPE [1 2 3 4])
         n (- (count v) 1)
         ov (make-array Float/TYPE n)]
-    (JKernel/softmax n ov v)
+    (JKernel/softmax (int-array [n]) ov v)
     (let [exp-v (map #(Math/exp %) (butlast v))
           sum (apply + exp-v)]
       (is (every? #(< -0.01 % 0.01)
@@ -106,7 +106,7 @@
         ov (make-array Float/TYPE len)
         v  (make-array Float/TYPE len)]
     (println "time for softmax")
-    (time (JKernel/softmax len ov v))))
+    (time (JKernel/softmax (int-array [len]) ov v))))
 
 (deftest quadratic-bw-test
   (let [fw-out (into-array Float/TYPE [0.5 0.5 0.5 0.5])

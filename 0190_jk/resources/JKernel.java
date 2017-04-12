@@ -55,19 +55,28 @@ public class JKernel {
     }
   }
 
-  public static void softmax(int len, float[] ov, float[] v) {
-    float max = v[0];
-    for (int i = 1; i < len; i++) {
-      if (max < v[i]) max = v[i];
+  public static void softmax(int[] len, float[] ov, float[] v) {
+    int boundary[] = new int[len.length+1];
+    boundary[0] = 0;
+    for (int i = 0, acc = 0; i < len.length; i++) {
+      acc += len[i];
+      boundary[i+1] = acc;
     }
-    float tmp, sum = 0.0f;
-    for (int i = 0; i < len; i++) { // avoids overflow
-      tmp = (float)Math.exp(v[i] - max);
-      ov[i] = tmp;
-      sum += tmp;
-    }
-    for (int i = 0; i < len; i++) {
-      ov[i] /= sum;
+
+    for (int i = 0; i < len.length; i++) {
+      float max = v[boundary[i]];
+      for (int j = boundary[i] + 1; j < boundary[i+1]; j++) {
+        if (max < v[j]) max = v[j];
+      }
+      float tmp, sum = 0.0f;
+      for (int j = boundary[i]; j < boundary[i+1]; j++) { // avoids overflow
+        tmp = (float)Math.exp(v[j] - max);
+        ov[j] = tmp;
+        sum += tmp;
+      }
+      for (int j = boundary[i]; j < boundary[i+1]; j++) {
+        ov[j] /= sum;
+      }
     }
   }
 
