@@ -103,11 +103,11 @@
 
 (defn fw1 [{t :type [cr cc] :size i :i p :p :as l} {o :i :as ln}]
   (case t
-    :dense   (JKernel/mul_vm     cr cc o i p)
-    :offset  (JKernel/add        cr    o i p)
+    :dense   (JKernel/mul_vm              cr  cc o i p)
+    :offset  (JKernel/add                 cr     o i p)
     :conv    (fw1-conv l ln)
-    :sigmoid (JKernel/sigmoid_fw cr    o i)
-    :softmax (JKernel/softmax    cr    o i)
+    :sigmoid (JKernel/sigmoid_fw          cr     o i)
+    :softmax (JKernel/softmax (int-array [cr])   o i)
     ))
 
 (defn fw [i0]
