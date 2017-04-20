@@ -43,9 +43,9 @@
 (defn prepare-mem [ctx am0 am1]
   (cl/let-err err
     [m0 (CL/clCreateBuffer ctx CL/CL_MEM_COPY_HOST_PTR
-         (* Sizeof/cl_float 32 32) (Pointer/to am0) err)
+         (* Sizeof/cl_float (count am0)) (Pointer/to am0) err)
      m1 (CL/clCreateBuffer ctx CL/CL_MEM_COPY_HOST_PTR
-         (* Sizeof/cl_float 32 32) (Pointer/to am1) err)
+         (* Sizeof/cl_float (count am1)) (Pointer/to am1) err)
      om (CL/clCreateBuffer ctx CL/CL_MEM_READ_WRITE
          (* Sizeof/cl_float 32 32) nil err)]
     {:om om :m0 m0 :m1 m1}))
@@ -57,12 +57,12 @@
            (.get (.getField CL (str "CL_PROFILING_COMMAND_" name)) nil))])
        '[QUEUED SUBMIT START END]))
 
-(defn prepare-arrays []
-  (let [aom ^floats (make-array Float/TYPE (* 32 32))
-        am0 ^floats (make-array Float/TYPE (* 32 32))
-        am1 ^floats (make-array Float/TYPE (* 32 32))]
+(defn prepare-arrays [c-div-32]
+  (let [aom ^floats (make-array Float/TYPE (*    32             32          ))
+        am0 ^floats (make-array Float/TYPE (*    32          (* 32 c-div-32)))
+        am1 ^floats (make-array Float/TYPE (* (* 32 c-div-32)   32          ))]
     (loop [i 0]
-      (if (<= (* 32 32) i)
+      (if (<= (* 32 32 c-div-32) i)
         [aom am0 am1]
         (do (aset am0 i (float i))
             (aset am1 i (float (+ i 1)))
@@ -121,7 +121,7 @@
     (ref-set cl-ker (cl/create-kernels-in-program @cl-prg))
     ))
 
-(defn mul-mm-host [^floats aom ^floats am0 ^floats am1]
+(defn mul-mm-host [^floats aom ^floats am0 ^floats am1 ^long c-div-32]
   (let [start (System/nanoTime)]
     (loop [i 0]
       (if (<= 32 i)
@@ -130,12 +130,12 @@
               (if (<= 32 j)
                 :done
                 (do (loop [k 0 acc (float 0.0)]
-                      (if (<= 32 k)
+                      (if (<= (* 32 c-div-32) k)
                         (aset aom (+ (* 32 i) j) acc)
                         (recur (+ k 1)
                                (+ acc
-                                  (* (aget am0 (+ (* 32 i) k))
-                                     (aget am1 (+ (* 32 k) j))
+                                  (* (aget am0 (+ (* 32 c-div-32 i) k))
+                                     (aget am1 (+ (* 32          k) j))
                                      )))))
                     (recur (+ j 1)))))
             (recur (+ i 1)))))))
@@ -161,16 +161,18 @@
          (map (fn [[[_ t0] [_ t1]]] (- t1 t0)))
          )))
 
-(defn main-loop [ev aom am0 am1]
+(defn main-loop [ev aom am0 am1 c-div-32]
   (cl/set-args (@cl-ker "mul_mm") :m (:om @cl-mem)
-   :m (:m0 @cl-mem) :m (:m1 @cl-mem) :i 32 :i 1 :i (- (* 32 31) 32) :i 32)
+   :m (:m0 @cl-mem) :m (:m1 @cl-mem)
+   :i (* 32 c-div-32) :i c-div-32 :i (- (* 32 c-div-32 31) 32) :i 32)
   (println
    (run1-k (@cl-ker "mul_mm") ev aom am0 am1)))
 
-(defn -main [& _]
+(defn -main [& [c-div-32]]
   (init)
   (cl/let-err err
-    [[aom am0 am1] (prepare-arrays)
+    [c-div-32 (if c-div-32 (read-string c-div-32) 1)
+     [aom am0 am1] (prepare-arrays c-div-32)
      ev (CL/clCreateUserEvent (:context @cl-env) err)]
     (dosync (ref-set cl-mem (prepare-mem (@cl-env :context) am0 am1)))
     (when (not= "OpenCL 1.1 ATI-Stream-v2.3 (451)"
@@ -180,7 +182,7 @@
           (.write o ar 0 (count ar)))))
     ;(print-matrix cc am)
     ;(print-matrix cc av)
-    (printf "host: %d\n" (mul-mm-host aom am0 am1))
-    (main-loop ev aom am0 am1)
+    (printf "host: %d\n" (mul-mm-host aom am0 am1 c-div-32))
+    (main-loop ev aom am0 am1 c-div-32)
     (CL/clReleaseEvent ev))
   (finalize))
