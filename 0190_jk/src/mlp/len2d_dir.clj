@@ -48,7 +48,7 @@
 
 (defn main-loop [iter learning-rate in-nd lbl-nd]
   (loop [i 0
-         [[inputs labels] & bs] (make-minibatches 16 in-nd lbl-nd)
+         [[inputs labels] & bs] (make-minibatches 4 in-nd lbl-nd)
          err-acc (repeat 4 1.0)]
     (if (< iter i)
       :done
@@ -71,6 +71,7 @@
            (make-mlp-config max-len field-size conv-size conv-depth)
            seed)
         [in-nd lbl-nd] (make-input-labels field-size max-len)]
+    (dosync (ref-set mlp/debug true))
     (main-loop iter learning-rate in-nd lbl-nd)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))

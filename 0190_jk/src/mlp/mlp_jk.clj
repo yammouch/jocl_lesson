@@ -40,13 +40,13 @@
    :b (* (conv-oh l) (conv-ow l) d)))
 
 (defn prepare-mem [conf seed]
-  (mapv (fn [s {t :type [cr cc] :size :as l}]
+  (mapv (fn [s {t :type [cr cc :as size] :size :as l}]
           (case t
             :dense (prepare-mem1 :i cr :b cc :p s :u (* cr cc))
             :offset (prepare-mem1 :i cr :b cr :p (repeat cr 0) :u cr)
             :conv (prepare-mem-conv s l)
             :sigmoid (prepare-mem1 :i cr :b cr)
-            :softmax (prepare-mem1 :i cr :b cr)
+            :softmax (prepare-mem1 :i (apply + size) :b cr)
             :cross-entropy (prepare-mem1 :i cr)))
         (initial-param conf seed)
         conf))
@@ -81,7 +81,7 @@
 
 (defn dump [layers i k]
   (printf "layer %d name %s:\n" i (name k))
-  (let [{[h w d] :size [ih iw id] :isize :as l} (layers i)
+  (let [{[h w d :as size] :size [ih iw id] :isize :as l} (layers i)
         [cr cc] (case (l :type)
                   :dense (cond (#{:u :p} k) [h w]
                                (= k :i)     [1 h]
@@ -91,7 +91,7 @@
                               (= k :b)     [(conv-oh l) (* (conv-ow l) d)])
                   :offset        [1 h]
                   :sigmoid       [1 h]
-                  :softmax       [1 h]
+                  :softmax       [1 (apply + size)]
                   :cross-entropy [1 h])]
     (print-matrix (get-in layers [i k])
                   cr cc)))
@@ -101,13 +101,13 @@
   (let [oh (conv-oh l) ow (conv-ow l)]
     (JKernel/conv_fw oh ow ih iw id h w d pu pl o i p)))
 
-(defn fw1 [{t :type [cr cc] :size i :i p :p :as l} {o :i :as ln}]
+(defn fw1 [{t :type [cr cc :as size] :size i :i p :p :as l} {o :i :as ln}]
   (case t
-    :dense   (JKernel/mul_vm              cr  cc o i p)
-    :offset  (JKernel/add                 cr     o i p)
+    :dense   (JKernel/mul_vm     cr cc            o i p)
+    :offset  (JKernel/add        cr               o i p)
     :conv    (fw1-conv l ln)
-    :sigmoid (JKernel/sigmoid_fw          cr     o i)
-    :softmax (JKernel/softmax (int-array [cr])   o i)
+    :sigmoid (JKernel/sigmoid_fw cr               o i)
+    :softmax (JKernel/softmax    (int-array size) o i)
     ))
 
 (defn fw [i0]
@@ -155,22 +155,22 @@
       )))
 
 (defn bw1
- [{               bp :b            :as lp} ; previous layer
-  {t  :type       b  :b [cr] :size :as l }
-  {tn :type in :i bn :b                  } ; next layer
+ [{               bp :b                     :as lp} ; previous layer
+  {t  :type       b  :b [cr :as size] :size :as l }
+  {tn :type in :i bn :b                           } ; next layer
   lr ; learning-rate
   is-1st?]
   (case tn
     :cross-entropy
     (case t
-      :sigmoid (JKernel/cross_entropy_bw cr bp in bn lr)
-      :softmax (JKernel/cross_entropy_bw cr bp in bn lr))
+      :sigmoid (JKernel/cross_entropy_bw cr             bp in bn lr)
+      :softmax (JKernel/cross_entropy_bw (apply + size) bp in bn lr))
     (case t
       :dense   (bw-dense  lp l is-1st?)
       :offset  (bw-offset lp l is-1st?)
       :conv    (bw-conv   lp l is-1st?)
-      :sigmoid (JKernel/sigmoid_bw cr bp in b)
-      :softmax (JKernel/sigmoid_bw cr bp in b)
+      :sigmoid (JKernel/sigmoid_bw cr             bp in b)
+      :softmax (JKernel/sigmoid_bw (apply + size) bp in b)
       )))
 
 (defn bw
