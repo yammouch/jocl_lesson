@@ -46,7 +46,7 @@
             :offset (prepare-mem1 :i cr :b cr :p (repeat cr 0) :u cr)
             :conv (prepare-mem-conv s l)
             :sigmoid (prepare-mem1 :i cr :b cr)
-            :softmax (prepare-mem1 :i (apply + size) :b cr)
+            :softmax (prepare-mem1 :i (apply + size) :b (apply + size))
             :cross-entropy (prepare-mem1 :i cr)))
         (initial-param conf seed)
         conf))

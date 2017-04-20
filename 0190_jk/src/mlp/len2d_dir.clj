@@ -6,7 +6,8 @@
 
 (defn make-input-labels [field-size max-len]
   (let [confs (for [d [:v :h]
-                    [start stop] (fld/start-stops field-size max-len)
+                    [start stop] (remove (partial apply =)
+                                         (fld/start-stops field-size max-len))
                     q (range field-size)]
                 [start stop q d])]
     [(mapv (comp float-array
@@ -71,7 +72,7 @@
            (make-mlp-config max-len field-size conv-size conv-depth)
            seed)
         [in-nd lbl-nd] (make-input-labels field-size max-len)]
-    (dosync (ref-set mlp/debug true))
+    ;(dosync (ref-set mlp/debug true))
     (main-loop iter learning-rate in-nd lbl-nd)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
