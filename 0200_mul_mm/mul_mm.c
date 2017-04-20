@@ -12,8 +12,8 @@ void init_array(int n, float *x) {
 void mul_mm(float *om, const float *m0, const float *m1, int c_div_32) {
   int i, j, k;
   for (i = 0; i < 32; i++) {
-    for (k = 0; k < 32; k++) {
-      for (j = 0; j < 32*c_div_32; j++) {
+    for (k = 0; k < 32*c_div_32; k++) {
+      for (j = 0; j < 32; j++) {
         om[i*32+j] += m0[i*c_div_32*32+k] * m1[k*32+j];
       }
     }
