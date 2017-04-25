@@ -26,28 +26,28 @@
       (let [result (smp/slide-upper arg)]
         (is (= result expc))))))
 
-;(deftest test-slide-lower
-;  (let [test-patterns
-;        [{:arg  {:field {:size [2 3]
-;                         :body [[[0 0] [0 0]]
-;                                [[0 1] [0 0]]
-;                                [[0 0] [0 0]]]}
-;                 :cmd {:cmd :move-y :org [1 1] :dst 0}}
-;          :expc {:field {:size [2 3]
-;                         :body [[[0 0] [0 0]]
-;                                [[0 0] [0 0]]
-;                                [[0 1] [0 0]]]}
-;                       :cmd {:cmd :move-y :org [1 2] :dst 1}}}
-;         {:arg  {:field {:size [2 3]
-;                         :body [[[0 0] [0 0]]
-;                                [[0 0] [0 0]]
-;                                [[0 0] [1 0]]]}
-;                 :cmd {:cmd :move-y :org [1 1] :dst 0}}
-;          :expc nil}]]
-;    (doseq [{arg :arg expc :expc} test-patterns]
-;      (let [result (smp/slide-lower arg)]
-;        (is (= result expc))))))
-;
+(deftest test-slide-lower
+  (let [test-patterns
+        [{:arg  {:field {:size [2 3]
+                         :body [[0 0]
+                                [1 0]
+                                [0 0]]}
+                 :cmd {:cmd :move-y :org [1 1] :dst 0}}
+          :expc {:field {:size [2 3]
+                         :body [[0 0]
+                                [0 0]
+                                [1 0]]}
+                       :cmd {:cmd :move-y :org [1 2] :dst 1}}}
+         {:arg  {:field {:size [2 3]
+                         :body [[0 0]
+                                [0 0]
+                                [0 1]]}
+                 :cmd {:cmd :move-y :org [1 1] :dst 0}}
+          :expc nil}]]
+    (doseq [{arg :arg expc :expc} test-patterns]
+      (let [result (smp/slide-lower arg)]
+        (is (= result expc))))))
+
 ;(deftest test-slide-left
 ;  (let [test-patterns
 ;        [{:arg  {:field {:size [2 3]
