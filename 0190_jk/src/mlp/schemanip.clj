@@ -31,9 +31,9 @@
 (defn slide-lower
  ([x] (slide-lower x 0))
  ([{field :field cmd :cmd :as x} empty]
-  (if (or (<= (get-in field [:size 1]) (get-in cmd [:org 1]))
+  (if (or (<= (count (:body field)) (get-in cmd [:org 1]))
           (and (= (:cmd cmd) :move-y)
-               (<= (get-in field [:size 1]) (:dst cmd)))
+               (<= (count (:body field)) (:dst cmd)))
           (some (partial not= empty)
                 (last (:body field))))
     nil
@@ -71,9 +71,9 @@
 (defn slide-right
  ([x] (slide-right x 0))
  ([{field :field cmd :cmd :as x} empty]
-  (if (or (<= (get-in field [:size 0]) (get-in cmd [:org 0]))
+  (if (or (<= (count (first (:body field))) (get-in cmd [:org 0]))
           (and (= (:cmd cmd) :move-x)
-               (<= (get-in field [:size 0]) (:dst cmd)))
+               (<= (count (first (:body field))) (:dst cmd)))
           (some (partial not= empty)
                 (map last (:body field))))
     nil
@@ -114,4 +114,5 @@
 
 (defn mlp-input [{field :field cmd :cmd}] 
   {:niv (mlp-input-field field)
-   :eov (mlp-input-cmd cmd (:size field))})
+   :eov (mlp-input-cmd cmd [(count (first (:body field)))
+                            (count (:body field))])})
