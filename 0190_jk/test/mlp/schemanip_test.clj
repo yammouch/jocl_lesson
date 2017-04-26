@@ -123,9 +123,8 @@
  
 (deftest test-mlp-input-field
   (let [test-patterns
-        ;[{:arg  {:body [[[1 0] [0 1] [0 1]] [[0 0] [1 0] [0 0]]] :size :na}
-        [{:arg  {:body [[ 2     1     1  ]  [ 0     2     0 ]] :size :na}
-          :expc         [1 0   0 1   0 1     0 0   1 0   0 0]}]]
+        [{:arg  {:body [[ 2   1   1 ] [ 0   2   0 ]] :size :na}
+          :expc         [1 0 0 1 0 1   0 0 1 0 0 0]}]]
     (doseq [{arg :arg expc :expc} test-patterns]
       (let [result (smp/mlp-input-field arg)]
         (is (= result expc))))))
@@ -140,7 +139,6 @@
 
 (deftest test-mlp-input
   (let [test-patterns
-        ;[{:arg  {:field {:body [[[1 0] [0 1] [0 1]] [[0 0] [1 0] [0 0]]]
         [{:arg  {:field {:body [[2 1 1] [0 2 0]]
                          :size [3 2]}
                  :cmd   {:cmd :move-y :org [2 1] :dst 0}}
