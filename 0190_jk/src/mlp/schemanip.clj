@@ -43,25 +43,25 @@
         (update-in [:field] #(slide-lower-field % empty))
         (update-in [:cmd :org 1] inc)))))
 
-(defn slide-left-field [field]
+(defn slide-left-field [field empty]
   (assoc field :body
-         (map #(concat (next %)
-                       [(repeat (count (get-in field [:body 0 0]))
-                                0)])
+         (map #(concat (next %) [empty])
               (:body field))))
 
-(defn slide-left [{field :field cmd :cmd :as x}]
+(defn slide-left
+ ([x] (slide-left x 0))
+ ([{field :field cmd :cmd :as x} empty]
   (if (or (= (get-in cmd [:org 0]) 0)
           (and (= (:cmd cmd) :move-x)
                (= (:dst cmd) 0))
-          (some (partial some (complement zero?))
+          (some (partial not= empty)
                 (map first (:body field))))
     nil
     (-> (if (= (:cmd cmd) :move-x)
           (update-in x [:cmd :dst] dec)
           x)
-        (update-in [:field] slide-left-field)
-        (update-in [:cmd :org 0] dec))))
+        (update-in [:field] #(slide-left-field % empty))
+        (update-in [:cmd :org 0] dec)))))
 
 (defn slide-right-field [field]
   (assoc field :body
