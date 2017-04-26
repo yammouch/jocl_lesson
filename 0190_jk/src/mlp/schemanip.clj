@@ -103,7 +103,8 @@
   (take len (concat (repeat val 0) [1] (repeat 0))))
 
 (defn mlp-input-field [{body :body}]
-  (apply concat (apply concat body)))
+  (mapcat {0 [0 0] 1 [0 1] 2 [1 0] 3 [1 1]}
+          (apply concat body)))
 
 (defn mlp-input-cmd [{cmd :cmd [x y] :org dst :dst} [cx cy]]
   (concat (case cmd :move-x [1 0] [0 1])
