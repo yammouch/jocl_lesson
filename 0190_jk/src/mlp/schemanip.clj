@@ -63,34 +63,41 @@
         (update-in [:field] #(slide-left-field % empty))
         (update-in [:cmd :org 0] dec)))))
 
-(defn slide-right-field [field]
+(defn slide-right-field [field empty]
   (assoc field :body
-         (map #(cons (repeat (count (get-in field [:body 0 0])) 0)
-                     (butlast %))
+         (map #(cons empty (butlast %))
               (:body field))))
 
-(defn slide-right [{field :field cmd :cmd :as x}]
+(defn slide-right
+ ([x] (slide-right x 0))
+ ([{field :field cmd :cmd :as x} empty]
   (if (or (<= (get-in field [:size 0]) (get-in cmd [:org 0]))
           (and (= (:cmd cmd) :move-x)
                (<= (get-in field [:size 0]) (:dst cmd)))
-          (some (partial some (complement zero?))
+          (some (partial not= empty)
                 (map last (:body field))))
     nil
     (-> (if (= (:cmd cmd) :move-x)
           (update-in x [:cmd :dst] inc)
           x)
-        (update-in [:field] slide-right-field)
-        (update-in [:cmd :org 0] inc))))
+        (update-in [:field] #(slide-right-field % empty))
+        (update-in [:cmd :org 0] inc)))))
 
-(defn expand-v [x] ; x -> {field :field cmd :cmd}
-  (concat (reverse (take-while identity (iterate slide-upper x)))
-          (next (take-while identity (iterate slide-lower x)))))
+(defn expand-v
+ ([x] (expand-v x 0)) ; x -> {field :field cmd :cmd}
+ ([x empty]
+  (concat (reverse (take-while identity (iterate #(slide-upper % empty) x)))
+          (next (take-while identity (iterate #(slide-lower % empty) x))))))
 
-(defn expand-h [x] ; x -> {field :field cmd :cmd}
-  (concat (reverse (take-while identity (iterate slide-left x)))
-          (next (take-while identity (iterate slide-right x)))))
+(defn expand-h
+ ([x] (expand-h x 0)) ; x -> {field :field cmd :cmd}
+ ([x empty]
+  (concat (reverse (take-while identity (iterate #(slide-left % empty) x)))
+          (next (take-while identity (iterate #(slide-right % empty) x))))))
 
-(defn expand [x] (mapcat expand-h (expand-v x)))
+(defn expand
+ ([x] (expand x 0))
+ ([x empty] (mapcat #(expand-h % empty) (expand-v x empty))))
 
 (defn one-hot [val len]
   (take len (concat (repeat val 0) [1] (repeat 0))))
