@@ -12,3 +12,10 @@
     (if x
       (recur (conj acc (lift (seq acc) x)) xs)
       acc)))
+
+(defn select [coll idx]
+  (loop [i 0 [x & xs] coll hit [] pass []]
+    (cond (<= (count coll) i) [hit pass]
+          (idx i) (recur (+ 1 i) xs (conj hit x) pass)
+          :else   (recur (+ 1 i) xs hit (conj pass x))
+          )))
