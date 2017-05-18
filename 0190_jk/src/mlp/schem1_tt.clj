@@ -1,3 +1,5 @@
+; lein rn -m mlp.schem1-tt 10001 0.1 11 3 4 # converges down to 0.30
+
 (ns mlp.schem1-tt
   (:gen-class)
   (:import  [java.util Date])
@@ -25,20 +27,22 @@
           )))
 
 (def schem
- {:field {:body [[0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0]
-                 [0 0 0 3 2 1 0 0]
-                 [0 0 0 1 0 1 0 0]
-                 [0 2 2 0 0 2 2 0]
-                 [0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0]]}
-  :cmd {:cmd :move-y :org [4 2] :dst 4}})
+ {:field {:body [[0 0 0 0 0 0 0 0 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]
+                 [0 0 0 0 3 2 1 0 0 0]
+                 [0 0 0 0 1 0 1 0 0 0]
+                 [0 0 2 2 0 0 2 2 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]]}
+  :cmd {:cmd :move-y :org [5 3] :dst 5}})
 
 (defn make-input-labels []
   (let [confs (smp/expand schem)]
     [(mapv (comp float-array smp/mlp-input-field :field)
            confs)
-     (mapv (comp float-array #(smp/mlp-input-cmd % [8 7]) :cmd)
+     (mapv (comp float-array #(smp/mlp-input-cmd % [10 9]) :cmd)
            confs)]))
 
 (defn make-minibatches [sb-size in-nd lbl-nd]
@@ -50,11 +54,11 @@
 (defn make-mlp-config [cs cd]
   ; cs: conv size, cd: conv depth
   (let [cs-h (quot cs 2)
-        co-h (mapv (partial + 7) (if (even? cs) [1 2] [0 0]))
-        co-w (mapv (partial + 8) (if (even? cs) [1 2] [0 0]))]
+        co-h (mapv (partial +  9) (if (even? cs) [1 2] [0 0]))
+        co-w (mapv (partial + 10) (if (even? cs) [1 2] [0 0]))]
     [{:type :conv
       :size  [cs cs cd]
-      :isize [7 8 2]
+      :isize [9 10 2]
       :pad [cs-h cs-h cs-h cs-h]}
      {:type :sigmoid       :size [(* cd (co-h 0) (co-w 0))]}
      {:type :conv
@@ -63,14 +67,14 @@
       :pad   [cs-h cs-h cs-h cs-h]}
      {:type :sigmoid       :size [(* cd (co-h 1) (co-w 1))]}
      {:type :dense         :size [(* cd (co-h 1) (co-w 1))
-                                  (+ 2 8 7 8)]}
-     {:type :offset        :size [(+ 2 8 7 8)]}
-     {:type :softmax       :size [   2 8 7 8 ]}
-     {:type :cross-entropy :size [(+ 2 8 7 8)]}]))
+                                  (+ 2 10 9 10)]}
+     {:type :offset        :size [(+ 2 10 9 10)]}
+     {:type :softmax       :size [   2 10 9 10 ]}
+     {:type :cross-entropy :size [(+ 2 10 9 10)]}]))
 
 (defn main-loop [iter learning-rate in-tr lbl-tr in-ts lbl-ts]
   (loop [i 0
-         [[inputs labels] & bs] (make-minibatches 4 in-tr lbl-tr)
+         [[inputs labels] & bs] (make-minibatches 16 in-tr lbl-tr)
          err-acc (repeat 4 1.0)]
     (if (< iter i)
       :done
