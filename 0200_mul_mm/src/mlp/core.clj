@@ -69,7 +69,7 @@
     (loop [i 0]
       (if (<= (* 32 c-div-32 32 w-div-32) i)
         :done
-        (do (aset am0 i (float i))
+        (do (aset am1 i (float i))
             (recur (+ i 1)))))
     [aom am0 am1]))
 
