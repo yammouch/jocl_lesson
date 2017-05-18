@@ -15,6 +15,10 @@ __kernel void mul_mm(
   __local float *omlp;
   float acc;
 
+  m0 += get_group_id(1) * 32 * c;
+  m1 += get_group_id(0) * 32;
+  om += get_group_id(1) * 32 * c + get_group_id(0) * 32;
+
   m0l[32* 0 + tid] = m0[tid]; m0 += c;
   m0l[32* 1 + tid] = m0[tid]; m0 += c;
   m0l[32* 2 + tid] = m0[tid]; m0 += c;
