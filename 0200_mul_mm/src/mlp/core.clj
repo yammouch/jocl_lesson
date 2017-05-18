@@ -155,7 +155,7 @@
       0 (* 32 h-div-32 32 c-div-32 Sizeof/cl_float) (Pointer/to am0) 0 nil nil)
      (CL/clEnqueueWriteBuffer q m1 CL/CL_TRUE
       0 (* 32 c-div-32 32 w-div-32 Sizeof/cl_float) (Pointer/to am1) 0 nil nil)
-     (CL/clEnqueueNDRangeKernel q k 1
+     (CL/clEnqueueNDRangeKernel q k 2
       nil (long-array [(* 32 w-div-32) h-div-32]) (long-array [32 1]) 0 nil ev)
      (CL/clWaitForEvents 1 (into-array cl_event [ev]))
      (CL/clEnqueueReadBuffer q om CL/CL_TRUE
