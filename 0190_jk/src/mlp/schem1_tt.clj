@@ -92,9 +92,15 @@
         _ (mlp/init
            (make-mlp-config conv-size conv-depth)
            seed)
-        [in-nd lbl-nd] (make-input-labels)]
+        [in-nd lbl-nd] (make-input-labels)
+        ts-idx (rand-nodup 4 (count in-nd)
+                (apply mlp/xorshift
+                 (take 4 (iterate (partial + 2) (+ seed 1)))
+                 ))
+        [in-ts  in-tr ] (select in-nd  ts-idx)
+        [lbl-ts lbl-tr] (select lbl-nd ts-idx)]
     ;(dosync (ref-set mlp/debug true))
-    (main-loop iter learning-rate in-nd lbl-nd in-nd lbl-nd)
+    (main-loop iter learning-rate in-tr lbl-tr in-ts lbl-ts)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
       (printf "%d seconds elapsed\n"
