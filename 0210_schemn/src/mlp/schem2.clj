@@ -51,16 +51,22 @@
   :cmd {:cmd :move-x :org [4 4] :dst 6}})
 
 (defn make-input-labels [seed]
-  (let [confs (smp/expand schem1)
-        ts-idx (rand-nodup 4 (count confs)
-                (apply mlp/xorshift
-                 (take 4 (iterate (partial + 2) (+ seed 1)))
-                 ))
-        [ts tr] (select confs ts-idx)]
-    [(mapv (comp float-array smp/mlp-input-field :field)         tr)
-     (mapv (comp float-array #(smp/mlp-input-cmd % [10 9]) :cmd) tr)
-     (mapv (comp float-array smp/mlp-input-field :field)         ts)
-     (mapv (comp float-array #(smp/mlp-input-cmd % [10 9]) :cmd) ts)]))
+  (let [rnd (apply mlp/xorshift
+             (take 4 (iterate (partial + 2) (+ seed 1))))
+        confs1 (smp/expand schem1)
+        ts-idx1 (rand-nodup 4 (count confs1) rnd)
+        [ts1 tr1] (select confs1 ts-idx1)
+        confs2 (smp/expand schem2)
+        ts-idx2 (rand-nodup 4 (count confs2) (drop 4 rnd))
+        [ts2 tr2] (select confs2 ts-idx2)]
+    [(mapv (comp float-array smp/mlp-input-field :field)
+           (concat tr1 tr2))
+     (mapv (comp float-array #(smp/mlp-input-cmd % [10 9]) :cmd)
+           (concat tr1 tr2))
+     (mapv (comp float-array smp/mlp-input-field :field)
+           (concat ts1 ts2))
+     (mapv (comp float-array #(smp/mlp-input-cmd % [10 9]) :cmd)
+           (concat ts1 ts2))]))
 
 (defn make-minibatches [sb-size in-nd lbl-nd]
   (map (fn [idx] [(mapv in-nd idx) (mapv lbl-nd idx)])
