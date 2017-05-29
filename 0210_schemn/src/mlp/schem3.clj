@@ -1,3 +1,5 @@
+; $ lein run -m mlp.schem3 10001 0.1 1 3 4 # converges
+
 (ns mlp.schem3
   (:gen-class)
   (:import  [java.util Date])
@@ -61,6 +63,19 @@
                  [0 0 0 0 0 0 0 0 0 0]]}
   :cmd {:cmd :move-x :org [4 5] :dst 6}})
 
+(def schem3
+ {:field {:body [[0 0 0 0 0 0 0 0 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]
+                 [0 0 2 2 2 1 0 0 0 0]
+                 [0 0 0 0 0 1 0 0 0 0]
+                 [0 0 0 0 0 7 2 2 0 0]
+                 [0 0 0 0 0 1 0 0 0 0]
+                 [0 0 0 0 0 3 2 2 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]]}
+  :cmd {:cmd :move-y :org [3 2] :dst 4}})
+
 (defn make-input-labels [seed]
   (let [rnd (apply mlp/xorshift
              (take 4 (iterate (partial + 2) (+ seed 1))))
@@ -69,17 +84,18 @@
         [ts1 tr1] (select confs1 ts-idx1)
         confs2 (smp/expand schem2)
         ts-idx2 (rand-nodup 4 (count confs2) (drop 4 rnd))
-        [ts2 tr2] (select confs2 ts-idx2)]
+        [ts2 tr2] (select confs2 ts-idx2)
+        confs3 (smp/expand schem3)
+        ts-idx3 (rand-nodup 4 (count confs3) (drop 8 rnd))
+        [ts3 tr3] (select confs3 ts-idx3)]
     [(mapv (comp float-array mlp-input-field :field)
-           ;(concat tr1 tr2))
-           (concat confs1 confs2))
+           (concat confs1 confs2 confs3))
      (mapv (comp float-array #(smp/mlp-input-cmd % [10 10]) :cmd)
-           ;(concat tr1 tr2))
-           (concat confs1 confs2))
+           (concat confs1 confs2 confs3))
      (mapv (comp float-array mlp-input-field :field)
-           (concat ts1 ts2))
+           (concat ts1 ts2 ts3))
      (mapv (comp float-array #(smp/mlp-input-cmd % [10 10]) :cmd)
-           (concat ts1 ts2))]))
+           (concat ts1 ts2 ts3))]))
 
 (defn make-minibatches [sb-size in-nd lbl-nd]
   (map (fn [idx] [(mapv in-nd idx) (mapv lbl-nd idx)])
