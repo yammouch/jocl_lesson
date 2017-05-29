@@ -35,11 +35,13 @@
                  [0 0 2 2 0 0 2 2 0 0]
                  [0 0 0 0 0 0 0 0 0 0]
                  [0 0 0 0 0 0 0 0 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]
                  [0 0 0 0 0 0 0 0 0 0]]}
   :cmd {:cmd :move-y :org [5 3] :dst 5}})
 
 (def schem2
  {:field {:body [[0 0 0 0 0 0 0 0 0 0]
+                 [0 0 0 0 0 0 0 0 0 0]
                  [0 0 0 0 0 0 1 0 0 0]
                  [0 0 0 0 0 0 1 0 0 0]
                  [0 0 0 0 3 2 0 0 0 0]
@@ -48,7 +50,7 @@
                  [0 0 0 0 0 0 1 0 0 0]
                  [0 0 0 0 0 0 0 0 0 0]
                  [0 0 0 0 0 0 0 0 0 0]]}
-  :cmd {:cmd :move-x :org [4 4] :dst 6}})
+  :cmd {:cmd :move-x :org [4 5] :dst 6}})
 
 (defn make-input-labels [seed]
   (let [rnd (apply mlp/xorshift
@@ -60,12 +62,14 @@
         ts-idx2 (rand-nodup 4 (count confs2) (drop 4 rnd))
         [ts2 tr2] (select confs2 ts-idx2)]
     [(mapv (comp float-array smp/mlp-input-field :field)
-           (concat tr1 tr2))
-     (mapv (comp float-array #(smp/mlp-input-cmd % [10 9]) :cmd)
-           (concat tr1 tr2))
+           ;(concat tr1 tr2))
+           (concat confs1 confs2))
+     (mapv (comp float-array #(smp/mlp-input-cmd % [10 10]) :cmd)
+           ;(concat tr1 tr2))
+           (concat confs1 confs2))
      (mapv (comp float-array smp/mlp-input-field :field)
            (concat ts1 ts2))
-     (mapv (comp float-array #(smp/mlp-input-cmd % [10 9]) :cmd)
+     (mapv (comp float-array #(smp/mlp-input-cmd % [10 10]) :cmd)
            (concat ts1 ts2))]))
 
 (defn make-minibatches [sb-size in-nd lbl-nd]
@@ -77,11 +81,11 @@
 (defn make-mlp-config [cs cd]
   ; cs: conv size, cd: conv depth
   (let [cs-h (quot cs 2)
-        co-h (mapv (partial +  9) (if (even? cs) [1 2] [0 0]))
+        co-h (mapv (partial + 10) (if (even? cs) [1 2] [0 0]))
         co-w (mapv (partial + 10) (if (even? cs) [1 2] [0 0]))]
     [{:type :conv
       :size  [cs cs cd]
-      :isize [9 10 2]
+      :isize [10 10 2]
       :pad [cs-h cs-h cs-h cs-h]}
      {:type :sigmoid       :size [(* cd (co-h 0) (co-w 0))]}
      {:type :conv
@@ -90,10 +94,10 @@
       :pad   [cs-h cs-h cs-h cs-h]}
      {:type :sigmoid       :size [(* cd (co-h 1) (co-w 1))]}
      {:type :dense         :size [(* cd (co-h 1) (co-w 1))
-                                  (+ 2 10 9 10)]}
-     {:type :offset        :size [(+ 2 10 9 10)]}
-     {:type :softmax       :size [   2 10 9 10 ]}
-     {:type :cross-entropy :size [(+ 2 10 9 10)]}]))
+                                  (+ 2 10 10 10)]}
+     {:type :offset        :size [(+ 2 10 10 10)]}
+     {:type :softmax       :size [   2 10 10 10 ]}
+     {:type :cross-entropy :size [(+ 2 10 10 10)]}]))
 
 (defn main-loop [iter learning-rate in-tr lbl-tr in-ts lbl-ts]
   (loop [i 0
