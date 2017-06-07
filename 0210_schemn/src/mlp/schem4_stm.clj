@@ -37,59 +37,14 @@
   (mapcat #(take 3 (concat (radix %) (repeat 0)))
           (apply concat body)))
 
-(def schem1
-  {:field {:body (mapv (fn [row] (mapv #(Integer/parseInt % 16)
-                                       (re-seq #"\S+" row)))
-                       ["0 0 0 0 0 0 0 0 0 0"
-                        "0 0 0 0 0 0 0 0 0 0"
-                        "0 0 0 0 0 0 0 0 0 0"
-                        "0 0 0 0 3 2 1 0 0 0"
-                        "0 0 0 0 1 0 1 0 0 0"
-                        "0 0 2 2 0 0 2 2 0 0"
-                        "0 0 0 0 0 0 0 0 0 0"
-                        "0 0 0 0 0 0 0 0 0 0"
-                        "0 0 0 0 0 0 0 0 0 0"
-                        "0 0 0 0 0 0 0 0 0 0"])}
-  :cmd {:cmd :move-y :org [5 3] :dst 5}})
-
-(def schem2
- {:field {:body [[0 0 0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 1 0 0 0]
-                 [0 0 0 0 0 0 1 0 0 0]
-                 [0 0 0 0 3 2 0 0 0 0]
-                 [0 0 0 0 1 0 0 0 0 0]
-                 [0 0 0 0 2 2 1 0 0 0]
-                 [0 0 0 0 0 0 1 0 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]]}
-  :cmd {:cmd :move-x :org [4 5] :dst 6}})
-
-(def schem3
- {:field {:body [[0 0 0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]
-                 [0 0 2 2 2 1 0 0 0 0]
-                 [0 0 0 0 0 1 0 0 0 0]
-                 [0 0 0 0 0 7 2 2 0 0]
-                 [0 0 0 0 0 1 0 0 0 0]
-                 [0 0 0 0 0 3 2 2 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]]}
-  :cmd {:cmd :move-y :org [3 2] :dst 4}})
-
-(def schem4
- {:field {:body [[0 0 0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]
-                 [0 0 0 0 0 3 2 2 0 0]
-                 [0 0 0 0 0 1 0 0 0 0]
-                 [0 0 0 0 0 7 2 2 0 0]
-                 [0 0 0 0 0 1 0 0 0 0]
-                 [0 0 2 2 2 0 0 0 0 0]
-                 [0 0 0 0 0 0 0 0 0 0]]}
-  :cmd {:cmd :move-y :org [3 8] :dst 4}})
+(def schems
+  (->> (read-string (str "(" (slurp "src/mlp/schem4_stm.dat") ")"))
+       (partition 2)
+       (map (fn [[field cmd]]
+              {:field {:body (mapv (fn [row] (mapv #(Integer/parseInt % 16)
+                                                   (re-seq #"\S+" row)))
+                                   field)}
+               :cmd cmd}))))
 
 (defn make-input-labels [seed]
   (let [rnd (apply mlp/xorshift
@@ -101,7 +56,8 @@
                                 (rand-nodup (count rnd) (count expanded) rnd)
                                 )]))
                    (partition 4 rnd)
-                   [schem1 schem2 schem3 schem4])]
+                   ;[schem1 schem2 schem3 schem4])]
+                   schems)]
     [(mapv (comp float-array mlp-input-field :field)
            (mapcat first confs))
      (mapv (comp float-array #(smp/mlp-input-cmd % [10 10]) :cmd)
