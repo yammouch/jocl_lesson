@@ -36,7 +36,7 @@
           (apply concat body)))
 
 (def schems
-  (->> (read-string (str "(" (slurp "src/mlp/schem4_stm.dat") ")"))
+  (->> (read-string (str "(" (slurp "src/mlp/not1.dat") ")"))
        (partition 2)
        (map (fn [[field cmd]]
               {:field {:body (mapv (fn [row] (mapv #(Integer/parseInt % 16)
