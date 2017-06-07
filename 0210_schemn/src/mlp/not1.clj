@@ -1,3 +1,4 @@
+; lein run -m mlp.not1 10001 0.1 1 3 4 # converges
 (ns mlp.not1
   (:gen-class)
   (:import  [java.util Date])
@@ -57,11 +58,11 @@
                    schems)]
     [(mapv (comp float-array mlp-input-field :field)
            (mapcat first confs))
-     (mapv (comp float-array #(smp/mlp-input-cmd % [20 20]) :cmd)
+     (mapv (comp float-array #(smp/mlp-input-cmd % [10 10]) :cmd)
            (mapcat first confs))
      (mapv (comp float-array mlp-input-field :field)
            (mapcat (comp first second) confs))
-     (mapv (comp float-array #(smp/mlp-input-cmd % [20 20]) :cmd)
+     (mapv (comp float-array #(smp/mlp-input-cmd % [10 10]) :cmd)
            (mapcat (comp first second) confs))]))
 
 (defn make-minibatches [sb-size in-nd lbl-nd]
@@ -73,11 +74,11 @@
 (defn make-mlp-config [cs cd]
   ; cs: conv size, cd: conv depth
   (let [cs-h (quot cs 2)
-        co-h (mapv (partial + 20) (if (even? cs) [1 2] [0 0]))
-        co-w (mapv (partial + 20) (if (even? cs) [1 2] [0 0]))]
+        co-h (mapv (partial + 10) (if (even? cs) [1 2] [0 0]))
+        co-w (mapv (partial + 10) (if (even? cs) [1 2] [0 0]))]
     [{:type :conv
       :size  [cs cs cd]
-      :isize [20 20 5]
+      :isize [10 10 5]
       :pad [cs-h cs-h cs-h cs-h]}
      {:type :sigmoid       :size [(* cd (co-h 0) (co-w 0))]}
      {:type :conv
@@ -86,10 +87,10 @@
       :pad   [cs-h cs-h cs-h cs-h]}
      {:type :sigmoid       :size [(* cd (co-h 1) (co-w 1))]}
      {:type :dense         :size [(* cd (co-h 1) (co-w 1))
-                                  (+ 2 20 20 20)]}
-     {:type :offset        :size [(+ 2 20 20 20)]}
-     {:type :softmax       :size [   2 20 20 20 ]}
-     {:type :cross-entropy :size [(+ 2 20 20 20)]}]))
+                                  (+ 2 10 10 10)]}
+     {:type :offset        :size [(+ 2 10 10 10)]}
+     {:type :softmax       :size [   2 10 10 10 ]}
+     {:type :cross-entropy :size [(+ 2 10 10 10)]}]))
 
 (defn main-loop [iter learning-rate in-tr lbl-tr in-ts lbl-ts]
   (loop [i 0
