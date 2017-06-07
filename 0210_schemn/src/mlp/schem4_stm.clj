@@ -56,7 +56,6 @@
                                 (rand-nodup (count rnd) (count expanded) rnd)
                                 )]))
                    (partition 4 rnd)
-                   ;[schem1 schem2 schem3 schem4])]
                    schems)]
     [(mapv (comp float-array mlp-input-field :field)
            (mapcat first confs))
