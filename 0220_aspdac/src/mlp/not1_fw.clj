@@ -37,6 +37,9 @@
     (mlp/init mlp-config 0)
     (set-param params)
     (mlp/fw (float-array (mlp-input-field (:field (nth schems 4)))))
-    (println (apply str (map (partial format " %3.1f")
-                             (:i (last @mlp/jk-mem))
-                             )))))
+    (loop [[x & xs] [2 10 10 10], l (:i (last @mlp/jk-mem))]
+      (when x
+        (println (apply str (interpose " " (map (partial format "%3.1f")
+                                                (take x l)))))
+        (recur xs (drop x l))
+        ))))
