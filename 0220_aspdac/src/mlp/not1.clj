@@ -38,8 +38,8 @@
 
 (def schems
   (->> (read-string (str "(" (slurp "src/mlp/not1.dat") ")"))
-       (partition 2)
-       (map (fn [[field cmd]]
+       (partition 3)
+       (map (fn [[_ field cmd]]
               {:field {:body (mapv (fn [row] (mapv #(Integer/parseInt % 16)
                                                    (re-seq #"\S+" row)))
                                    field)}
