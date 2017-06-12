@@ -4,7 +4,8 @@
   (:import  [java.util Date])
   (:require [mlp.schemanip :as smp]
             [mlp.mlp-jk :as mlp]
-            [clojure.pprint]))
+            [clojure.pprint]
+            [clojure.java.io]))
 
 (defn lift [[x & xs] n]
   (cond (not x) n
@@ -109,12 +110,16 @@
               (recur (+ i 1) bs (take 4 (cons err err-acc)))))
           (recur (+ i 1) bs err-acc))))))
 
-(defn print-param [m]
-  (loop [i 0 [x & xs] m]
-    (if x
-      (do (when (:p x) (prn (seq (:p x))))
-          (recur (+ i 1) xs))
-      :done)))
+(defn print-param [cfg m]
+  (with-open [o (clojure.java.io/writer "param.dat")]
+    (clojure.pprint/pprint cfg o)
+    (loop [i 0 [x & xs] m]
+      (if x
+        (do (when (:p x)
+              (clojure.pprint/pprint i o)
+              (clojure.pprint/pprint (seq (:p x)) o))
+            (recur (+ i 1) xs))
+        :done))))
 
 (defn -main [& args]
   (let [start-time (Date.)
@@ -126,8 +131,7 @@
         [in-tr lbl-tr in-ts lbl-ts] (make-input-labels seed)]
     ;(dosync (ref-set mlp/debug true))
     (main-loop iter learning-rate in-tr lbl-tr in-ts lbl-ts)
-    (clojure.pprint/pprint mlp-config)
-    (print-param @mlp/jk-mem)
+    (print-param mlp-config @mlp/jk-mem)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
       (printf "%d seconds elapsed\n"
