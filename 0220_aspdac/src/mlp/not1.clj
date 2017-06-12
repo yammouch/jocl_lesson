@@ -3,7 +3,8 @@
   (:gen-class)
   (:import  [java.util Date])
   (:require [mlp.schemanip :as smp]
-            [mlp.mlp-jk :as mlp]))
+            [mlp.mlp-jk :as mlp]
+            [clojure.pprint]))
 
 (defn lift [[x & xs] n]
   (cond (not x) n
@@ -108,17 +109,25 @@
               (recur (+ i 1) bs (take 4 (cons err err-acc)))))
           (recur (+ i 1) bs err-acc))))))
 
+(defn print-param [m]
+  (loop [i 0 [x & xs] m]
+    (if x
+      (do (when (:p x) (prn (seq (:p x))))
+          (recur (+ i 1) xs))
+      :done)))
+
 (defn -main [& args]
   (let [start-time (Date.)
         _ (println "start: " (.toString start-time))
         [iter learning-rate seed conv-size conv-depth]
         (mapv read-string args)
-        _ (mlp/init
-           (make-mlp-config conv-size conv-depth)
-           seed)
+        mlp-config (make-mlp-config conv-size conv-depth)
+        _ (mlp/init mlp-config seed)
         [in-tr lbl-tr in-ts lbl-ts] (make-input-labels seed)]
     ;(dosync (ref-set mlp/debug true))
     (main-loop iter learning-rate in-tr lbl-tr in-ts lbl-ts)
+    (clojure.pprint/pprint mlp-config)
+    (print-param @mlp/jk-mem)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
       (printf "%d seconds elapsed\n"
