@@ -14,13 +14,11 @@
   (mapcat #(take 5 (concat (radix %) (repeat 0)))
           (apply concat body)))
 
-(def schems
-  (->> (read-string (str "(" (slurp "src/mlp/not1.dat") ")"))
-       (partition 3)
-       (map second)))
+(defn read-schem [fname]
+  (read-string (str "(" (slurp fname) ")")))
 
-(defn read-param []
-  (let [[x & xs] (read-string (str "(" (slurp "param.dat") ")"))]
+(defn read-param [fname]
+  (let [[x & xs] (read-string (str "(" (slurp fname) ")"))]
     [x (partition 2 xs)]))
 
 (defn set-param [param]
@@ -43,8 +41,10 @@
         ))))
 
 (defn -main [& args]
-  (let [[mlp-config params] (read-param)]
+  (let [[param-fname schem-fname] args
+        schems (read-schem schem-fname)
+        [mlp-config params] (read-param param-fname)]
     (mlp/init mlp-config 0)
     (set-param params)
-    (fw (nth schems 4))
+    (doseq [s schems] (fw s))
     ))
