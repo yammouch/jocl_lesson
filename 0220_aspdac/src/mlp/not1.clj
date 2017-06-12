@@ -41,6 +41,7 @@
 (def schems
   (->> (read-string (str "(" (slurp "src/mlp/not1.dat") ")"))
        (partition 3)
+       (filter (comp not #{0 1} first))
        (map (fn [[_ field cmd]]
               {:field {:body (mapv (fn [row] (mapv #(Integer/parseInt % 16)
                                                    (re-seq #"\S+" row)))
