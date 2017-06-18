@@ -191,8 +191,8 @@
         )))))
 
 (defn run-minibatch
- ([inputs labels] (run-minibatch inputs labels 0.1))
- ([inputs labels learning-rate]
+ ([inputs labels] (run-minibatch inputs labels 0.1 1.0))
+ ([inputs labels learning-rate regu]
   (when @debug
     (doseq [i (range (count @mlp-config))]
       (when (get-in @jk-mem [i :p])
@@ -207,9 +207,9 @@
   (doseq [{t :type u :u p :p [h w d] :size [_ _ id] :isize}
           (mapv into @mlp-config @jk-mem)]
     (case t
-      :dense  (JKernel/sub (* h w     ) p p u)
-      :conv   (JKernel/sub (* h w d id) p p u)
-      :offset (JKernel/sub    h         p p u)
+      :dense  (JKernel/sub (* h w     ) regu p p u)
+      :conv   (JKernel/sub (* h w d id) regu p p u)
+      :offset (JKernel/sub    h          1.0 p p u)
       :do-nothing))
   (when @debug
     (doseq [i (range (count @mlp-config))]

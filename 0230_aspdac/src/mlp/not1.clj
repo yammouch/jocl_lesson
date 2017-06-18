@@ -95,14 +95,14 @@
      {:type :softmax       :size [   2 10 10 10 ]}
      {:type :cross-entropy :size [(+ 2 10 10 10)]}]))
 
-(defn main-loop [iter learning-rate in-tr lbl-tr in-ts lbl-ts]
+(defn main-loop [iter learning-rate regu in-tr lbl-tr in-ts lbl-ts]
   (loop [i 0
          [[inputs labels] & bs] (make-minibatches 16 in-tr lbl-tr)
          err-acc (repeat 4 1.0)]
     (if (< iter i)
       :done
       (do
-        (mlp/run-minibatch inputs labels learning-rate)
+        (mlp/run-minibatch inputs labels learning-rate regu)
         (if (= (mod i 500) 0)
           (let [err (mlp/fw-err-subbatch in-ts lbl-ts)]
             (printf "i: %6d err: %8.2f\n" i err) (flush)
@@ -125,13 +125,13 @@
 (defn -main [& args]
   (let [start-time (Date.)
         _ (println "start: " (.toString start-time))
-        [iter learning-rate seed conv-size conv-depth]
+        [iter learning-rate regu seed conv-size conv-depth]
         (mapv read-string args)
         mlp-config (make-mlp-config conv-size conv-depth)
         _ (mlp/init mlp-config seed)
         [in-tr lbl-tr in-ts lbl-ts] (make-input-labels seed)]
     ;(dosync (ref-set mlp/debug true))
-    (main-loop iter learning-rate in-tr lbl-tr in-ts lbl-ts)
+    (main-loop iter learning-rate regu in-tr lbl-tr in-ts lbl-ts)
     (print-param mlp-config @mlp/jk-mem)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))

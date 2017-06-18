@@ -5,8 +5,8 @@ public class JKernel {
   }
 
   public static void sub(
-   int len, float[] ov, float[] v0, float[] v1) {
-    for (int i = 0; i < len; i++) ov[i] = v0[i] - v1[i];
+   int len, float regu, float[] ov, float[] v0, float[] v1) {
+    for (int i = 0; i < len; i++) ov[i] = regu*v0[i] - v1[i];
   }
 
   public static void mul_mv(
