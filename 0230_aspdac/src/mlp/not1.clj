@@ -35,7 +35,7 @@
       )))
 
 (defn mlp-input-field [{body :body}]
-  (mapcat #(take 5 (concat (radix %) (repeat 0)))
+  (mapcat #(take 6 (concat (radix %) (repeat 0)))
           (apply concat body)))
 
 (def schems
@@ -81,7 +81,7 @@
         co-w (mapv (partial + 10) (if (even? cs) [1 2] [0 0]))]
     [{:type :conv
       :size  [cs cs cd]
-      :isize [10 10 5]
+      :isize [10 10 6]
       :pad [cs-h cs-h cs-h cs-h]}
      {:type :sigmoid       :size [(* cd (co-h 0) (co-w 0))]}
      {:type :conv
