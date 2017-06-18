@@ -6,10 +6,10 @@
 (defn rmap
  ([f tr] (rmap f tr (comp not seq?)))
  ([f tr atom?]
-  (cond (empty? tr) '()
+  (cond (and (seq? tr) (empty? tr)) '()
         (atom? tr) (f tr)
-        :else (cons (rmap f (first tr))
-                    (rmap f (rest  tr))
+        :else (cons (rmap f (first tr) atom?)
+                    (rmap f (rest  tr) atom?)
                     ))))
 
 (defn read-file []
