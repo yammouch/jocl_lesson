@@ -4,15 +4,16 @@
             [clojure.pprint]))
 
 (defn read-file []
-  (->> (slurp "data/p001.dat")
-       (#(str "[" % "]"))
-       read-string
-       (#(nth % 4))))
+  (let [read-data (->> (slurp "data/p001.dat")
+                       (#(str "[" % "]"))
+                       read-string)]
+    [(reduce #(partition %2 %1) (nth read-data 2) [4 5 3])
+     (reduce #(partition %2 %1) (nth read-data 4) [4 4 3])]))
 
 (defn -main [& _]
-  (let [layer2 (reduce #(partition %2 %1) (read-file) [4 4 3])]
-    (clojure.pprint/pprint layer2)
-    (-> [[[1.0 0.0 0.0 0.0]]]
-        (mlp/padding 2 2 2 2)
-        (mlp/conv-fw (reverse (map reverse layer2)) true)
-        clojure.pprint/pprint)))
+  (let [[l1 l2] (read-file)
+        l12 (-> [[[1.0 0.0 0.0 0.0]]]
+                (mlp/padding 2 2 2 2)
+                (mlp/conv-fw (reverse (map reverse l2)) true))]
+    (clojure.pprint/pprint l2)
+    (clojure.pprint/pprint l12)))
