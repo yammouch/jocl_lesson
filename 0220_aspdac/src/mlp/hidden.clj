@@ -1,4 +1,4 @@
-(ns mlp.hidden2
+(ns mlp.hidden
   (:gen-class)
   (:require [mlp.mlp-clj :as mlp]
             [clojure.pprint]))
@@ -10,17 +10,20 @@
     [(nth read-data 2) (nth read-data 4)]))
 
 (defn show-l2 [l]
-  (->> l
-       (partition 20)
-       (apply map vector)
-       (
+  (let [bunches (->> l
+                     (partition 20)
+                     (apply map vector)
+                     (partition 4)
+                     (apply map vector))]
+    (doseq [b bunches]
+      (doseq [m b]
+        (doseq [r (partition 3 m)]
+          (->> r
+               (map (partial format "%4.1f"))
+               (apply println)))
+        (newline))
+      (newline))))
 
 (defn -main [& _]
   (let [[l2 l4] (read-file)]
     (show-l2 l2)))
-;
-;    (clojure.pprint/pprint layer2)
-;    (-> [[[1.0 0.0 0.0 0.0]]]
-;        (mlp/padding 2 2 2 2)
-;        (mlp/conv-fw (reverse (map reverse layer2)) true)
-;        clojure.pprint/pprint)))
