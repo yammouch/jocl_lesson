@@ -10,10 +10,18 @@
     [(reduce #(partition %2 %1) (nth read-data 2) [4 5 3])
      (reduce #(partition %2 %1) (nth read-data 4) [4 4 3])]))
 
+;(defn show-l01 [l]
+;  (let [bunches (->> l
+;                     (
+
 (defn -main [& _]
   (let [[l1 l2] (read-file)
         l12 (-> [[[1.0 0.0 0.0 0.0]]]
                 (mlp/padding 2 2 2 2)
-                (mlp/conv-fw (reverse (map reverse l2)) true))]
+                (mlp/conv-fw (reverse (map reverse l2)) true))
+        l01 (-> l12
+                (mlp/padding 2 2 2 2)
+                (mlp/conv-fw (reverse (map reverse l1)) true))]
     (clojure.pprint/pprint l2)
-    (clojure.pprint/pprint l12)))
+    (clojure.pprint/pprint l12)
+    (clojure.pprint/pprint l01)))
