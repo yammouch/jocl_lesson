@@ -38,17 +38,28 @@
   (mapcat #(take 6 (concat (radix %) (repeat 0)))
           (apply concat body)))
 
-(def schems
-  (->> (read-string (str "(" (slurp "src/mlp/not1.dat") ")"))
+(defn print-training-data [td]
+  (with-open [o (clojure.java.io/writer "training_data.dat")]
+    (doseq [s td]
+      (clojure.pprint/pprint s o))))
+
+(defn read-schems [fname exclude]
+  (->> (read-string (str "(" (slurp fname) ")"))
        (partition 3)
-       (filter (comp not #{1} first))
+       (filter (comp not
+                     (->> exclude
+                          (re-seq #"\d+")
+                          (map read-string)
+                          set)
+                     first))
+       (#(do (print-training-data %) %))
        (map (fn [[_ field cmd]]
               {:field {:body (mapv (fn [row] (mapv #(Integer/parseInt % 16)
                                                    (re-seq #"\S+" row)))
                                    field)}
                :cmd cmd}))))
 
-(defn make-input-labels [seed]
+(defn make-input-labels [schems seed]
   (let [rnd (apply mlp/xorshift
              (take 4 (iterate (partial + 2) (+ seed 1))))
         confs (map (fn [rnd x]
@@ -57,7 +68,7 @@
                         (select expanded
                                 (rand-nodup (count rnd) (count expanded) rnd)
                                 )]))
-                   (partition 4 rnd)
+                   (partition 1 rnd)
                    schems)]
     [(mapv (comp float-array mlp-input-field :field)
            (mapcat first confs))
@@ -103,16 +114,17 @@
       :done
       (do
         (mlp/run-minibatch inputs labels learning-rate regu)
-        (if (= (mod i 500) 0)
+        (if (= (mod i 100) 0)
           (let [err (mlp/fw-err-subbatch in-ts lbl-ts)]
-            (printf "i: %6d err: %8.2f\n" i err) (flush)
-            (if (every? (partial > 0.02) (cons err err-acc))
+            (printf "i: %6d err: %10.4f\n" i err) (flush)
+            ;(if (every? (partial > 0.02) (cons err err-acc))
+            (if false
               :done
               (recur (+ i 1) bs (take 4 (cons err err-acc)))))
           (recur (+ i 1) bs err-acc))))))
 
-(defn print-param [cfg m]
-  (with-open [o (clojure.java.io/writer "param.dat")]
+(defn print-param [fname cfg m]
+  (with-open [o (clojure.java.io/writer fname)]
     (clojure.pprint/pprint cfg o)
     (loop [i 0 [x & xs] m]
       (if x
@@ -122,17 +134,17 @@
             (recur (+ i 1) xs))
         :done))))
 
-(defn -main [& args]
+(defn -main [iter schem param exclude]
   (let [start-time (Date.)
         _ (println "start: " (.toString start-time))
-        [iter learning-rate regu seed conv-size conv-depth]
-        (mapv read-string args)
-        mlp-config (make-mlp-config conv-size conv-depth)
-        _ (mlp/init mlp-config seed)
-        [in-tr lbl-tr in-ts lbl-ts] (make-input-labels seed)]
+        iter (read-string iter)
+        mlp-config (make-mlp-config 3 4)
+        _ (mlp/init mlp-config 1)
+        [in-tr lbl-tr in-ts lbl-ts]
+        (make-input-labels (read-schems schem exclude) 1)]
     ;(dosync (ref-set mlp/debug true))
-    (main-loop iter learning-rate regu in-tr lbl-tr in-ts lbl-ts)
-    (print-param mlp-config @mlp/jk-mem)
+    (main-loop iter 0.1 0.9999 in-tr lbl-tr in-ts lbl-ts)
+    (print-param param mlp-config @mlp/jk-mem)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
       (printf "%d seconds elapsed\n"
