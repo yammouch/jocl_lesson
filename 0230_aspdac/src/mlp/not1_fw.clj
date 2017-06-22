@@ -38,7 +38,7 @@
     (mlp/fw (float-array (mlp-input-field parsed)))
     (loop [[x & xs] [2 10 10 10], l (:i (last @mlp/jk-mem))]
       (when x
-        (println (apply str (interpose " " (map (partial format "%3.1f")
+        (println (apply str (interpose " " (map (partial format "%4.2f")
                                                 (take x l)))))
         (recur xs (drop x l))
         ))))
