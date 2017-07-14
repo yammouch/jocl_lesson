@@ -115,8 +115,8 @@
       (do
         (mlp/run-minibatch inputs labels learning-rate regu)
         (if (= (mod i 100) 0)
-          (let [err (mlp/fw-err-subbatch in-ts lbl-ts)]
-            (printf "i: %6d err: %10.4f\n" i err) (flush)
+          (let [err (mlp/fw-err-subbatch in-tr lbl-tr)]
+            (printf "i: %6d err: %10.6f\n" i (/ err (count in-tr))) (flush)
             ;(if (every? (partial > 0.02) (cons err err-acc))
             (if false
               :done
