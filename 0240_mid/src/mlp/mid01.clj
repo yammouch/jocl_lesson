@@ -2,8 +2,8 @@
 ; - (done) Replace input data.
 ; - (done) Add error calculation.
 ; - (done) Calculate gradient of input vector.
-; - Add updating of input vector.
-; - Add loop.
+; - (done) Add updating of input vector.
+; - (done) Add loop.
 ; - Refactor matrix dumping.
 
 (ns mlp.mid01
@@ -31,23 +31,6 @@
          (interpose ",")
          (apply str)
          println)))
-
-(defn fw []
-  (let [nn-input (float-array (* 10 10 6))]
-    (mlp/fw nn-input)
-    (->> nn-input
-         (partition 6)
-         (apply map vector)
-         (map (partial partition 10))
-         print-matrices)
-    (doseq [ms (->> (get-in @mlp/jk-mem [0 :p])
-                    (partition 24)
-                    (apply map vector)
-                    (partition 4))]
-      (print-matrices (map (partial partition 3) ms)))
-    (println (apply str (interpose "," (map (partial format "%.2f")
-                                            (:i (last @mlp/jk-mem))
-                                            ))))))
 
 (defn bw-dense [{bp :b} {b :b p :p [cr cc] :size}]
   (when bp
@@ -107,14 +90,16 @@
 (defn -main []
   (let [param-fname "data/0_2_4_6_7_8_9_10_11_12_13_15_18_20_22_23_25_26_28_29_30_32_33_35.prm"
         [_ params] (read-param param-fname)
-        b0 (float-array 600)]
+        b0 (float-array 600)
+        i0 (float-array 600)]
     (mlp/init
      [{:type :conv, :size [3 3 4], :isize [10 10 6], :pad [1 1 1 1]}
       {:type :sigmoid, :size [400]}
       {:type :cross-entropy, :size [400]}]
      0)
     (set-param params)
-    (fw)
-    (prn (calc-error))
-    (bw b0 label 0.1)
-    (prn (seq b0))))
+    (dotimes [_ 50]
+      (mlp/fw i0)
+      (prn (calc-error))
+      (bw b0 label 0.1)
+      (JKernel/sub 600 0.9999 i0 i0 b0))))
