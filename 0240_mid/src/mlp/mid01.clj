@@ -1,3 +1,11 @@
+; - Reduce layers.
+; - Replace input data.
+; - Add error calculation.
+; - Calculate gradient of input vector.
+; - Add updating of input vector.
+; - Add loop.
+; - Refactor matrix dumping.
+
 (ns mlp.mid01
   (:gen-class)
   (:require [mlp.mlp-jk :as mlp]
