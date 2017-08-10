@@ -1,6 +1,6 @@
 ; - (done) Reduce layers.
 ; - (done) Replace input data.
-; - Add error calculation.
+; - (done) Add error calculation.
 ; - Calculate gradient of input vector.
 ; - Add updating of input vector.
 ; - Add loop.
@@ -49,6 +49,14 @@
                                             (:i (last @mlp/jk-mem))
                                             ))))))
 
+(defn calc-error []
+  (let [out ((last @mlp/jk-mem) :i)]
+    (apply + (map #(let [diff (- %1 %2)] (* diff diff))
+                  out
+                 (-> (reduce #(vec (repeat %2 %1)) 0 [4 10 10])
+                     (assoc-in [4 4 0] 1)
+                     flatten)))))
+
 (defn -main []
   (let [param-fname "data/0_2_4_6_7_8_9_10_11_12_13_15_18_20_22_23_25_26_28_29_30_32_33_35.prm"
         [_ params] (read-param param-fname)]
@@ -58,4 +66,5 @@
       {:type :cross-entropy, :size [400]}]
      0)
     (set-param params)
-    (fw)))
+    (fw)
+    (prn (calc-error))))
