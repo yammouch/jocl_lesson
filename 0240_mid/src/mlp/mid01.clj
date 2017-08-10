@@ -1,4 +1,4 @@
-; - Reduce layers.
+; - (done) Reduce layers.
 ; - Replace input data.
 ; - Add error calculation.
 ; - Calculate gradient of input vector.
@@ -34,7 +34,7 @@
 
 (defn set-param [param]
   (dosync
-    (doseq [[i p] param]
+    (doseq [[i p] (take 1 param)]
       (alter mlp/jk-mem #(assoc-in % [i :p] (float-array p)))
       )))
 
@@ -66,48 +66,21 @@
                     (apply map vector)
                     (partition 4))]
       (print-matrices (map (partial partition 3) ms)))
-    (->> (get-in @mlp/jk-mem [2 :i])
-         (partition 4)
-         (apply map vector)
-         (map (partial partition 10))
-         print-matrices)
-    (doseq [ms (->> (get-in @mlp/jk-mem [2 :p])
-                    (partition 16)
-                    (apply map vector)
-                    (partition 4))]
-      (print-matrices (map (partial partition 3) ms)))
-    (->> (get-in @mlp/jk-mem [4 :i])
-         (partition 4)
-         (apply map vector)
-         (map (partial partition 10))
-         print-matrices)
-    (doseq [ms (->> (get-in @mlp/jk-mem [4 :p])
-                    (partition 32)
-                    (apply map vector)
-                    (map (fn [v] (->> (partition 4 v)
-                                      (apply map vector)
-                                      (map (partial partition 10)))))
-                    (apply map vector))]
-      (print-matrices ms))
-    (->> (get-in @mlp/jk-mem [5 :p])
-         (map (partial format "%.2f"))
-         (interpose ",")
-         (apply str)
-         println)
-    (loop [[x & xs] [2 10 10 10], l (:i (last @mlp/jk-mem))]
-      (when x
-        (println (apply str (interpose "," (map (partial format "%.2f")
-                                                (take x l)))))
-        (recur xs (drop x l))
-        ))))
+    (println (apply str (interpose "," (map (partial format "%.2f")
+                                            (:i (last @mlp/jk-mem))
+                                            ))))))
 
 (defn -main []
   (let [param-fname "data/0_2_4_6_7_8_9_10_11_12_13_15_18_20_22_23_25_26_28_29_30_32_33_35.prm"
         schem-fname "data/not1.dat"
         schem-num "13"
         schems (read-schem schem-fname (read-string schem-num))
-        [mlp-config params] (read-param param-fname)]
-    (mlp/init mlp-config 0)
+        [_ params] (read-param param-fname)]
+    (mlp/init
+     [{:type :conv, :size [3 3 4], :isize [10 10 6], :pad [1 1 1 1]}
+      {:type :sigmoid, :size [400]}
+      {:type :cross-entropy, :size [400]}]
+     0)
     (set-param params)
     (doseq [s schems] (fw s))
     ))
