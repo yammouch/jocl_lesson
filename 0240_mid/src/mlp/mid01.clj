@@ -4,12 +4,20 @@
 ; - (done) Calculate gradient of input vector.
 ; - (done) Add updating of input vector.
 ; - (done) Add loop.
-; - Refactor matrix dumping.
+; - (done) Refactor matrix dumping.
 
 (ns mlp.mid01
   (:gen-class)
   (:require [mlp.mlp-jk :as mlp]
             [clojure.pprint]))
+
+(defn mapd [d f s & ss]
+  (if (<= d 0)
+    (apply f s ss)
+    (apply mapv (partial mapd (- d 1) f) s ss)))
+
+(defn swap-dimension [org n t]
+  (mapd org (partial apply mapd n vector) t))
 
 (defn read-param [fname]
   (let [[x & xs] (read-string (str "(" (slurp fname) ")"))]
@@ -102,4 +110,8 @@
       (mlp/fw i0)
       (prn (calc-error))
       (bw b0 label 0.1)
-      (JKernel/sub 600 0.9999 i0 i0 b0))))
+      (JKernel/sub 600 0.9999 i0 i0 b0))
+    (->> (reduce #(partition %2 %1) i0 [6 10])
+         (swap-dimension 1 1) ; [h w d] -> [h d w]
+         (swap-dimension 0 1) ;         -> [d h w]
+         (print-matrices))))
