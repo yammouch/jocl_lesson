@@ -1,4 +1,4 @@
-(ns mlp.mid03
+(ns mlp.mid02
   (:gen-class)
   (:require [mlp.mlp-jk :as mlp]
             [clojure.pprint]))
@@ -17,7 +17,7 @@
 
 (defn set-param [param]
   (dosync
-    (doseq [[i p] param]
+    (doseq [[i p] (take 2 param)]
       (alter mlp/jk-mem #(assoc-in % [i :p] (float-array p)))
       )))
 
@@ -77,11 +77,10 @@
       (bw1 lp l ln learning-rate))))
 
 (def label
-  (float-array
-   [0 1
-    0 0 0 1 0 0 0 0 0 0
-    0 0 1 0 0 0 0 0 0 0
-    0 0 0 0 0 0 1 0 0 0]))
+  (-> (reduce #(vec (repeat %2 %1)) 0 [4 10 10])
+      (assoc-in [4 4 0] 1)
+      flatten
+      float-array))
 
 (defn calc-error []
   (let [out ((last @mlp/jk-mem) :i)]
@@ -90,14 +89,22 @@
 
 (defn -main []
   (let [param-fname "data/0_2_4_6_7_8_9_10_11_12_13_15_18_20_22_23_25_26_28_29_30_32_33_35.prm"
-        [mlp-config params] (read-param param-fname)
+        [_ params] (read-param param-fname)
         b0 (float-array 600)
         i0 (float-array 600)]
-    (mlp/init mlp-config 0)
+    (mlp/init
+     [{:type :conv, :size [3 3 4], :isize [10 10 6], :pad [1 1 1 1]}
+      {:type :sigmoid, :size [400]}
+      {:type :conv, :size [3 3 4], :isize [10 10 4], :pad [1 1 1 1]}
+      {:type :sigmoid, :size [400]}
+      {:type :cross-entropy, :size [400]}]
+     0)
     (set-param params)
-    (dotimes [_ 50]
+    (dotimes [i 5000]
       (mlp/fw i0)
-      (prn (calc-error))
+      (when (= (mod i 500) 0)
+        (println (format "%8d " i) (calc-error))
+        (flush))
       (bw b0 label 0.1)
       (JKernel/sub 600 0.9999 i0 i0 b0))
     (->> (reduce #(partition %2 %1) i0 [6 10])
