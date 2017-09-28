@@ -29,3 +29,17 @@
                  (recude #(assoc-in traced % 1) search)
                  ))))))
 
+(defn trace-straight-h [field y x]
+  [(loop [x x] ; trace left
+     (if (or (<= x 0)
+             (= (get-in field [y    x    2]) 1)  ; connecting dot
+             (= (get-in field [y (- x 1) 1]) 0)) ; net end
+       x
+       (loop (- x 1)))
+   (let [cx (count (first field))]
+     (loop [x x] ; trace right
+       (if (or (<= cx x)
+               (= (get-in field [y    x    2]) 1)  ; connecting dot
+               (= (get-in field [y (+ x 1) 1]) 0)) ; net end
+       x
+       (loop (+ x 1))))])
