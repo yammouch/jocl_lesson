@@ -23,10 +23,11 @@
                                  2)) ; surrounded by 0, 1, 2 nets
                        search
                        (filter #(= (% 2) d) search))]
-          (recur (into stack (filter (fn [[_ _ _ sy sx sd]]
-                                       (and (< -1 sy cy) (< -1 sx cx)))
-                                     search))
-                 (recude #(assoc-in traced % 1) search)
+          (recur (into (pop stack)
+                       (filter (fn [[_ _ _ sy sx sd]]
+                                 (and (< -1 sy cy) (< -1 sx cx)))
+                               search))
+                 (reduce #(assoc-in traced % 1) search)
                  ))))))
 
 (defn trace-straight-h [field y x]
@@ -43,3 +44,48 @@
                (= (get-in field [y (+ x 1) 1]) 0)) ; net end
        x
        (loop (+ x 1))))])
+
+(defn surrounding-h [y x0 x1]
+  (concat
+   (when (< 0 y)
+     (map (fn [x] [(- y 1) x 0])
+          (range x0 (+ x1 1))))
+   (when (< x0 0) [[y (- x 1) 1]])
+   (map (fn [x] [y x 0])
+        (range x0 (+ x1 1)))
+   (map (fn [x] [y x 1])
+        (range x0 (+ x1 1))
+        )))
+
+(defn disturbance-h [y x0 x1 traced field]
+  (some (fn [[y x d]]
+          (and (= (get-in field  [y x d]) 1)
+               (= (get-in traced [y x d]) 0)))
+        (surrounding-h y x0 x1)))
+
+(defn add-dot-h [y x0 x1 traced field]
+  (loop [x x0 fld field]
+    (if (< x1 x)
+      fld
+      (recur (+ x 1)
+             (if (= (->> (surrounding y x)
+                         (filter (fn [[y x d]]
+                                   (and (= (get-in fld    [y x d]) 1)
+                                        (= (get-in traced [y x d]) 1)))
+                         count)
+                    3)
+               (assoc-in fld [y x 1] 1)
+               fld)))))
+
+(defn draw-net-1-h [y x0 x1 field]
+  (loop [x x0 fld field]
+    (if (< x0 x)
+      fld
+      (recur (+ x 1)
+             (assoc-in fld [y x 1] 1)))))
+
+(defn draw-net [y x0 x1 traced field]
+  (when-not (disturbance-h y x0 x1 traced field)
+    (->> field
+         (draw-net-1-h y x0 x1)
+         (add-dot-h y x0 x1 traced))))
