@@ -45,23 +45,17 @@
        x
        (loop (+ x 1))))])
 
-(defn surrounding-h [y x0 x1]
-  (concat
-   (when (< 0 y)
-     (map (fn [x] [(- y 1) x 0])
-          (range x0 (+ x1 1))))
-   (when (< x0 0) [[y (- x 1) 1]])
-   (map (fn [x] [y x 0])
-        (range x0 (+ x1 1)))
-   (map (fn [x] [y x 1])
-        (range x0 (+ x1 1))
-        )))
-
-(defn disturbance-h [y x0 x1 traced field]
-  (some (fn [[y x d]]
-          (and (= (get-in field  [y x d]) 1)
-               (= (get-in traced [y x d]) 0)))
-        (surrounding-h y x0 x1)))
+(defn drawable-h? [y x traced field]
+  (not (or (= (get-in field [y x 1]) 1)
+           (and (< 0 x)
+                (= (get-in field [y (- x 1) 1]) 1))
+           (and (or (= y 0)
+                (= (get-in field [(- y 1) x 0]) 0))
+           (= (get-in field [y x 0]) 1))
+           (and (< 0 y)
+                (= (get-in field [(- y 1) x 0]) 1)
+                (= (get-in field [   y    x 0]) 0)
+                ))))
 
 (defn add-dot-h [y x0 x1 traced field]
   (loop [x x0 fld field]
@@ -84,8 +78,9 @@
       (recur (+ x 1)
              (assoc-in fld [y x 1] 1)))))
 
-(defn draw-net [y x0 x1 traced field]
-  (when-not (disturbance-h y x0 x1 traced field)
+(defn draw-net-h [y x0 x1 traced field]
+  (when (every? (map (fn [x] (drawable-h? y x traced field))
+                     (range x0 (+ x1 1))))
     (->> field
          (draw-net-1-h y x0 x1)
          (add-dot-h y x0 x1 traced))))
