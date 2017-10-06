@@ -78,3 +78,15 @@
     (->> field
          (draw-net-1-h y x0 x1)
          (add-dot-h y x0 x1 traced))))
+
+(defn search-short-u [y x traced field]
+  (loop [y y]
+    (cond (< y 0) false
+
+          (some (fn [[y x d]] (and (= (get-in traced [y x 0] 0) 1)
+                                   (= (get-in field  [y x 0] 0) 1))
+                (surrounding y x))
+          y
+
+          :else (loop (- y 1))
+          )))
