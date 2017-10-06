@@ -1,13 +1,10 @@
 (ns mlp.schemanip)
 
 (defn surrounding [y x]
-  (filter (fn [[ly lx]]
-            (and (<= 0 lx) (<= 0 ly)
-            (= (get-in traced [ly lx]) 0)))
-    [[(- y 1)  x    0 (- y 1)  x    0]   ; up
-     [   y     x    0 (+ y 1)  x    0]   ; down
-     [   y  (- x 1) 1    y  (- x 1) 1]   ; left
-     [   y     x    1    y  (+ x 1) 1]]) ; right
+  [[(- y 1)  x    0 (- y 1)  x    0]   ; up
+   [   y     x    0 (+ y 1)  x    0]   ; down
+   [   y  (- x 1) 1    y  (- x 1) 1]   ; left
+   [   y     x    1    y  (+ x 1) 1]]) ; right
 
 (defn trace-net [field y x d]
   (let [cy (count field) cx (count (first field))]
@@ -16,9 +13,9 @@
       (if (empty? stack)
         traced
         (let [search (surrounding py px)
-              search (if (or (= (get-in field [y x 2]) 1) ; connecting dot
+              search (if (or (= (get-in field [y x 2] 0) 1) ; connecting dot
                              (<= (count (filter
-                                         #(= (get-in field (take 3 %)) 1)
+                                         #(= (get-in field (take 3 %) 0) 1)
                                          search)))
                                  2)) ; surrounded by 0, 1, 2 nets
                        search
@@ -46,15 +43,12 @@
        (loop (+ x 1))))])
 
 (defn drawable-h? [y x traced field]
-  (not (or (= (get-in field [y x 1]) 1)
-           (and (< 0 x)
-                (= (get-in field [y (- x 1) 1]) 1))
-           (and (or (= y 0)
-                (= (get-in field [(- y 1) x 0]) 0))
-           (= (get-in field [y x 0]) 1))
-           (and (< 0 y)
-                (= (get-in field [(- y 1) x 0]) 1)
-                (= (get-in field [   y    x 0]) 0)
+  (not (or (= (get-in field [y    x    1]  ) 1)
+           (= (get-in field [y (- x 1) 1] 0) 1))
+           (and (= (get-in field [(- y 1) x 0] 0) 0)
+                (= (get-in field [   y    x 0]  ) 1))
+           (and (= (get-in field [(- y 1) x 0] 0) 1)
+                (= (get-in field [   y    x 0]  ) 0)
                 ))))
 
 (defn add-dot-h [y x0 x1 traced field]
@@ -79,8 +73,8 @@
              (assoc-in fld [y x 1] 1)))))
 
 (defn draw-net-h [y x0 x1 traced field]
-  (when (every? (map (fn [x] (drawable-h? y x traced field))
-                     (range x0 (+ x1 1))))
+  (when (every? (fn [x] (drawable-h? y x traced field))
+                (range x0 (+ x1 1)))
     (->> field
          (draw-net-1-h y x0 x1)
          (add-dot-h y x0 x1 traced))))
