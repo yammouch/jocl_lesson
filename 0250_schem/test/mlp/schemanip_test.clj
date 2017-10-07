@@ -17,13 +17,13 @@
              (conj acc (rem i rdx))
              ))))
 
-(defn decode [strs]
+(defn decode [n strs]
   (mapv (fn [str]
           (mapv (fn [s]
                   (->> (Integer/parseInt s 16)
                        (radix 2)
                        (#(concat % (repeat 0)))
-                       (take 3)
+                       (take n)
                        vec))
                 (re-seq #"\S" str)))
         strs))
@@ -41,5 +41,8 @@
          "0000100000" "0000000000"
          "0000100000" "0000000000"]
         [tested expected] (apply map vector (partition 2 test-pattern))]
-    (is (= (smp/trace-net (decode tested) 2 3 1)
-          (decode expected)))))
+    (doseq [r (decode 2 expected)] (println r))
+    (doseq [r (smp/trace-net (decode 3 tested) 2 3 1)]
+      (println r))
+    (is (= (smp/trace-net (decode 3 tested) 2 3 1)
+           (decode 2 expected)))))
