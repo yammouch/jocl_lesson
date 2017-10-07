@@ -1,4 +1,5 @@
-(ns mlp.schemanip)
+(ns mlp.schemanip
+  (require [clojure.pprint]))
 
 (defn surrounding [y x]
   [[(- y 1)  x    0 (- y 1)  x    0]   ; up
@@ -9,7 +10,7 @@
 (defn trace-net [field y x d]
   (let [cy (count field) cx (count (first field))]
     (loop [[[py px pd] :as stack] [[y x d]]
-           traced (reduce #(repeat %2 %1) 0 [2 cx cy])]
+           traced (reduce #(vec (repeat %2 %1)) 0 [2 cx cy])]
       (if (empty? stack)
         traced
         (let [search (surrounding py px)
@@ -24,7 +25,7 @@
                        (filter (fn [[_ _ _ sy sx sd]]
                                  (and (< -1 sy cy) (< -1 sx cx)))
                                search))
-                 (reduce #(assoc-in traced % 1) search)
+                 (reduce #(assoc-in %1 (take 3 %2) 1) traced search)
                  ))))))
 
 (defn trace-straight-h [field y x]
