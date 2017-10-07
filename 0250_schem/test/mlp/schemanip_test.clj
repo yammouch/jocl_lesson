@@ -41,8 +41,5 @@
          "0000100000" "0000000000"
          "0000100000" "0000000000"]
         [tested expected] (apply map vector (partition 2 test-pattern))]
-    (doseq [r (decode 2 expected)] (println r))
-    (doseq [r (smp/trace-net (decode 3 tested) 2 3 1)]
-      (println r))
     (is (= (smp/trace-net (decode 3 tested) 2 3 1)
            (decode 2 expected)))))

@@ -1,5 +1,4 @@
-(ns mlp.schemanip
-  (require [clojure.pprint]))
+(ns mlp.schemanip)
 
 (defn surrounding [y x]
   [[(- y 1)  x    0 (- y 1)  x    0]   ; up
@@ -8,18 +7,14 @@
    [   y     x    1    y  (+ x 1) 1]]) ; right
 
 (defn trace-net [field y x d]
-  (doseq [r field] (println r))
   (let [cy (count field) cx (count (first field))]
     (loop [stack [[y x d]]
            traced (reduce #(vec (repeat %2 %1)) 0 [2 cx cy])]
-      (clojure.pprint/pprint stack)
-      (doseq [r traced] (println r))
       (if (empty? stack)
         traced
         (let [[py px pd] (peek stack)
               search (filter #(= (get-in field (take 3 %) 0) 1)
                              (surrounding py px))
-              _ (clojure.pprint/pprint search)
               search (if (or (= (get-in field [py px 2] 0) 1) ; connecting dot
                              (<= (count (filter
                                          #(= (get-in field (take 3 %) 0) 1)
@@ -27,10 +22,8 @@
                                  2)) ; surrounded by 0, 1, 2 nets
                        search
                        (filter #(= (% 2) d) search))
-              _ (clojure.pprint/pprint search)
               search (filter #(= (get-in traced (take 3 %)) 0)
                              search)]
-          (clojure.pprint/pprint search)
           (recur (into (pop stack)
                        (filter (fn [[sy sx sd]]
                                  (and (< -1 sy cy) (< -1 sx cx)))
