@@ -11,6 +11,8 @@
   (let [cy (count field) cx (count (first field))]
     (loop [[[py px pd] :as stack] [[y x d]]
            traced (reduce #(vec (repeat %2 %1)) 0 [2 cx cy])]
+      (clojure.pprint/pprint stack)
+      (doseq [r traced] (println r))
       (if (empty? stack)
         traced
         (let [search (surrounding py px)
@@ -24,9 +26,9 @@
               search (filter #(= (get-in traced (take 3 %)) 0)
                              search)]
           (recur (into (pop stack)
-                       (filter (fn [[_ _ _ sy sx sd]]
+                       (filter (fn [[sy sx sd]]
                                  (and (< -1 sy cy) (< -1 sx cx)))
-                               search))
+                               (map (partial drop 3) search)))
                  (reduce #(assoc-in %1 (take 3 %2) 1) traced search)
                  ))))))
 
