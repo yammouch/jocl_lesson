@@ -20,7 +20,9 @@
                                          search))
                                  2)) ; surrounded by 0, 1, 2 nets
                        search
-                       (filter #(= (% 2) d) search))]
+                       (filter #(= (% 2) d) search))
+              search (filter #(= (get-in traced (take 3 %)) 0)
+                             search)]
           (recur (into (pop stack)
                        (filter (fn [[_ _ _ sy sx sd]]
                                  (and (< -1 sy cy) (< -1 sx cx)))
