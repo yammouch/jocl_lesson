@@ -16,7 +16,7 @@
               search (if (or (= (get-in field [y x 2] 0) 1) ; connecting dot
                              (<= (count (filter
                                          #(= (get-in field (take 3 %) 0) 1)
-                                         search)))
+                                         search))
                                  2)) ; surrounded by 0, 1, 2 nets
                        search
                        (filter #(= (% 2) d) search))]
@@ -33,18 +33,18 @@
              (= (get-in field [y    x    2]) 1)  ; connecting dot
              (= (get-in field [y (- x 1) 1]) 0)) ; net end
        x
-       (loop (- x 1)))
+       (recur (- x 1))))
    (let [cx (count (first field))]
      (loop [x x] ; trace right
        (if (or (<= cx x)
                (= (get-in field [y    x    2]) 1)  ; connecting dot
                (= (get-in field [y (+ x 1) 1]) 0)) ; net end
-       x
-       (loop (+ x 1))))])
+         x
+         (recur (+ x 1)))))])
 
 (defn drawable-h? [y x traced field]
   (not (or (= (get-in field [y    x    1]  ) 1)
-           (= (get-in field [y (- x 1) 1] 0) 1))
+           (= (get-in field [y (- x 1) 1] 0) 1)
            (and (= (get-in field [(- y 1) x 0] 0) 0)
                 (= (get-in field [   y    x 0]  ) 1))
            (and (= (get-in field [(- y 1) x 0] 0) 1)
@@ -59,7 +59,7 @@
              (if (= (->> (surrounding y x)
                          (filter (fn [[y x d]]
                                    (and (= (get-in fld    [y x d]) 1)
-                                        (= (get-in traced [y x d]) 1)))
+                                        (= (get-in traced [y x d]) 1))))
                          count)
                     3)
                (assoc-in fld [y x 1] 1)
@@ -84,9 +84,9 @@
     (cond (< y 0) false
 
           (some (fn [[y x d]] (and (= (get-in traced [y x 0] 0) 1)
-                                   (= (get-in field  [y x 0] 0) 1))
+                                   (= (get-in field  [y x 0] 0) 1)))
                 (surrounding y x))
           y
 
-          :else (loop (- y 1))
+          :else (recur (- y 1))
           )))
