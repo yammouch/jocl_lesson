@@ -156,3 +156,8 @@
                2)
           (assoc-in drawn [y1 x 2] 1)
           drawn)))))
+
+(defn debridge-h [y x0 x1 field]
+  (reduce #(assoc-in %1 [y %2 2] 0)
+          field
+          (range x0 x1)))
