@@ -6,7 +6,7 @@
    [   y  (- x 1) 1    y  (- x 1) 1]   ; left
    [   y     x    1    y  (+ x 1) 1]]) ; right
 
-(defn trace-net [field y x d]
+(defn trace [field y x d]
   (let [cy (count field) cx (count (first field))]
     (loop [stack [[y x d]]
            traced (reduce #(vec (repeat %2 %1)) 0 [2 cx cy])]
@@ -47,13 +47,54 @@
          (recur (+ x 1)))))])
 
 (defn drawable-h? [y x traced field]
-  (not (or (= (get-in field [y    x    1]  ) 1)
-           (= (get-in field [y (- x 1) 1] 0) 1)
-           (and (= (get-in field [(- y 1) x 0] 0) 0)
-                (= (get-in field [   y    x 0]  ) 1))
-           (and (= (get-in field [(- y 1) x 0] 0) 1)
-                (= (get-in field [   y    x 0]  ) 0)
-                ))))
+  (cond (= [(get-in field  [y    x    1]  )
+            (get-in traced [y    x    1]  )]
+           [1 0])
+        false
+        (= [(get-in field  [y (- x 1) 1] 0)
+            (get-in traced [y (- x 1) 1] 0)]
+           [1 0])
+        false
+        (= [(get-in field  [(- y 1) x 0] 0)
+            (get-in traced [(- y 1) x 0] 0)
+            (get-in field  [   y    x 0]  )
+            (get-in traced [   y    x 0]  )]
+           [1 0 1 0])
+        true
+        (= [(get-in field  [(- y 1) x 0] 0)
+            (get-in traced [(- y 1) x 0] 0)]
+           [1 0])
+        false
+        (= [(get-in field  [   y    x 0]  )
+            (get-in traced [   y    x 0]  )]
+           [1 0])
+        false
+        :else true))
+
+(defn drawable-v? [y x traced field]
+  (cond (= [(get-in field  [   y    x 0]  )
+            (get-in traced [   y    x 0]  )]
+           [1 0])
+        false
+        (= [(get-in field  [(- y 1) x 0] 0)
+            (get-in traced [(- y 1) x 0] 0)]
+           [1 0])
+        false
+        (= [(get-in field  [y (- x 1) 1] 0)
+            (get-in traced [y (- x 1) 1] 0)
+            (get-in field  [y    x    1]  )
+            (get-in traced [y    x    1]  )]
+           [1 0 1 0])
+        true
+        (= [(get-in field  [y (- x 1) 0] 0)
+            (get-in traced [y (- x 1) 0] 0)]
+           [1 0])
+        false
+        (= [(get-in field  [y    x    0]  )
+            (get-in traced [y    x    0]  )]
+           [1 0])
+        false
+        :else true))
 
 (defn add-dot-h [y x0 x1 traced field]
   (loop [x x0 fld field]
@@ -76,7 +117,14 @@
       (recur (+ x 1)
              (assoc-in fld [y x 1] 1)))))
 
-(defn draw-net-h [y x0 x1 traced field]
+(defn draw-net-1-v [y0 y1 x field]
+  (loop [y y0 fld field]
+    (if (< y0 y)
+      fld
+      (recur (+ y 1)
+             (assoc-in fld [y x 1] 0)))))
+
+(defn stumble-h [y x0 x1 traced field]
   (when (every? (fn [x] (drawable-h? y x traced field))
                 (range x0 (+ x1 1)))
     (->> field
@@ -94,3 +142,17 @@
 
           :else (recur (- y 1))
           )))
+
+(defn reach-u [y x traced field]
+  (let [y1 (search-short-u y x traced field)]
+    (when (and y1
+               (every? (fn [y] (drawable-v? y x traced field))
+                       (range y (- y1 1) -1)))
+      (let [drawn (draw-net-1-v y1 (- y 1) x)]
+        (if (= (count (filter (fn [[y x d]] (= [(get-in field  [y x d] 0)
+                                                (get-in traced [y x d] 0)]
+                                               [1 1]))
+                              (surrounding y x)))
+               2)
+          (assoc-in drawn [y1 x 2] 1)
+          drawn)))))

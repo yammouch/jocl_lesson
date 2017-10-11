@@ -28,7 +28,7 @@
                 (re-seq #"\S" str)))
         strs))
 
-(deftest test-trace-net
+(deftest test-trace
   (let [test-pattern
         ["0000100000" "0000000000"
          "0000100000" "0000000000"
@@ -41,5 +41,5 @@
          "0000100000" "0000000000"
          "0000100000" "0000000000"]
         [tested expected] (apply map vector (partition 2 test-pattern))]
-    (is (= (smp/trace-net (decode 3 tested) 2 3 1)
+    (is (= (smp/trace (decode 3 tested) 2 3 1)
            (decode 2 expected)))))
