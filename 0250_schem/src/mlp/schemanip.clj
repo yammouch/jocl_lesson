@@ -161,3 +161,26 @@
   (reduce #(assoc-in %1 [y %2 2] 0)
           field
           (range x0 x1)))
+
+(defn nets [y x field]
+  [(get-in field [(- y 1) x 0] 0)   ; up
+   (get-in field [   y    x 0]  )   ; down
+   (get-in field [y (- x 1) 1] 0)   ; left
+   (get-in field [y    x    1]  )   ; right
+   (get-in field [y    x    2]  )]) ; dot
+
+(defn shave-d [y x field]
+  (loop [y y fld field]
+    (let [n (nets y x fld)]
+      (cond (or (= n [0 1 0 0 0])
+                (= n [0 1 1 1 0]))
+            (recur (+ y 1)
+                   (assoc-in fld [y x 0] 0))
+
+            (= (->> (take 4 n)
+                    (filter (partial = 1))
+                    count)
+               3)
+            (assoc-in fld [y x 2] 1)
+
+            :else fld))))
