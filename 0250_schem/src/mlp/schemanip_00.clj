@@ -1,4 +1,6 @@
-(ns mlp.schemanip)
+;(ns mlp.schemanip)
+(ns mlp.schemanip
+  (:require [clojure.pprint]))
 
 (defn surrounding [y x]
   [[(- y 1)  x    0 (- y 1)  x    0]   ; up
@@ -6,19 +8,42 @@
    [   y  (- x 1) 1    y  (- x 1) 1]   ; left
    [   y     x    1    y  (+ x 1) 1]]) ; right
 
+(defn nets [y x field]
+  [(get-in field [(- y 1) x    0] 0)   ; up
+   (get-in field [   y    x    0]  )   ; down
+   (get-in field [   y (- x 1) 1] 0)   ; left
+   (get-in field [   y    x    1]  )   ; right
+   (get-in field [   y    x    2]  )]) ; dot
+
+(defn netd [y x field]
+  (mapv vector [:u :d :l :r :c] (nets y x field)))
+
+(defn adjacent [y x d]
+  (case d
+    :u [(- y 1)  x    0]
+    :d [(+ y 1)  x    0]
+    :l [   y  (- x 1) 1]
+    :r [   y  (+ x 1) 1]))
+
+(defn assoc-net [field y x dir val]
+  (case dir
+    :u (assoc-in field [(- y 1)  x    0] val)
+    :d (assoc-in field [   y     x    0] val)
+    :l (assoc-in field [   y  (- x 1) 1] val)
+    :r (assoc-in field [   y     x    1] val)))
+
 (defn trace-search-dir [field traced y x d]
-  (let [search (filter #(= (get-in field (take 3 %) 0) 1)
-                       (surrounding y x))
-        search (if (or (= (get-in field [y x 2] 0) 1) ; connecting dot
-                       (<= (count (filter
-                                   #(= (get-in field (take 3 %) 0) 1)
-                                   search))
-                           2)) ; surrounded by 0, 1, 2 nets
-                 search
-                 (filter #(= (% 2) d) search))
-        search (filter #(= (get-in traced (take 3 %)) 0)
-                       search)]
-    search))
+  (let [nd          (netd y x field )
+        td (into {} (netd y x traced))
+        search (filter #(and (#{:u :d :l :r} (% 0)) (= (% 1) 1)) nd)
+        search (cond (or (= (get-in nd [4 0]) 1) ; connecting dot
+                         (<= (count search) 2))
+                     search
+
+                     (= d 0) (filter (comp #{:u :d} first) search)
+                     :else   (filter (comp #{:l :r} first) search))
+        search (filter #(= (td (% 0)) 1) search)]
+    (map first search)))
 
 (defn trace [field y x d]
   (let [cy (count field) cx (count (first field))]
@@ -27,12 +52,13 @@
       (if (empty? stack)
         traced
         (let [[py px pd] (peek stack)
-              search (trace-search-dir field traced py px pd)]
+              search (trace-search-dir field traced py px pd)
+              adj (map (partial adjacent py px) search)]
           (recur (into (pop stack)
                        (filter (fn [[sy sx sd]]
                                  (and (< -1 sy cy) (< -1 sx cx)))
-                               (map (partial drop 3) search)))
-                 (reduce #(assoc-in %1 (take 3 %2) 1) traced search)
+                               adj))
+                 (reduce #(assoc-net %1 py px %2 1) traced search)
                  ))))))
 
 (defn trace-straight-h [field y x]
@@ -165,13 +191,6 @@
   (reduce #(assoc-in %1 [y %2 2] 0)
           field
           (range x0 x1)))
-
-(defn nets [y x field]
-  [(get-in field [(- y 1) x 0] 0)   ; up
-   (get-in field [   y    x 0]  )   ; down
-   (get-in field [y (- x 1) 1] 0)   ; left
-   (get-in field [y    x    1]  )   ; right
-   (get-in field [y    x    2]  )]) ; dot
 
 (defn shave-d [y x field]
   (loop [y y fld field]
