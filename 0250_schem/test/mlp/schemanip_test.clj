@@ -43,3 +43,14 @@
         [tested expected] (apply map vector (partition 2 test-pattern))]
     (is (= (smp/trace (decode 3 tested) 2 3 1)
            (decode 2 expected)))))
+
+(deftest test-beam-h
+  (let [test-pattern
+        ["0000000000"
+         "0032227200"
+         "0010001010"
+         "0010001010"
+         "0000000000"
+         "0000000000"]]
+    (is (= (smp/beam-h (decode 3 test-pattern) 1 4)
+           [2 6]))))

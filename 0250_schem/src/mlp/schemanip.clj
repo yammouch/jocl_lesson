@@ -35,7 +35,7 @@
                  (reduce #(assoc-in %1 (take 3 %2) 1) traced search)
                  ))))))
 
-(defn trace-straight-h [field y x]
+(defn beam-h [field y x]
   [(loop [x x] ; trace left
      (if (or (<= x 0)
              (= (get-in field [y    x    2]) 1)  ; connecting dot
