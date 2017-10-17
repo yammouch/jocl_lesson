@@ -17,16 +17,16 @@
              (conj acc (rem i rdx))
              ))))
 
-(defn decode [n strs]
-  (mapv (fn [str]
-          (mapv (fn [s]
-                  (->> (Integer/parseInt s 16)
-                       (radix 2)
-                       (#(concat % (repeat 0)))
-                       (take n)
-                       vec))
-                (re-seq #"\S" str)))
-        strs))
+(defn decode1 [n str]
+  (mapv (fn [s]
+          (->> (Integer/parseInt s 16)
+               (radix 2)
+               (#(concat % (repeat 0)))
+               (take n)
+               vec))
+        (re-seq #"\S" str)))
+
+(defn decode [n strs] (mapv (partial decode1 n) strs))
 
 (deftest test-trace
   (let [test-pattern
@@ -54,3 +54,23 @@
          "0000000000"]]
     (is (= (smp/beam-h (decode 3 test-pattern) 1 4)
            [2 6]))))
+
+(deftest test-drawable-h?
+  (let [test-pattern
+        ["0000000000" "0000000000"
+         "0032227200" "0032227200"
+         "0010001010" "0010001010"
+         "0010001010" "0010001010"
+         "0000000000" "0000000000"
+         "0032227200" "0000000000"
+         "0010001010" "0000000000"
+         "0010001010" "0000000000"
+         "0000000000" "0000000000"]
+        [field traced] (->> test-pattern
+                            (map (partial decode1 3))
+                            (partition 2)
+                            (apply map vector))]
+    (is      (smp/drawable-h? 4 2 traced field) )
+    (is      (smp/drawable-h? 6 2 traced field) )
+    (is (not (smp/drawable-h? 5 3 traced field)))
+    ))
