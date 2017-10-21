@@ -53,20 +53,20 @@
 (defn drawable-h? [y x traced field]
   (let [os 1              ; orientation straight
         oo ({1 0 0 1} os) ; orientation orthogonal
-        nets {:sfwd [(get-in field             [y x os]            )
-                     (get-in traced            [y x os]            )]
-              :sbwd [(get-in field  (update-in [y x os] [os] dec) 0)
-                     (get-in traced (update-in [y x os] [os] dec) 0)]
-              :ofwd [(get-in field             [y x oo]            )
-                     (get-in traced            [y x oo]            )]
-              :obwd [(get-in field  (update-in [y x oo] [oo] dec) 0)
-                     (get-in traced (update-in [y x oo] [oo] dec) 0)]}]
-    (cond (=  (nets :sfwd)                [1 0]       ) false
-          (=  (nets :sbwd)                [1 0]       ) false
-          (= [(nets :obwd) (nets :ofwd)] [[1 0] [1 0]]) true
-          (=  (nets :ofwd)                [1 0]       ) false
-          (=  (nets :obwd)                [1 0]       ) false
-          :else                                         true)))
+        sfwd [(get-in field             [y x os]            )
+              (get-in traced            [y x os]            )]
+        sbwd [(get-in field  (update-in [y x os] [os] dec) 0)
+              (get-in traced (update-in [y x os] [os] dec) 0)]
+        ofwd [(get-in field             [y x oo]            )
+              (get-in traced            [y x oo]            )]
+        obwd [(get-in field  (update-in [y x oo] [oo] dec) 0)
+              (get-in traced (update-in [y x oo] [oo] dec) 0)]]
+    (cond (=  sfwd        [1 0]       ) false
+          (=  sbwd        [1 0]       ) false
+          (= [obwd ofwd] [[1 0] [1 0]]) true
+          (=  ofwd        [1 0]       ) false
+          (=  obwd        [1 0]       ) false
+          :else                         true)))
 
 (defn drawable-v? [y x traced field]
   (cond (= [(get-in field  [   y    x 0]  )
