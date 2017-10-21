@@ -53,33 +53,20 @@
 (defn drawable-h? [y x traced field]
   (let [os 1              ; orientation straight
         oo ({1 0 0 1} os) ; orientation orthogonal
-        sfwd #(get-in %1 (conj            %2           os)  )
-        sbwd #(get-in %1 (conj (update-in %2 [os] dec) os) 0)
-        ofwd #(get-in %1 (conj            %2           oo)  )
-        obwd #(get-in %1 (conj (update-in %2 [oo] dec) oo) 0)]
-    (cond (= [(sfwd field  [y x])
-              (sfwd traced [y x])]
-             [1 0])
-          false
-          (= [(sbwd field  [y x])
-              (sbwd traced [y x])]
-             [1 0])
-          false
-          (= [(obwd field  [y x])
-              (obwd traced [y x])
-              (ofwd field  [y x])
-              (ofwd traced [y x])]
-             [1 0 1 0])
-          true
-          (= [(obwd field  [y x])
-              (obwd traced [y x])]
-             [1 0])
-          false
-          (= [(obwd field  [y x])
-              (obwd traced [y x])]
-             [1 0])
-          false
-          :else true)))
+        nets {:sfwd [(get-in field             [y x os]            )
+                     (get-in traced            [y x os]            )]
+              :sbwd [(get-in field  (update-in [y x os] [os] dec) 0)
+                     (get-in traced (update-in [y x os] [os] dec) 0)]
+              :ofwd [(get-in field             [y x oo]            )
+                     (get-in traced            [y x oo]            )]
+              :obwd [(get-in field  (update-in [y x oo] [oo] dec) 0)
+                     (get-in traced (update-in [y x oo] [oo] dec) 0)]}]
+    (cond (=  (nets :sfwd)                [1 0]       ) false
+          (=  (nets :sbwd)                [1 0]       ) false
+          (= [(nets :obwd) (nets :ofwd)] [[1 0] [1 0]]) true
+          (=  (nets :ofwd)                [1 0]       ) false
+          (=  (nets :obwd)                [1 0]       ) false
+          :else                                         true)))
 
 (defn drawable-v? [y x traced field]
   (cond (= [(get-in field  [   y    x 0]  )
