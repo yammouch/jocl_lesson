@@ -51,29 +51,35 @@
          (recur (+ x 1)))))])
 
 (defn drawable-h? [y x traced field]
-  (cond (= [(get-in field  [y    x    1]  )
-            (get-in traced [y    x    1]  )]
-           [1 0])
-        false
-        (= [(get-in field  [y (- x 1) 1] 0)
-            (get-in traced [y (- x 1) 1] 0)]
-           [1 0])
-        false
-        (= [(get-in field  [(- y 1) x 0] 0)
-            (get-in traced [(- y 1) x 0] 0)
-            (get-in field  [   y    x 0]  )
-            (get-in traced [   y    x 0]  )]
-           [1 0 1 0])
-        true
-        (= [(get-in field  [(- y 1) x 0] 0)
-            (get-in traced [(- y 1) x 0] 0)]
-           [1 0])
-        false
-        (= [(get-in field  [   y    x 0]  )
-            (get-in traced [   y    x 0]  )]
-           [1 0])
-        false
-        :else true))
+  (let [os 1              ; orientation straight
+        oo ({1 0 0 1} os) ; orientation orthogonal
+        sfwd #(get-in %1 (conj            %2           os)  )
+        sbwd #(get-in %1 (conj (update-in %2 [os] dec) os) 0)
+        ofwd #(get-in %1 (conj            %2           oo)  )
+        obwd #(get-in %1 (conj (update-in %2 [oo] dec) oo) 0)]
+    (cond (= [(sfwd field  [y x])
+              (sfwd traced [y x])]
+             [1 0])
+          false
+          (= [(sbwd field  [y x])
+              (sbwd traced [y x])]
+             [1 0])
+          false
+          (= [(obwd field  [y x])
+              (obwd traced [y x])
+              (ofwd field  [y x])
+              (ofwd traced [y x])]
+             [1 0 1 0])
+          true
+          (= [(obwd field  [y x])
+              (obwd traced [y x])]
+             [1 0])
+          false
+          (= [(obwd field  [y x])
+              (obwd traced [y x])]
+             [1 0])
+          false
+          :else true)))
 
 (defn drawable-v? [y x traced field]
   (cond (= [(get-in field  [   y    x 0]  )
