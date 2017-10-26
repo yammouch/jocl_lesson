@@ -6,6 +6,22 @@
    [   y  (- x 1) 1    y  (- x 1) 1]   ; left
    [   y     x    1    y  (+ x 1) 1]]) ; right
 
+(defn net [y x d & fields]
+  (let [idx (case d
+              :u [(- y 1) x    0]
+              :d [   y    x    0]
+              :l [   y (- x 1) 1]
+              :r [   y    x    1]
+              :f [   y    x    2])]
+    (mapv #(get-in % idx 0) fields)))
+
+(defn nets [y x & fields]
+  (mapv #(net y x % fields)
+        [:u :d :l :r :f]))
+
+(defn nets1 [y x field]
+  (vec (apply concat (nets y x field))))
+
 (defn trace-search-dir [field traced y x d]
   (let [search (filter #(= (get-in field (take 3 %) 0) 1)
                        (surrounding y x))
@@ -51,15 +67,8 @@
          (recur (+ x 1)))))])
 
 (defn drawable? [y x os traced field] ; os:  orientation straight
-  (let [oo ({1 0 0 1} os) ; orientation orthogonal
-        sfwd [(get-in field             [y x os]            )
-              (get-in traced            [y x os]            )]
-        sbwd [(get-in field  (update-in [y x os] [os] dec) 0)
-              (get-in traced (update-in [y x os] [os] dec) 0)]
-        ofwd [(get-in field             [y x oo]            )
-              (get-in traced            [y x oo]            )]
-        obwd [(get-in field  (update-in [y x oo] [oo] dec) 0)
-              (get-in traced (update-in [y x oo] [oo] dec) 0)]]
+  (let [dir (case os 0 [:d :u :r :l] 1 [:r :l :d :u])
+        [sfwd sbwd ofwd obwd] (map #(net y x % field traced) dir)]
     (cond (=  sfwd        [1 0]       ) false
           (=  sbwd        [1 0]       ) false
           (= [obwd ofwd] [[1 0] [1 0]]) true
@@ -67,19 +76,24 @@
           (=  obwd        [1 0]       ) false
           :else                         true)))
 
-(defn add-dot-h [y x0 x1 traced field]
-  (loop [x x0 fld field]
-    (if (< x1 x)
-      fld
-      (recur (+ x 1)
-             (if (= (->> (surrounding y x)
-                         (filter (fn [[y x d]]
-                                   (and (= (get-in fld    [y x d]) 1)
-                                        (= (get-in traced [y x d]) 1))))
-                         count)
-                    3)
-               (assoc-in fld [y x 1] 1)
-               fld)))))
+(defn add-dot [from to os traced field]
+  (let [fwd #(update-in % [os] inc)
+        q0 (from os)
+        [from to] (if (< to q0)
+                    [(assoc from os to) q0]
+                    [       from        to])
+        end? #(< to (% os))]
+    (loop [[y x :as p] from fld field]
+      (if (end? p)
+        fld
+        (recur (fwd p)
+               (if (= (->> [:u :d :r :l]
+                           (map #(net y x % fld traced))
+                           (filter #(= % [1 1]))
+                           count)
+                      3)
+                 (assoc-in fld [y x 2] 1)
+                 fld))))))
 
 (defn draw-net-1-h [y x0 x1 field]
   (loop [x x0 fld field]
@@ -100,7 +114,7 @@
                 (range x0 (+ x1 1)))
     (->> field
          (draw-net-1-h y x0 x1)
-         (add-dot-h y x0 x1 traced))))
+         (add-dot [y x0] x1 1 traced))))
 
 (defn search-short-u [y x traced field]
   (loop [y y]
@@ -133,16 +147,9 @@
           field
           (range x0 x1)))
 
-(defn nets [y x field]
-  [(get-in field [(- y 1) x 0] 0)   ; up
-   (get-in field [   y    x 0]  )   ; down
-   (get-in field [y (- x 1) 1] 0)   ; left
-   (get-in field [y    x    1]  )   ; right
-   (get-in field [y    x    2]  )]) ; dot
-
 (defn shave-d [y x field]
   (loop [y y fld field]
-    (let [n (nets y x fld)]
+    (let [n (nets1 y x fld)]
       (cond (or (= n [0 1 0 0 0])
                 (= n [0 1 1 1 0]))
             (recur (+ y 1)
