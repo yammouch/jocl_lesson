@@ -55,7 +55,7 @@
     (is (= (smp/beam-h (decode 3 test-pattern) 1 4)
            [2 6]))))
 
-(deftest test-drawable-h?
+(deftest test-drawable?
   (let [test-pattern
         ["0000000000" "0000000000"
          "0032227200" "0032227200"
@@ -70,7 +70,7 @@
                             (map (partial decode1 3))
                             (partition 2)
                             (apply map vector))]
-    (is      (smp/drawable-h? 4 2 traced field) )
-    (is      (smp/drawable-h? 6 2 traced field) )
-    (is (not (smp/drawable-h? 5 3 traced field)))
+    (is      (smp/drawable? 4 2 1 traced field) )
+    (is      (smp/drawable? 6 2 1 traced field) )
+    (is (not (smp/drawable? 5 3 1 traced field)))
     ))

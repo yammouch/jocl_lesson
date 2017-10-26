@@ -50,9 +50,8 @@
          x
          (recur (+ x 1)))))])
 
-(defn drawable-h? [y x traced field]
-  (let [os 1              ; orientation straight
-        oo ({1 0 0 1} os) ; orientation orthogonal
+(defn drawable? [y x os traced field] ; os:  orientation straight
+  (let [oo ({1 0 0 1} os) ; orientation orthogonal
         sfwd [(get-in field             [y x os]            )
               (get-in traced            [y x os]            )]
         sbwd [(get-in field  (update-in [y x os] [os] dec) 0)
@@ -67,31 +66,6 @@
           (=  ofwd        [1 0]       ) false
           (=  obwd        [1 0]       ) false
           :else                         true)))
-
-(defn drawable-v? [y x traced field]
-  (cond (= [(get-in field  [   y    x 0]  )
-            (get-in traced [   y    x 0]  )]
-           [1 0])
-        false
-        (= [(get-in field  [(- y 1) x 0] 0)
-            (get-in traced [(- y 1) x 0] 0)]
-           [1 0])
-        false
-        (= [(get-in field  [y (- x 1) 1] 0)
-            (get-in traced [y (- x 1) 1] 0)
-            (get-in field  [y    x    1]  )
-            (get-in traced [y    x    1]  )]
-           [1 0 1 0])
-        true
-        (= [(get-in field  [y (- x 1) 0] 0)
-            (get-in traced [y (- x 1) 0] 0)]
-           [1 0])
-        false
-        (= [(get-in field  [y    x    0]  )
-            (get-in traced [y    x    0]  )]
-           [1 0])
-        false
-        :else true))
 
 (defn add-dot-h [y x0 x1 traced field]
   (loop [x x0 fld field]
@@ -122,7 +96,7 @@
              (assoc-in fld [y x 1] 0)))))
 
 (defn stumble-h [y x0 x1 traced field]
-  (when (every? (fn [x] (drawable-h? y x traced field))
+  (when (every? (fn [x] (drawable? y x 1 traced field))
                 (range x0 (+ x1 1)))
     (->> field
          (draw-net-1-h y x0 x1)
@@ -143,7 +117,7 @@
 (defn reach-u [y x traced field]
   (let [y1 (search-short-u y x traced field)]
     (when (and y1
-               (every? (fn [y] (drawable-v? y x traced field))
+               (every? (fn [y] (drawable? y x 0 traced field))
                        (range y (- y1 1) -1)))
       (let [drawn (draw-net-1-v y1 (- y 1) x)]
         (if (= (count (filter (fn [[y x d]] (= [(get-in field  [y x d] 0)
