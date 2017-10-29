@@ -85,7 +85,7 @@
   (let [test-pattern
         ["0000000000" "0000000000" "0000000000"
          "0000000000" "0000000000" "0000000000"
-         "0022232220" "0022272220" "0022232220"
+         "0022232220" "0022272220" "0022272220"
          "0000010000" "0000010000" "0000010000"
          "0002210000" "0002210000" "0002250000"
          "0000010000" "0000010000" "0000010000"
@@ -99,8 +99,9 @@
                              (apply map vector))]
     (is (= (smp/add-dot [2 2] 8 1 field field) ex1  ))
     (is (= (smp/add-dot [2 5] 8 0 field field) ex2  ))
-    (clojure.pprint/pprint
-     (mapd 2 (partial reduce (fn [acc x] (+ acc (* x 2))))
-             (smp/add-dot [2 5] 8 0 field field)))
+    ;(clojure.pprint/pprint
+    ; (mapd 2 (comp (partial reduce (fn [acc x] (+ (* acc 2) x)))
+    ;               reverse)
+    ;         (smp/add-dot [2 5] 8 0 field field)))
     (is (= (smp/add-dot [7 2] 8 1 field field) field))
     ))
