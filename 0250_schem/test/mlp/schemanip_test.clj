@@ -1,6 +1,7 @@
 (ns mlp.schemanip-test
   (:require [clojure.test :refer :all]
-            [mlp.schemanip :as smp]))
+            [mlp.schemanip :as smp]
+            [clojure.pprint]))
 
 (deftest test-surrouding
   (is (= (smp/surrounding 4 6)
@@ -27,6 +28,11 @@
         (re-seq #"\S" str)))
 
 (defn decode [n strs] (mapv (partial decode1 n) strs))
+
+(defn mapd [d f s & ss]
+  (if (<= d 0)
+    (apply f s ss)
+    (apply mapv (partial mapd (- d 1) f) s ss)))
 
 (deftest test-trace
   (let [test-pattern
@@ -93,4 +99,8 @@
                              (apply map vector))]
     (is (= (smp/add-dot [2 2] 8 1 field field) ex1  ))
     (is (= (smp/add-dot [2 5] 8 0 field field) ex2  ))
-    (is (= (smp/add-dot [7 2] 8 1 field field) field))))
+    (clojure.pprint/pprint
+     (mapd 2 (partial reduce (fn [acc x] (+ acc (* x 2))))
+             (smp/add-dot [2 5] 8 0 field field)))
+    (is (= (smp/add-dot [7 2] 8 1 field field) field))
+    ))
