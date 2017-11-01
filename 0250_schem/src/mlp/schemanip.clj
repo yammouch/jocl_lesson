@@ -51,20 +51,15 @@
                  (reduce #(assoc-in %1 (take 3 %2) 1) traced search)
                  ))))))
 
-(defn beam-h [field y x]
-  [(loop [x x] ; trace left
-     (if (or (<= x 0)
-             (= (get-in field [y    x    2]) 1)  ; connecting dot
-             (= (get-in field [y (- x 1) 1]) 0)) ; net end
-       x
-       (recur (- x 1))))
-   (let [cx (count (first field))]
-     (loop [x x] ; trace right
-       (if (or (<= cx x)
-               (= (get-in field [y    x    2]) 1)  ; connecting dot
-               (= (get-in field [y (+ x 1) 1]) 0)) ; net end
-         x
-         (recur (+ x 1)))))])
+(defn beam [field p o]
+  (mapv (fn [[d prog]]
+          (->> (iterate #(update-in % [o] prog) p)
+               (filter (fn [[y x]]
+                         (or (= (net y x d  field) [0])    ; net end
+                             (= (net y x :f field) [1])))) ; fanout dot
+               first))
+        [[(case o 0 :u 1 :l) dec]
+         [(case o 0 :d 1 :r) inc]]))
 
 (defn drawable? [y x os traced field] ; os:  orientation straight
   (let [dir (case os 0 [:d :u :r :l] 1 [:r :l :d :u])

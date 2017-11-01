@@ -50,7 +50,7 @@
     (is (= (smp/trace (decode 3 tested) 2 3 1)
            (decode 2 expected)))))
 
-(deftest test-beam-h
+(deftest test-beam
   (let [test-pattern
         ["0000000000"
          "0032227200"
@@ -58,8 +58,10 @@
          "0010001010"
          "0000000000"
          "0000000000"]]
-    (is (= (smp/beam-h (decode 3 test-pattern) 1 4)
-           [2 6]))))
+    (is (= (smp/beam (decode 3 test-pattern) [1 4] 1)
+           [[1 2] [1 6]]))
+    (is (= (smp/beam (decode 3 test-pattern) [1 2] 0)
+           [[1 2] [4 2]]))))
 
 (deftest test-drawable?
   (let [test-pattern
