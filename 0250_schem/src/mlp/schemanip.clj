@@ -91,12 +91,14 @@
          (reduce (fn [fld [y x]] (assoc-in fld [y x o] 1))
                  field))))
 
-(defn stumble-h [y x0 x1 traced field]
-  (when (every? (fn [x] (drawable? y x 1 traced field))
-                (range x0 (+ x1 1)))
-    (->> field
-         (draw-net-1 [y x0] x1 1)
-         (add-dot [y x0] x1 1 traced))))
+(defn stumble [from to o traced field]
+  (let [q0 (from o)]
+    (when (every? (fn [[y x]] (drawable? y x o traced field))
+                  (->> (apply range (if (< to q0) [to (+ q0 1)] [q0 (+ to 1)]))
+                       (map (partial assoc from o))))
+      (->> field
+           (draw-net-1 from to o)
+           (add-dot from to o traced)))))
 
 (defn search-short-u [y x traced field]
   (loop [y y]
