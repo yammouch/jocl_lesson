@@ -72,23 +72,17 @@
           :else                         true)))
 
 (defn add-dot [from to os traced field]
-  (let [fwd #(update-in % [os] inc)
-        q0 (from os)
-        [from to] (if (< to q0)
-                    [(assoc from os to) q0]
-                    [       from        to])
-        end? #(< to (% os))]
-    (loop [[y x :as p] from fld field]
-      (if (end? p)
-        fld
-        (recur (fwd p)
-               (if (= (->> [:u :d :r :l]
-                           (map #(net y x % fld traced))
-                           (filter #(= % [1 1]))
+  (let [q0 (from os)]
+    (->> (apply range (if (< to q0) [to (+ q0 1)] [q0 (+ to 1)]))
+         (map #(assoc from os %))
+         (filter (fn [[y x]]
+                   (= (->> [:u :d :r :l]
+                           (map #(net y x % field traced))
+                           (filter (partial = [1 1]))
                            count)
-                      3)
-                 (assoc-in fld [y x 2] 1)
-                 fld))))))
+                      3)))
+         (reduce (fn [fld [y x]] (assoc-in fld [y x 2] 1))
+                 field))))
 
 (defn draw-net-1-h [y x0 x1 field]
   (loop [x x0 fld field]
