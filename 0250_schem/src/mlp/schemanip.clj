@@ -74,7 +74,7 @@
 (defn add-dot [from to os traced field]
   (let [q0 (from os)]
     (->> (apply range (if (< to q0) [to (+ q0 1)] [q0 (+ to 1)]))
-         (map #(assoc from os %))
+         (map (partial assoc from os))
          (filter (fn [[y x]]
                    (= (->> [:u :d :r :l]
                            (map #(net y x % field traced))
@@ -84,25 +84,18 @@
          (reduce (fn [fld [y x]] (assoc-in fld [y x 2] 1))
                  field))))
 
-(defn draw-net-1-h [y x0 x1 field]
-  (loop [x x0 fld field]
-    (if (< x0 x)
-      fld
-      (recur (+ x 1)
-             (assoc-in fld [y x 1] 1)))))
-
-(defn draw-net-1-v [y0 y1 x field]
-  (loop [y y0 fld field]
-    (if (< y0 y)
-      fld
-      (recur (+ y 1)
-             (assoc-in fld [y x 1] 0)))))
+(defn draw-net-1 [from to o field]
+  (let [q0 (from o)]
+    (->> (apply range (if (< to q0) [to q0] [q0 to]))
+         (map (partial assoc from o))
+         (reduce (fn [fld [y x]] (assoc-in fld [y x o] 1))
+                 field))))
 
 (defn stumble-h [y x0 x1 traced field]
   (when (every? (fn [x] (drawable? y x 1 traced field))
                 (range x0 (+ x1 1)))
     (->> field
-         (draw-net-1-h y x0 x1)
+         (draw-net-1 [y x0] x1 1)
          (add-dot [y x0] x1 1 traced))))
 
 (defn search-short-u [y x traced field]
@@ -122,7 +115,7 @@
     (when (and y1
                (every? (fn [y] (drawable? y x 0 traced field))
                        (range y (- y1 1) -1)))
-      (let [drawn (draw-net-1-v y1 (- y 1) x)]
+      (let [drawn (draw-net-1 [y1 x] (- y 1) 0)]
         (if (= (count (filter (fn [[y x d]] (= [(get-in field  [y x d] 0)
                                                 (get-in traced [y x d] 0)]
                                                [1 1]))
