@@ -1,4 +1,5 @@
-(ns mlp.schemanip)
+(ns mlp.schemanip
+ (:use [clojure.set :only [difference]]))
 
 (defn surrounding [y x]
   [[(- y 1)  x    0 (- y 1)  x    0]   ; up
@@ -100,30 +101,38 @@
            (draw-net-1 from to o)
            (add-dot from to o traced)))))
 
-(defn search-short-u [y x traced field]
-  (loop [y y]
-    (cond (< y 0) false
+(defn prog [d p]
+  (let [[o f] (case d :u [0 dec] :d [0 inc] :l [1 dec] :r [1 inc])]
+    (update-in p [o] f)))
 
-          (some (fn [[y x d]] (and (= (get-in traced [y x 0] 0) 1)
-                                   (= (get-in field  [y x 0] 0) 1)))
-                (surrounding y x))
-          y
+(defn search-short [from d traced field]
+  (let [cy (count field) cx (count (first field))
+        in-field (fn [[y x]] (and (< -1 y cy) (< -1 x cx)))
+        ds (difference #{:u :d :l :r} #{d})
+        o (case d (:u :d) 0 (:l :r) 1)]
+    (->> (iterate (partial prog d) from)
+         (take-while in-field)
+         (filter (fn [[y x]] (some (partial = [1 1])
+                                   (map #(net y x % traced field) ds))))
+         first)))
 
-          :else (recur (- y 1))
-          )))
-
-(defn reach-u [y x traced field]
-  (let [y1 (search-short-u y x traced field)]
-    (when (and y1
-               (every? (fn [y] (drawable? y x 0 traced field))
-                       (range y (- y1 1) -1)))
-      (let [drawn (draw-net-1 [y1 x] (- y 1) 0)]
-        (if (= (count (filter (fn [[y x d]] (= [(get-in field  [y x d] 0)
-                                                (get-in traced [y x d] 0)]
-                                               [1 1]))
-                              (surrounding y x)))
-               2)
-          (assoc-in drawn [y1 x 2] 1)
+(defn reach [[y x :as from] d traced field]
+  (let [to (search-short from d traced field)
+        o (case d (:u :d) 0 (:l :r) 1)
+        ps (when to
+             (conj (vec (take-while (partial not= to)
+                                    (iterate (partial prog d) from)))
+                   to))]
+    (when (and to
+               (every? (fn [[y x]] (drawable? y x o traced field))
+                       ps))
+      (let [drawn (draw-net-1 from (to o) o)]
+        (if (= (->> [:u :d :l :r]
+                    (map #(net y x % traced field))
+                    (filter (partial = [1 1]))
+                    count)
+               3)
+          (assoc-in drawn (conj to 2) 1)
           drawn)))))
 
 (defn debridge-h [y x0 x1 field]
