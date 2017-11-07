@@ -107,26 +107,25 @@
 
 (defn search-short [from d traced field]
   (let [cy (count field) cx (count (first field))
-        in-field (fn [[y x]] (and (< -1 y cy) (< -1 x cx)))
-        ds (difference #{:u :d :l :r} #{d})
-        o (case d (:u :d) 0 (:l :r) 1)]
-    (->> (iterate (partial prog d) from)
-         (take-while in-field)
-         (filter (fn [[y x]] (some (partial = [1 1])
-                                   (map #(net y x % traced field) ds))))
-         first)))
+        beam (take-while (fn [[y x]] (and (< -1 y cy) (< -1 x cx)))
+                         (iterate (partial prog d) from))
+        ds (difference #{:u :d :l :r} #{d})]
+    (if-let [[p] (filter (fn [[y x]]
+                           (some (partial = [1 1])
+                                 (map #(net y x % traced field) ds)))
+                         beam)]
+      (conj (vec (take-while (partial not= p) beam)) p)
+      )))
 
 (defn reach [[y x :as from] d traced field]
-  (let [to (search-short from d traced field)
-        o (case d (:u :d) 0 (:l :r) 1)
-        ps (when to
-             (conj (vec (take-while (partial not= to)
-                                    (iterate (partial prog d) from)))
-                   to))]
-    (when (and to
-               (every? (fn [[y x]] (drawable? y x o traced field))
-                       ps))
-      (let [drawn (draw-net-1 from (to o) o)]
+  (let [ps (search-short from d traced field)
+        o (case d (:u :d) 0 (:l :r) 1)]
+    (if (and ps
+             (every? (fn [[y x]] (drawable? y x o traced field))
+                     ps))
+      (let [o (case d (:u :d) 0 (:l :r) 1)
+            to (last ps)
+            drawn (draw-net-1 from (to o) o)]
         (if (= (->> [:u :d :l :r]
                     (map #(net y x % traced field))
                     (filter (partial = [1 1]))
