@@ -24,7 +24,7 @@
 (defn range-2d [end from to o]
   (let [o (case o (:u :d) 0, (:l :r) 1, 0 0, 1 1)
         q (from o)
-        to (seq? to (to o) to)]
+        to (if (seq? to) (to o) to)]
     (->> (apply range (if (< to q) [to (+ q end)] [q (+ to end)]))
          (map (partial assoc from o)))))
 
@@ -91,7 +91,7 @@
   (->> (range-p from to os)
        (filter #(= 3 (count (d-match % [1 1] field traced))))
        (reduce (fn [fld [y x]] (assoc-in fld [y x 2] 1))
-               field))))
+               field)))
 
 (defn draw-net-1 [from to o field]
   (reduce (fn [fld [y x]] (assoc-in fld [y x o] 1))
@@ -111,7 +111,7 @@
   (let [cy (- (count field) 1) cx (- (count (first field)) 1)
         [dops to] (case d :u [:d 0] :d [:u cy] :l [:r 0], :r [:l cx])]
     (if-let [[p] (filter #(remove #{dops} (d-match % [1 1] traced field))
-                         (range-p from to d)]
+                         (range-p from to d))]
       (range-p from p d)
       )))
 
