@@ -21,6 +21,16 @@
        (map #(apply net y x % fields))
        (filter (partial = v))))
 
+(defn range-2d [end from to o]
+  (let [o (case o (:u :d) 0, (:l :r) 1, 0 0, 1 1)
+        q (from o)
+        to (seq? to (to o) to)]
+    (->> (apply range (if (< to q) [to (+ q end)] [q (+ to end)]))
+         (map (partial assoc from o)))))
+
+(defn range-p [from to o] (range-2d 1 from to o))
+(defn range-n [from to o] (range-2d 0 from to o))
+
 (defn nets [y x & fields]
   (mapv #(net y x % fields)
         [:u :d :l :r :f]))
@@ -78,41 +88,31 @@
           :else                         true)))
 
 (defn add-dot [from to os traced field]
-  (let [q0 (from os)]
-    (->> (apply range (if (< to q0) [to (+ q0 1)] [q0 (+ to 1)]))
-         (map (partial assoc from os))
-         (filter #(= 3 (count (d-match % [1 1] field traced))))
-         (reduce (fn [fld [y x]] (assoc-in fld [y x 2] 1))
-                 field))))
+  (->> (range-p from to os)
+       (filter #(= 3 (count (d-match % [1 1] field traced))))
+       (reduce (fn [fld [y x]] (assoc-in fld [y x 2] 1))
+               field))))
 
 (defn draw-net-1 [from to o field]
-  (let [q0 (from o)]
-    (->> (apply range (if (< to q0) [to q0] [q0 to]))
-         (map (partial assoc from o))
-         (reduce (fn [fld [y x]] (assoc-in fld [y x o] 1))
-                 field))))
+  (reduce (fn [fld [y x]] (assoc-in fld [y x o] 1))
+          field (range-n from to o)))
 
 (defn stumble [from to o traced field]
-  (let [q0 (from o)]
-    (when (every? (fn [[y x]] (drawable? y x o traced field))
-                  (->> (apply range (if (< to q0) [to (+ q0 1)] [q0 (+ to 1)]))
-                       (map (partial assoc from o))))
-      (->> field
-           (draw-net-1 from to o)
-           (add-dot from to o traced)))))
+  (when (every? (fn [[y x]] (drawable? y x o traced field))
+                (range-p from to o))
+    (->> (draw-net-1 from to o field)
+         (add-dot from to o traced))))
 
 (defn prog [d p]
   (let [[o f] (case d :u [0 dec] :d [0 inc] :l [1 dec] :r [1 inc])]
     (update-in p [o] f)))
 
 (defn search-short [from d traced field]
-  (let [cy (count field) cx (count (first field))
-        beam (take-while (fn [[y x]] (and (< -1 y cy) (< -1 x cx)))
-                         (iterate (partial prog d) from))
-        dops (case d :u :d, :d :u, :l :r, :r :l)]
+  (let [cy (- (count field) 1) cx (- (count (first field)) 1)
+        [dops to] (case d :u [:d 0] :d [:u cy] :l [:r 0], :r [:l cx])]
     (if-let [[p] (filter #(remove #{dops} (d-match % [1 1] traced field))
-                         beam)]
-      (conj (vec (take-while (partial not= p) beam)) p)
+                         (range-p from to d)]
+      (range-p from p d)
       )))
 
 (defn reach [[y x :as from] d traced field]
@@ -121,9 +121,8 @@
     (if (and ps
              (every? (fn [[y x]] (drawable? y x o traced field))
                      ps))
-      (let [o (case d (:u :d) 0 (:l :r) 1)
-            to (last ps)
-            drawn (draw-net-1 from (to o) o)]
+      (let [to (last ps)
+            drawn (draw-net-1 from (to o) o field)]
         (if (= 3 (count (d-match [y x] [1 1] traced field)))
           (assoc-in drawn (conj to 2) 1)
           drawn)))))
