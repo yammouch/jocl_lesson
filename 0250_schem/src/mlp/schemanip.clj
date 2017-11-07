@@ -16,6 +16,11 @@
               :f [   y    x    2])]
     (mapv #(get-in % idx 0) fields)))
 
+(defn d-match [[y x] v & fields]
+  (->> [:u :d :l :r]
+       (map #(apply net y x % fields))
+       (filter (partial = v))))
+
 (defn nets [y x & fields]
   (mapv #(net y x % fields)
         [:u :d :l :r :f]))
@@ -76,12 +81,7 @@
   (let [q0 (from os)]
     (->> (apply range (if (< to q0) [to (+ q0 1)] [q0 (+ to 1)]))
          (map (partial assoc from os))
-         (filter (fn [[y x]]
-                   (= (->> [:u :d :r :l]
-                           (map #(net y x % field traced))
-                           (filter (partial = [1 1]))
-                           count)
-                      3)))
+         (filter #(= 3 (count (d-match % [1 1] field traced))))
          (reduce (fn [fld [y x]] (assoc-in fld [y x 2] 1))
                  field))))
 
@@ -109,10 +109,8 @@
   (let [cy (count field) cx (count (first field))
         beam (take-while (fn [[y x]] (and (< -1 y cy) (< -1 x cx)))
                          (iterate (partial prog d) from))
-        ds (difference #{:u :d :l :r} #{d})]
-    (if-let [[p] (filter (fn [[y x]]
-                           (some (partial = [1 1])
-                                 (map #(net y x % traced field) ds)))
+        dops (case d :u :d, :d :u, :l :r, :r :l)]
+    (if-let [[p] (filter #(remove #{dops} (d-match % [1 1] traced field))
                          beam)]
       (conj (vec (take-while (partial not= p) beam)) p)
       )))
@@ -126,11 +124,7 @@
       (let [o (case d (:u :d) 0 (:l :r) 1)
             to (last ps)
             drawn (draw-net-1 from (to o) o)]
-        (if (= (->> [:u :d :l :r]
-                    (map #(net y x % traced field))
-                    (filter (partial = [1 1]))
-                    count)
-               3)
+        (if (= 3 (count (d-match [y x] [1 1] traced field)))
           (assoc-in drawn (conj to 2) 1)
           drawn)))))
 
