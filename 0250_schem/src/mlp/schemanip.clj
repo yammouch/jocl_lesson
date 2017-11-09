@@ -127,10 +127,9 @@
           (assoc-in drawn (conj to 2) 1)
           drawn)))))
 
-(defn debridge-h [y x0 x1 field]
-  (reduce #(assoc-in %1 [y %2 2] 0)
-          field
-          (range x0 x1)))
+(defn debridge [from to o field]
+  (reduce #(assoc-in %1 (conj %2 o) 0)
+          field (range-p from to o)))
 
 (defn shave-d [y x field]
   (loop [y y fld field]
