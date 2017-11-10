@@ -31,13 +31,6 @@
 (defn range-p [from to o] (range-2d 1 from to o))
 (defn range-n [from to o] (range-2d 0 from to o))
 
-(defn nets [y x & fields]
-  (mapv #(net y x % fields)
-        [:u :d :l :r :f]))
-
-(defn nets1 [y x field]
-  (vec (apply concat (nets y x field))))
-
 (defn trace-search-dir [field traced y x d]
   (let [search (filter #(= (get-in field (take 3 %) 0) 1)
                        (surrounding y x))
@@ -131,13 +124,18 @@
   (reduce #(assoc-in %1 (conj %2 o) 0)
           field (range-p from to o)))
 
-(defn shave-d [y x field]
-  (loop [y y fld field]
-    (let [n (nets1 y x fld)]
-      (cond (or (= n [0 1 0 0 0])
-                (= n [0 1 1 1 0]))
-            (recur (+ y 1)
-                   (assoc-in fld [y x 0] 0))
+(defn shave [from d field]
+  (loop [[y x :as p] from fld field]
+    (let [n (mapcat #(net y x % field)
+                    (case d
+                      :u [:u :d :l :r :f]
+                      :d [:d :u :l :r :f]
+                      :l [:l :r :u :d :f]
+                      :r [:r :l :u :d :f]))]
+      (cond (or (= n [1 0 0 0 0])
+                (= n [1 0 1 1 0]))
+            (recur (prog d p)
+                   (assoc-in fld [y x d] 0))
 
             (= (->> (take 4 n)
                     (filter (partial = 1))
