@@ -147,3 +147,28 @@
     (is (= (smp/stumble [4 2] 6 1 traced field) ex1))
     (is (= (smp/stumble [1 5] 6 0 traced field) nil))
     (is (= (smp/stumble [1 6] 6 0 traced field) ex2))))
+
+(deftest test-reach
+  (let [test-pattern
+        ["0000000000" "0000000000" "0000000000" "0000000000"
+         "0010000000" "0010000000" "0010000000" "0010000000"
+         "0010000000" "0010000000" "0010000000" "0010000000"
+         "0032202200" "0032200000" "0072202200" "0032202200"
+         "0010000000" "0010000000" "0010000000" "0010000000"
+         "0010000000" "0010000000" "0010000000" "0010000000"
+         "0000000000" "0000000000" "0000000000" "0010000000"
+         "0022200000" "0022200000" "0022200000" "0022200000"
+         "0000000000" "0000000000" "0000000000" "0000000000"
+         "0000000000" "0000000000" "0000000000" "0000000000"]
+        [field traced ex1 ex2] (as-> test-pattern t
+                                     (map (partial decode1 3) t)
+                                     (partition 4 t)
+                                     (apply map vector t))]
+    (is (= (smp/reach [3 2] :u traced field) ex1))
+    (is (= (smp/reach [7 2] :u traced field) ex2))
+    (clojure.pprint/pprint
+     (mapd 2 (comp (partial reduce (fn [acc x] (+ (* acc 2) x)))
+                   reverse)
+             (smp/reach [7 2] :u traced field)))
+    (is (= (smp/reach [3 8] :l traced field) nil))
+    (is (= (smp/reach [3 8] :r traced field) nil))))
