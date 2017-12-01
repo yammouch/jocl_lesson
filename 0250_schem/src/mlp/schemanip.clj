@@ -104,20 +104,17 @@
 (defn search-short [from d traced field]
   (let [cy (- (count field) 1) cx (- (count (first field)) 1)
         [dops to] (case d :u [:d 0] :d [:u cy] :l [:r 0], :r [:l cx])]
-    (prn "range-p"
-         (range-p from to d))
-    (prn "map d-match"
-         (map #(d-match % [1 1] traced field)
-              (range-p from to d)))
-    (if-let [[p] (filter #(remove #{dops} (d-match % [1 1] traced field))
-                         (range-p from to d))]
-      (range-p from p d)
+    (let [[p] (filter #(as-> % x
+                             (d-match x [1 1] traced field)
+                             (remove #{dops} x)
+                             (not (empty? x)))
+                      (range-p from to d))]
+      (if p (range-p from p d))
       )))
 
 (defn reach [[y x :as from] d traced field]
   (let [ps (search-short from d traced field)
         o (case d (:u :d) 0 (:l :r) 1)]
-    (prn "ps " ps)
     (if (and ps
              (every? (fn [[y x]] (drawable? y x o traced field))
                      ps))
