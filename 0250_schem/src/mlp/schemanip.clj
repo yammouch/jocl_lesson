@@ -125,8 +125,14 @@
           drawn)))))
 
 (defn debridge [from to o field]
-  (reduce #(assoc-in %1 (conj %2 o) 0)
-          field (range-p from to o)))
+  (as-> field fld
+        (reduce #(assoc-in %1 (conj %2 o) 0)
+                fld (range-n from to o))
+        (reduce #(case (count (d-match %2 [1] %1))
+                   (0 1 2) (assoc-in %1 (conj %2 2) 0)
+                   3       (assoc-in %1 (conj %2 2) 1)
+                   %1)
+                fld (range-p from to o))))
 
 (defn shave [from d field]
   (loop [[y x :as p] from fld field]

@@ -187,14 +187,4 @@
                                   (apply map vector t))]
     (is (= (smp/debridge [1 2] 6 1 field) ex1))
     (is (= (smp/debridge [1 6] 4 0 field) ex2))
-    (clojure.pprint/pprint
-     (mapd 2 (comp (partial reduce (fn [acc x] (+ (* acc 2) x)))
-                   reverse)
-             (smp/debridge [1 6] 4 0 field)))
-    (is (= (smp/debridge [4 2] 6 1 field) ex3))
-    (clojure.pprint/pprint
-     (mapd 2 (comp (partial reduce (fn [acc x] (+ (* acc 2) x)))
-                   reverse)
-             (smp/debridge [4 2] 6 1 field)))
-
-    ))
+    (is (= (smp/debridge [4 2] 6 1 field) ex3))))
