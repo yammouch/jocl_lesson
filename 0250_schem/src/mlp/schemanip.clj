@@ -136,21 +136,19 @@
 
 (defn shave [from d field]
   (loop [[y x :as p] from fld field]
-    (let [n (mapcat #(net y x % field)
+    (let [n (mapcat #(net y x % fld)
                     (case d
                       :u [:u :d :l :r :f]
                       :d [:d :u :l :r :f]
                       :l [:l :r :u :d :f]
                       :r [:r :l :u :d :f]))]
-      (cond (or (= n [1 0 0 0 0])
-                (= n [1 0 1 1 0]))
-            (recur (prog d p)
-                   (assoc-in fld [y x d] 0))
-
-            (= (->> (take 4 n)
-                    (filter (partial = 1))
-                    count)
-               3)
-            (assoc-in fld [y x 2] 1)
-
-            :else fld))))
+      (if (or (= n [1 0 0 0 0])
+              (= n [1 0 1 1 0]))
+        (recur (prog d p)
+               (assoc-in fld [y x (case d (:u :d) 0 (:l :r) 1)] 0))
+        (case (->> (take 4 n)
+                   (filter (partial = 1))
+                   count)
+          (0 1 2) (assoc-in fld [y x 2] 0)
+          3       (assoc-in fld [y x 2] 1)
+          4       fld)))))
