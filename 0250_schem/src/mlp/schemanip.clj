@@ -152,3 +152,15 @@
           (0 1 2) (assoc-in fld [y x 2] 0)
           3       (assoc-in fld [y x 2] 1)
           4       fld)))))
+
+(defn move-x [field [y x :as from] to]
+  (let [[y0 y1] (beam from 0)
+        traced (trace [field y x 0])
+        [d dop] (if (< x to) [:r :l] [:l :r])]
+    (as-> field fld
+          (reach [y0 to] dop traced fld)
+          (reach [y1 to] dop traced fld)
+          (stumble [y0 to] y1 0 traced fld)
+          (debridge [y0 x] y1 0 fld)
+          (shave [y0 x] d fld)
+          (shave [y1 x] d fld))))
