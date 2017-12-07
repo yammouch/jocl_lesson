@@ -159,8 +159,8 @@
         [d dop] (if (< x to) [:r :l] [:l :r])]
     (as-> field fld
           (reach [y0 to] dop traced fld)
-          (reach [y1 to] dop traced fld)
-          (stumble [y0 to] y1 0 traced fld)
+          (if fld (reach [y1 to] dop traced fld))
+          (if fld (stumble [y0 to] y1 0 traced fld))
           (debridge [y0 x] y1 0 fld)
           (shave [y0 x] d fld)
           (shave [y1 x] d fld))))
