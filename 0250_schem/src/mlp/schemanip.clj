@@ -1,4 +1,5 @@
 (ns mlp.schemanip
+ (:require [clojure.pprint])
  (:use [clojure.set :only [difference]]))
 
 (defn surrounding [y x]
@@ -7,7 +8,18 @@
    [   y  (- x 1) 1    y  (- x 1) 1]   ; left
    [   y     x    1    y  (+ x 1) 1]]) ; right
 
+(defn mapd [d f s & ss]
+  (if (<= d 0)
+    (apply f s ss)
+    (apply mapv (partial mapd (- d 1) f) s ss)))
+
 (defn net [y x d & fields]
+  (prn y x d)
+  (doseq [fld fields]
+    (clojure.pprint/pprint
+     (mapd 2 (comp (partial reduce (fn [acc x] (+ (* acc 2) x)))
+                   reverse)
+             fld)))
   (let [idx (case d
               :u [(- y 1) x    0]
               :d [   y    x    0]
@@ -154,8 +166,8 @@
           4       fld)))))
 
 (defn move-x [field [y x :as from] to]
-  (let [[y0 y1] (beam from 0)
-        traced (trace [field y x 0])
+  (let [[y0 y1] (beam field from 0)
+        traced (trace field y x 0)
         [d dop] (if (< x to) [:r :l] [:l :r])]
     (as-> field fld
           (reach [y0 to] dop traced fld)

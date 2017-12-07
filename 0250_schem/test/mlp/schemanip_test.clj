@@ -34,6 +34,8 @@
     (apply f s ss)
     (apply mapv (partial mapd (- d 1) f) s ss)))
 
+(comment
+
 (deftest test-trace
   (let [test-pattern
         ["0000100000" "0000000000"
@@ -208,3 +210,23 @@
     (is (= (smp/shave [1 2] :d field) ex1))
     (is (= (smp/shave [1 6] :d field) ex2))
     (is (= (smp/shave [8 4] :r field) ex3))))
+
+) ; comment
+
+(deftest test-move-x
+  (let [test-pattern
+        ["0000000000" "0000000000"
+         "0032221000" "0000001000"
+         "0010001000" "0000001000"
+         "0010001000" "0000001000"
+         "0022223220" "0000005220"
+         "0000001000" "0000001000"
+         "0000001000" "0000001000"
+         "0000001000" "0000001000"
+         "0000000000" "0000000000"
+         "0000000000" "0000000000"]
+        [field ex1] (as-> test-pattern t
+                          (map (partial decode1 3) t)
+                          (partition 2 t)
+                          (apply map vector t))]
+    (is (= (smp/move-x field [2 2] 6) ex1))))
