@@ -14,12 +14,6 @@
     (apply mapv (partial mapd (- d 1) f) s ss)))
 
 (defn net [y x d & fields]
-  (prn y x d)
-  (doseq [fld fields]
-    (clojure.pprint/pprint
-     (mapd 2 (comp (partial reduce (fn [acc x] (+ (* acc 2) x)))
-                   reverse)
-             fld)))
   (let [idx (case d
               :u [(- y 1) x    0]
               :d [   y    x    0]
@@ -165,14 +159,25 @@
           3       (assoc-in fld [y x 2] 1)
           4       fld)))))
 
+(defn display-field [field]
+  (clojure.pprint/pprint
+   (mapd 2 (comp (partial reduce (fn [acc x] (+ (* acc 2) x)))
+                 reverse)
+           field)))
+
 (defn move-x [field [y x :as from] to]
-  (let [[y0 y1] (beam field from 0)
+  (let [[[y0 _] [y1 _]] (beam field from 0)
         traced (trace field y x 0)
         [d dop] (if (< x to) [:r :l] [:l :r])]
     (as-> field fld
           (reach [y0 to] dop traced fld)
+          (do (println "reach") (display-field fld) fld)
           (if fld (reach [y1 to] dop traced fld))
+          (do (println "reach") (display-field fld) fld)
           (if fld (stumble [y0 to] y1 0 traced fld))
+          (do (println "stumble") (display-field fld) fld)
           (debridge [y0 x] y1 0 fld)
+          (do (println "debridge") (display-field fld) fld)
           (shave [y0 x] d fld)
+          (do (println "shave") (display-field fld) fld)
           (shave [y1 x] d fld))))

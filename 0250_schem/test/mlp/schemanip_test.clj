@@ -34,8 +34,6 @@
     (apply f s ss)
     (apply mapv (partial mapd (- d 1) f) s ss)))
 
-(comment
-
 (deftest test-trace
   (let [test-pattern
         ["0000100000" "0000000000"
@@ -211,8 +209,6 @@
     (is (= (smp/shave [1 6] :d field) ex2))
     (is (= (smp/shave [8 4] :r field) ex3))))
 
-) ; comment
-
 (deftest test-move-x
   (let [test-pattern
         ["0000000000" "0000000000"
@@ -229,4 +225,8 @@
                           (map (partial decode1 3) t)
                           (partition 2 t)
                           (apply map vector t))]
-    (is (= (smp/move-x field [2 2] 6) ex1))))
+    (is (= (smp/move-x field [2 2] 6) ex1))
+    (clojure.pprint/pprint
+     (mapd 2 (comp (partial reduce (fn [acc x] (+ (* acc 2) x)))
+                   reverse)
+             (smp/move-x field [2 2] 6)))))
