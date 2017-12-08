@@ -1,5 +1,4 @@
 (ns mlp.schemanip
- (:require [clojure.pprint])
  (:use [clojure.set :only [difference]]))
 
 (defn surrounding [y x]
@@ -7,11 +6,6 @@
    [   y     x    0 (+ y 1)  x    0]   ; down
    [   y  (- x 1) 1    y  (- x 1) 1]   ; left
    [   y     x    1    y  (+ x 1) 1]]) ; right
-
-(defn mapd [d f s & ss]
-  (if (<= d 0)
-    (apply f s ss)
-    (apply mapv (partial mapd (- d 1) f) s ss)))
 
 (defn net [y x d & fields]
   (let [idx (case d
@@ -140,30 +134,26 @@
                    %1)
                 fld (range-p from to o))))
 
-(defn shave [from d field]
-  (loop [[y x :as p] from fld field]
-    (let [n (mapcat #(net y x % fld)
-                    (case d
-                      :u [:u :d :l :r :f]
-                      :d [:d :u :l :r :f]
-                      :l [:l :r :u :d :f]
-                      :r [:r :l :u :d :f]))]
-      (if (or (= n [1 0 0 0 0])
-              (= n [1 0 1 1 0]))
-        (recur (prog d p)
-               (assoc-in fld [y x (case d (:u :d) 0 (:l :r) 1)] 0))
-        (case (->> (take 4 n)
-                   (filter (partial = 1))
-                   count)
-          (0 1 2) (assoc-in fld [y x 2] 0)
-          3       (assoc-in fld [y x 2] 1)
-          4       fld)))))
-
-(defn display-field [field]
-  (clojure.pprint/pprint
-   (mapd 2 (comp (partial reduce (fn [acc x] (+ (* acc 2) x)))
-                 reverse)
-           field)))
+(defn shave [from to d field]
+  (let [o (case d (:u :d) 0 (:l :r) 1)]
+    (loop [[y x :as p] from fld field]
+      (let [n (mapcat #(net y x % fld)
+                      (case d
+                        :u [:u :d :l :r :f]
+                        :d [:d :u :l :r :f]
+                        :l [:l :r :u :d :f]
+                        :r [:r :l :u :d :f]))]
+        (if (and (or (= n [1 0 0 0 0])
+                     (= n [1 0 1 1 0]))
+                 (not= (p o) to))
+          (recur (prog d p)
+                 (assoc-in fld [y x (case d (:u :d) 0 (:l :r) 1)] 0))
+          (case (->> (take 4 n)
+                     (filter (partial = 1))
+                     count)
+            (0 1 2) (assoc-in fld [y x 2] 0)
+            3       (assoc-in fld [y x 2] 1)
+            4       fld))))))
 
 (defn move-x [field [y x :as from] to]
   (let [[[y0 _] [y1 _]] (beam field from 0)
@@ -171,13 +161,8 @@
         [d dop] (if (< x to) [:r :l] [:l :r])]
     (as-> field fld
           (reach [y0 to] dop traced fld)
-          (do (println "reach") (display-field fld) fld)
           (if fld (reach [y1 to] dop traced fld))
-          (do (println "reach") (display-field fld) fld)
           (if fld (stumble [y0 to] y1 0 traced fld))
-          (do (println "stumble") (display-field fld) fld)
           (debridge [y0 x] y1 0 fld)
-          (do (println "debridge") (display-field fld) fld)
-          (shave [y0 x] d fld)
-          (do (println "shave") (display-field fld) fld)
-          (shave [y1 x] d fld))))
+          (shave [y0 x] to d fld)
+          (shave [y1 x] to d fld))))
