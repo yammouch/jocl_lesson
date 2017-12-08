@@ -166,3 +166,15 @@
           (debridge [y0 x] y1 0 fld)
           (shave [y0 x] to d fld)
           (shave [y1 x] to d fld))))
+
+(defn move-y [field [y x :as from] to]
+  (let [[[_ x0] [_ x1]] (beam field from 1)
+        traced (trace field y x 1)
+        [d dop] (if (< y to) [:d :u] [:u :d])]
+    (as-> field fld
+          (reach [to x0] dop traced fld)
+          (if fld (reach [to x1] dop traced fld))
+          (if fld (stumble [to x0] x1 1 traced fld))
+          (debridge [y x0] x1 1 fld)
+          (shave [y x0] to d fld)
+          (shave [y x1] to d fld))))
