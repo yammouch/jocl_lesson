@@ -1,4 +1,5 @@
 (ns mlp.schemanip
+ (:require [clojure.pprint])
  (:use [clojure.set :only [difference]]))
 
 (defn surrounding [y x]
@@ -167,14 +168,55 @@
           (shave [y0 x] to d fld)
           (shave [y1 x] to d fld))))
 
+(defn format-field [field]
+  (clojure.pprint/pprint field)
+  (mapv (fn [row]
+          (as-> row r
+                (map #(->> (reverse %)
+                           (reduce (fn [acc x] (+ (* acc 2) x)))
+                           (format "%02X"))
+                     r)
+                (interpose " " r)
+                (apply str r)))
+        field))
+
 (defn move-y [field [y x :as from] to]
   (let [[[_ x0] [_ x1]] (beam field from 1)
         traced (trace field y x 1)
         [d dop] (if (< y to) [:d :u] [:u :d])]
     (as-> field fld
+          (do (println "initial")
+              (clojure.pprint/pprint fld)
+              (clojure.pprint/pprint (format-field fld))
+              fld)
           (reach [to x0] dop traced fld)
+          (do (println "reach")
+              (clojure.pprint/pprint fld)
+              (clojure.pprint/pprint (format-field fld))
+              fld)
           (if fld (reach [to x1] dop traced fld))
+          (do (println "reach")
+              (clojure.pprint/pprint fld)
+              (clojure.pprint/pprint (format-field fld))
+              fld)
           (if fld (stumble [to x0] x1 1 traced fld))
+          (do (println "stumble")
+              (clojure.pprint/pprint fld)
+              (clojure.pprint/pprint (format-field fld))
+              fld)
           (debridge [y x0] x1 1 fld)
+          (do (println "debridge")
+              (clojure.pprint/pprint fld)
+              (clojure.pprint/pprint (format-field fld))
+              fld)
           (shave [y x0] to d fld)
-          (shave [y x1] to d fld))))
+          (do (println "shave")
+              (clojure.pprint/pprint fld)
+              (clojure.pprint/pprint (format-field fld))
+              fld)
+          (shave [y x1] to d fld)
+          (do (println "shave")
+              (clojure.pprint/pprint fld)
+              (clojure.pprint/pprint (format-field fld))
+              fld)
+          )))

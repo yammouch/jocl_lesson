@@ -72,9 +72,10 @@
         field))
 
 (defn fw2 [schem]
-  (mlp/fw (float-array (mlp-input-field schem)))
+  (mlp/fw (float-array (mapcat (partial apply concat) schem)))
   (let [[cmd from-x from-y to] (parse-output-vector (:i (last @mlp/jk-mem)))]
-    ((case cmd 0 smp/move-x smp/move-y) schem [from-x from-y] to)))
+    (clojure.pprint/pprint [cmd from-x from-y to])
+    ((case cmd 0 smp/move-x 1 smp/move-y) schem [from-y from-x] to)))
 
 (defn -main [param-fname schem-fname schem-num]
   (let [schems (read-schem schem-fname (read-string schem-num))
@@ -82,8 +83,13 @@
     (mlp/init mlp-config 0)
     (set-param params)
     (loop [i 0
-           schem (mapv (fn [row] (mapv #(Integer/parseInt % 16)
-                                       (re-seq #"\S+" row)))
+           schem (mapv (fn [row]
+                         (mapv #(as-> % x
+                                 (Integer/parseInt x 16)
+                                 (radix x)
+                                 (concat x (repeat 0))
+                                 (take 6 x))
+                               (re-seq #"\S+" row)))
                        (first schems))]
       (when (or (< i 100) schem)
         (clojure.pprint/pprint (format-field schem))
