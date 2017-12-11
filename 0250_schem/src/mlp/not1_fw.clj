@@ -30,12 +30,27 @@
       (alter mlp/jk-mem #(assoc-in % [i :p] (float-array p)))
       )))
 
+(defn split-output-vector [ns l]
+  (loop [[x & xs] ns, l l, acc []]
+    (if x
+      (recur xs (drop x l) (conj acc (take x l)))
+      acc)))
+
+(defn decode-one-hot [l]
+  (->> (map-indexed vector l)
+       (apply max-key #(% 1))
+       first))
+
+(defn parse-output-vector [l]
+  (mapv decode-one-hot (split-output-vector [2 10 10 10] l)))
+
 (defn fw [schem]
   (clojure.pprint/pprint schem)
   (let [parsed (mapv (fn [row] (mapv #(Integer/parseInt % 16)
                                      (re-seq #"\S+" row)))
                      schem)]
     (mlp/fw (float-array (mlp-input-field parsed)))
+    (clojure.pprint/pprint (parse-output-vector (:i (last @mlp/jk-mem))))
     (loop [[x & xs] [2 10 10 10], l (:i (last @mlp/jk-mem))]
       (when x
         (println (apply str (interpose " " (map (partial format "%4.2f")
