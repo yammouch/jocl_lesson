@@ -1,6 +1,7 @@
 (ns mlp.not1-fw
   (:gen-class)
   (:require [mlp.mlp-jk :as mlp]
+            [mlp.schemanip :as smp]
             [clojure.pprint]))
 
 (defn radix [x]
@@ -57,6 +58,11 @@
                                                 (take x l)))))
         (recur xs (drop x l))
         ))))
+
+(defn fw2 [schem]
+  (mlp/fw (float-array (mlp-input-field schem)))
+  (let [[cmd from-x from-y to] (parse-output-vector (:i (last @mlp/jk-mem)))]
+    ((case cmd 0 smp/move-x smp/move-y) schem [from-x from-y] to)))
 
 (defn -main [param-fname schem-fname schem-num]
   (let [schems (read-schem schem-fname (read-string schem-num))
