@@ -60,6 +60,7 @@
         ))))
 
 (defn format-field [field]
+  (clojure.pprint/pprint field)
   (mapv (fn [row]
           (as-> row r
                 (map #(->> (reverse %)
@@ -86,5 +87,5 @@
                        (first schems))]
       (when (or (< i 100) schem)
         (clojure.pprint/pprint (format-field schem))
-        (recur (fw2 schem))
+        (recur (+ i 1) (fw2 schem))
         ))))
