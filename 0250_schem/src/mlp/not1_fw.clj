@@ -59,6 +59,17 @@
         (recur xs (drop x l))
         ))))
 
+(defn format-field [field]
+  (mapv (fn [row]
+          (as-> row r
+                (map #(->> (reverse %)
+                           (reduce (fn [acc x] (+ (* acc 2) x)))
+                           (format "%02X"))
+                     r)
+                (interpose " " r)
+                (apply str r)))
+        field))
+
 (defn fw2 [schem]
   (mlp/fw (float-array (mlp-input-field schem)))
   (let [[cmd from-x from-y to] (parse-output-vector (:i (last @mlp/jk-mem)))]
