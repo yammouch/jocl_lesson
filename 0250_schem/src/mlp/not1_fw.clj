@@ -80,5 +80,11 @@
         [mlp-config params] (read-param param-fname)]
     (mlp/init mlp-config 0)
     (set-param params)
-    (doseq [s schems] (fw s))
-    ))
+    (loop [i 0
+           schem (mapv (fn [row] (mapv #(Integer/parseInt % 16)
+                                       (re-seq #"\S+" row)))
+                       (first schems))]
+      (when (or (< i 100) schem)
+        (clojure.pprint/pprint (format-field schem))
+        (recur (fw2 schem))
+        ))))
