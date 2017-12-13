@@ -60,7 +60,6 @@
         ))))
 
 (defn format-field [field]
-  (clojure.pprint/pprint field)
   (mapv (fn [row]
           (as-> row r
                 (map #(->> (reverse %)

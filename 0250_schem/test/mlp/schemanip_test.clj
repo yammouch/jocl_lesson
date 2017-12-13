@@ -143,10 +143,10 @@
                                      (map (partial decode1 3) t)
                                      (partition 4 t)
                                      (apply map vector t))]
-    (is (= (smp/stumble [2 2] 5 1 traced field) nil))
-    (is (= (smp/stumble [4 2] 6 1 traced field) ex1))
-    (is (= (smp/stumble [1 5] 6 0 traced field) nil))
-    (is (= (smp/stumble [1 6] 6 0 traced field) ex2))))
+    (is (= (nth (smp/stumble [2 2] 5 1 traced field) 1) nil))
+    (is (= (nth (smp/stumble [4 2] 6 1 traced field) 1) ex1))
+    (is (= (nth (smp/stumble [1 5] 6 0 traced field) 1) nil))
+    (is (= (nth (smp/stumble [1 6] 6 0 traced field) 1) ex2))))
 
 (deftest test-reach
   (let [test-pattern
@@ -164,10 +164,10 @@
                                      (map (partial decode1 3) t)
                                      (partition 4 t)
                                      (apply map vector t))]
-    (is (= (smp/reach [3 2] :u traced field) ex1))
-    (is (= (smp/reach [7 2] :u traced field) ex2))
-    (is (= (smp/reach [3 8] :l traced field) nil))
-    (is (= (smp/reach [3 8] :r traced field) nil))))
+    (is (= (nth (smp/reach [3 2] :u traced field) 1) ex1))
+    (is (= (nth (smp/reach [7 2] :u traced field) 1) ex2))
+    (is (= (nth (smp/reach [3 8] :l traced field) 1) nil))
+    (is (= (nth (smp/reach [3 8] :r traced field) 1) nil))))
 
 (deftest test-debridge
   (let [test-pattern

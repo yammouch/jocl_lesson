@@ -120,15 +120,10 @@
         (range-p from to o)))
   (when (every? (fn [[y x]] (drawable? y x o traced field))
                 (range-p from to o))
-    (->> (draw-net-1 from to o field)
-         (#(do (println "stumble draw-net-1")
-               (clojure.pprint/pprint (format-field %))
-               %))
-         (add-dot from to o traced)
-         (#(do (println "stumble add-dot")
-               (clojure.pprint/pprint (format-field %))
-               %))
-         )))
+    [(draw-net-1 from to o traced)
+     (as-> field fld
+           (draw-net-1 from to o fld)
+           (add-dot from to o traced fld))]))
 
 (defn prog [d p]
   (let [[o f] (case d :u [0 dec] :d [0 inc] :l [1 dec] :r [1 inc])]
@@ -152,10 +147,14 @@
              (every? (fn [[y x]] (drawable? y x o traced field))
                      ps))
       (let [to (last ps)
-            drawn (draw-net-1 from (to o) o field)]
-        (if (= 3 (count (d-match [y x] [1 1] traced field)))
-          (assoc-in drawn (conj to 2) 1)
-          drawn)))))
+            drawn (draw-net-1 from (to o) o field)
+            traced-new (draw-net-1 from (to o) o traced)]
+        [traced-new
+         (if (as-> (d-match to [1 1] traced-new drawn) x
+                   (count x)
+                   (= 3 x))
+           (assoc-in drawn (conj to 2) 1)
+           drawn)]))))
 
 (defn debridge [from to o field]
   (as-> field fld
@@ -198,12 +197,11 @@
         [d dop] (if (< x to) [:r :l] [:l :r])]
     (as-> field fld
           (reach [y0 to] dop traced fld)
-          (if fld (reach [y1 to] dop traced fld))
-          (if fld (stumble [y0 to] y1 0 traced fld))
-          (debridge [y0 x] y1 0 fld)
+          (if (nth fld 1) (apply reach [y1 to] dop fld))
+          (if (nth fld 1) (apply stumble [y0 to] y1 0 fld))
+          (debridge [y0 x] y1 0 (nth fld 1))
           (shave [y0 x] to d fld)
           (shave [y1 x] to d fld))))
-
 
 (defn move-y [field [y x :as from] to]
   (let [[[_ x0] [_ x1]] (beam field from 1)
@@ -215,17 +213,20 @@
               fld)
           (reach [to x0] dop traced fld)
           (do (println "reach")
-              (clojure.pprint/pprint (format-field fld))
+              (clojure.pprint/pprint (format-field (nth fld 0)))
+              (clojure.pprint/pprint (format-field (nth fld 1)))
               fld)
-          (if fld (reach [to x1] dop traced fld))
+          (if (nth fld 1) (apply reach [to x1] dop fld))
           (do (println "reach")
-              (clojure.pprint/pprint (format-field fld))
+              (clojure.pprint/pprint (format-field (nth fld 0)))
+              (clojure.pprint/pprint (format-field (nth fld 1)))
               fld)
-          (if fld (stumble [to x0] x1 1 traced fld))
+          (if (nth fld 1) (apply stumble [to x0] x1 1 fld))
           (do (println "stumble")
-              (clojure.pprint/pprint (format-field fld))
+              (clojure.pprint/pprint (format-field (nth fld 0)))
+              (clojure.pprint/pprint (format-field (nth fld 1)))
               fld)
-          (debridge [y x0] x1 1 fld)
+          (debridge [y x0] x1 1 (nth fld 1))
           (do (println "debridge")
               (clojure.pprint/pprint (format-field fld))
               fld)
