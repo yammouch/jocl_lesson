@@ -104,10 +104,31 @@
           field (range-n from to o)))
 
 (defn stumble [from to o traced field]
+  (println "stumble from:")
+  (clojure.pprint/pprint from)
+  (println "stumble to:")
+  (clojure.pprint/pprint to)
+  (println "stumble o:")
+  (clojure.pprint/pprint o)
+  (println "stumble traced:")
+  (clojure.pprint/pprint (format-field traced))
+  (println "stumble field:")
+  (clojure.pprint/pprint (format-field traced))
+  (println "stumble drawable?:")
+  (clojure.pprint/pprint 
+   (map (fn [[y x]] (drawable? y x o traced field))
+        (range-p from to o)))
   (when (every? (fn [[y x]] (drawable? y x o traced field))
                 (range-p from to o))
     (->> (draw-net-1 from to o field)
-         (add-dot from to o traced))))
+         (#(do (println "stumble draw-net-1")
+               (clojure.pprint/pprint (format-field %))
+               %))
+         (add-dot from to o traced)
+         (#(do (println "stumble add-dot")
+               (clojure.pprint/pprint (format-field %))
+               %))
+         )))
 
 (defn prog [d p]
   (let [[o f] (case d :u [0 dec] :d [0 inc] :l [1 dec] :r [1 inc])]
@@ -155,12 +176,6 @@
                         :d [:d :u :l :r :f]
                         :l [:l :r :u :d :f]
                         :r [:r :l :u :d :f]))]
-        (println "shave p:")
-        (clojure.pprint/pprint p)
-        (println "shave fld:")
-        (clojure.pprint/pprint (format-field fld))
-        (println "shave n:")
-        (clojure.pprint/pprint n)
         (if (and (or (= n [1 0 0 0 0])
                      (= n [1 0 1 1 0]))
                  (not= (p o) to))
