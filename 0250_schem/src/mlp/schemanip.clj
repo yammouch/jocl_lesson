@@ -47,8 +47,6 @@
 (defn trace-search-dir [field traced y x d]
   (let [search (filter #(= (get-in field (take 3 %) 0) 1)
                        (surrounding y x))
-        _ (do (println "trace-search-dir search(1):")
-              (clojure.pprint/pprint search))
         search (if (or (= (get-in field [y x 2] 0) 1) ; connecting dot
                        (<= (count (filter
                                    #(= (get-in field (take 3 %) 0) 1)
@@ -56,22 +54,14 @@
                            2)) ; surrounded by 0, 1, 2 nets
                  search
                  (filter #(= (% 2) d) search))
-        _ (do (println "trace-search-dir search(1):")
-              (clojure.pprint/pprint search))
         search (filter #(= (get-in traced (take 3 %)) 0)
                        search)]
-    (do (println "trace-search-dir search(1):")
-        (clojure.pprint/pprint search))
     search))
 
 (defn trace [field y x d]
   (let [cy (count field) cx (count (first field))]
     (loop [stack [[y x d]]
            traced (reduce #(vec (repeat %2 %1)) 0 [2 cx cy])]
-      (println "trace stack:")
-      (clojure.pprint/pprint stack)
-      (println "trace traced:")
-      (clojure.pprint/pprint (format-field traced))
       (if (empty? stack)
         traced
         (let [[py px pd] (peek stack)
@@ -137,29 +127,11 @@
 (defn reach [[y x :as from] d traced field]
   (let [ps (search-short from d traced field)
         o (case d (:u :d) 0 (:l :r) 1)]
-    (println "reach from:")
-    (clojure.pprint/pprint from)
-    (println "reach d:")
-    (clojure.pprint/pprint d)
-    (println "reach traced:")
-    (clojure.pprint/pprint (format-field traced))
-    (println "reach field:")
-    (clojure.pprint/pprint (format-field field))
-    (println "reach ps:")
-    (clojure.pprint/pprint ps)
-    (println "reach drawable?:")
-    (clojure.pprint/pprint
-     (map (fn [[y x]] (drawable? y x o traced field))
-          ps))
     (if (and ps
              (every? (fn [[y x]] (drawable? y x o traced field))
                      ps))
       (let [to (last ps)
             drawn (draw-net-1 from (to o) o field)]
-        (println "reach drawn:")
-        (clojure.pprint/pprint drawn)
-        (println "reach d-match:")
-        (clojure.pprint/pprint (d-match [y x] [1 1] traced field))
         (if (= 3 (count (d-match [y x] [1 1] traced field)))
           (assoc-in drawn (conj to 2) 1)
           drawn)))))
@@ -183,11 +155,21 @@
                         :d [:d :u :l :r :f]
                         :l [:l :r :u :d :f]
                         :r [:r :l :u :d :f]))]
+        (println "shave p:")
+        (clojure.pprint/pprint p)
+        (println "shave fld:")
+        (clojure.pprint/pprint (format-field fld))
+        (println "shave n:")
+        (clojure.pprint/pprint n)
         (if (and (or (= n [1 0 0 0 0])
                      (= n [1 0 1 1 0]))
                  (not= (p o) to))
           (recur (prog d p)
-                 (assoc-in fld [y x (case d (:u :d) 0 (:l :r) 1)] 0))
+                 (assoc-in fld
+                  [(if (= d :u) (- y 1) y)
+                   (if (= d :l) (- x 1) x)
+                   (case d (:u :d) 0 (:l :r) 1)]
+                  0))
           (case (->> (take 4 n)
                      (filter (partial = 1))
                      count)
@@ -214,37 +196,30 @@
         [d dop] (if (< y to) [:d :u] [:u :d])]
     (as-> field fld
           (do (println "initial")
-              (clojure.pprint/pprint fld)
               (clojure.pprint/pprint (format-field fld))
               fld)
           (reach [to x0] dop traced fld)
           (do (println "reach")
-              (clojure.pprint/pprint fld)
               (clojure.pprint/pprint (format-field fld))
               fld)
           (if fld (reach [to x1] dop traced fld))
           (do (println "reach")
-              (clojure.pprint/pprint fld)
               (clojure.pprint/pprint (format-field fld))
               fld)
           (if fld (stumble [to x0] x1 1 traced fld))
           (do (println "stumble")
-              (clojure.pprint/pprint fld)
               (clojure.pprint/pprint (format-field fld))
               fld)
           (debridge [y x0] x1 1 fld)
           (do (println "debridge")
-              (clojure.pprint/pprint fld)
               (clojure.pprint/pprint (format-field fld))
               fld)
           (shave [y x0] to d fld)
           (do (println "shave")
-              (clojure.pprint/pprint fld)
               (clojure.pprint/pprint (format-field fld))
               fld)
           (shave [y x1] to d fld)
           (do (println "shave")
-              (clojure.pprint/pprint fld)
               (clojure.pprint/pprint (format-field fld))
               fld)
           )))
