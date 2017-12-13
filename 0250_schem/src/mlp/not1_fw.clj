@@ -88,7 +88,8 @@
                                  (Integer/parseInt x 16)
                                  (radix x)
                                  (concat x (repeat 0))
-                                 (take 6 x))
+                                 (take 6 x)
+                                 (vec x))
                                (re-seq #"\S+" row)))
                        (first schems))]
       (when (or (< i 100) schem)

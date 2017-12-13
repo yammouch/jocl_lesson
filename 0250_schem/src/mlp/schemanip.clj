@@ -2,6 +2,17 @@
  (:require [clojure.pprint])
  (:use [clojure.set :only [difference]]))
 
+(defn format-field [field]
+  (mapv (fn [row]
+          (as-> row r
+                (map #(->> (reverse %)
+                           (reduce (fn [acc x] (+ (* acc 2) x)))
+                           (format "%02X"))
+                     r)
+                (interpose " " r)
+                (apply str r)))
+        field))
+
 (defn surrounding [y x]
   [[(- y 1)  x    0 (- y 1)  x    0]   ; up
    [   y     x    0 (+ y 1)  x    0]   ; down
@@ -36,6 +47,8 @@
 (defn trace-search-dir [field traced y x d]
   (let [search (filter #(= (get-in field (take 3 %) 0) 1)
                        (surrounding y x))
+        _ (do (println "trace-search-dir search(1):")
+              (clojure.pprint/pprint search))
         search (if (or (= (get-in field [y x 2] 0) 1) ; connecting dot
                        (<= (count (filter
                                    #(= (get-in field (take 3 %) 0) 1)
@@ -43,14 +56,22 @@
                            2)) ; surrounded by 0, 1, 2 nets
                  search
                  (filter #(= (% 2) d) search))
+        _ (do (println "trace-search-dir search(1):")
+              (clojure.pprint/pprint search))
         search (filter #(= (get-in traced (take 3 %)) 0)
                        search)]
+    (do (println "trace-search-dir search(1):")
+        (clojure.pprint/pprint search))
     search))
 
 (defn trace [field y x d]
   (let [cy (count field) cx (count (first field))]
     (loop [stack [[y x d]]
            traced (reduce #(vec (repeat %2 %1)) 0 [2 cx cy])]
+      (println "trace stack:")
+      (clojure.pprint/pprint stack)
+      (println "trace traced:")
+      (clojure.pprint/pprint (format-field traced))
       (if (empty? stack)
         traced
         (let [[py px pd] (peek stack)
@@ -116,11 +137,29 @@
 (defn reach [[y x :as from] d traced field]
   (let [ps (search-short from d traced field)
         o (case d (:u :d) 0 (:l :r) 1)]
+    (println "reach from:")
+    (clojure.pprint/pprint from)
+    (println "reach d:")
+    (clojure.pprint/pprint d)
+    (println "reach traced:")
+    (clojure.pprint/pprint (format-field traced))
+    (println "reach field:")
+    (clojure.pprint/pprint (format-field field))
+    (println "reach ps:")
+    (clojure.pprint/pprint ps)
+    (println "reach drawable?:")
+    (clojure.pprint/pprint
+     (map (fn [[y x]] (drawable? y x o traced field))
+          ps))
     (if (and ps
              (every? (fn [[y x]] (drawable? y x o traced field))
                      ps))
       (let [to (last ps)
             drawn (draw-net-1 from (to o) o field)]
+        (println "reach drawn:")
+        (clojure.pprint/pprint drawn)
+        (println "reach d-match:")
+        (clojure.pprint/pprint (d-match [y x] [1 1] traced field))
         (if (= 3 (count (d-match [y x] [1 1] traced field)))
           (assoc-in drawn (conj to 2) 1)
           drawn)))))
@@ -168,17 +207,6 @@
           (shave [y0 x] to d fld)
           (shave [y1 x] to d fld))))
 
-(defn format-field [field]
-  (clojure.pprint/pprint field)
-  (mapv (fn [row]
-          (as-> row r
-                (map #(->> (reverse %)
-                           (reduce (fn [acc x] (+ (* acc 2) x)))
-                           (format "%02X"))
-                     r)
-                (interpose " " r)
-                (apply str r)))
-        field))
 
 (defn move-y [field [y x :as from] to]
   (let [[[_ x0] [_ x1]] (beam field from 1)
