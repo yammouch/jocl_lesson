@@ -2,17 +2,6 @@
  (:require [clojure.pprint])
  (:use [clojure.set :only [difference]]))
 
-(defn format-field [field]
-  (mapv (fn [row]
-          (as-> row r
-                (map #(->> (reverse %)
-                           (reduce (fn [acc x] (+ (* acc 2) x)))
-                           (format "%02X"))
-                     r)
-                (interpose " " r)
-                (apply str r)))
-        field))
-
 (defn surrounding [y x]
   [[(- y 1)  x    0 (- y 1)  x    0]   ; up
    [   y     x    0 (+ y 1)  x    0]   ; down
@@ -37,7 +26,6 @@
   (let [o (case o (:u :d) 0, (:l :r) 1, 0 0, 1 1)
         q (from o)
         to (if (vector? to) (to o) to)]
-    ;(->> (apply range (if (< to q) [to (+ q end)] [q (+ to end)]))
     (->> (apply range (if (< to q) [(+ q end -1) (- to 1) -1] [q (+ to end)]))
          (map (partial assoc from o)))))
 
@@ -104,20 +92,6 @@
           field (range-n from to o)))
 
 (defn stumble [from to o traced field]
-  (println "stumble from:")
-  (clojure.pprint/pprint from)
-  (println "stumble to:")
-  (clojure.pprint/pprint to)
-  (println "stumble o:")
-  (clojure.pprint/pprint o)
-  (println "stumble traced:")
-  (clojure.pprint/pprint (format-field traced))
-  (println "stumble field:")
-  (clojure.pprint/pprint (format-field traced))
-  (println "stumble drawable?:")
-  (clojure.pprint/pprint 
-   (map (fn [[y x]] (drawable? y x o traced field))
-        (range-p from to o)))
   (when (every? (fn [[y x]] (drawable? y x o traced field))
                 (range-p from to o))
     [(draw-net-1 from to o traced)
@@ -143,12 +117,6 @@
 (defn reach [[y x :as from] d traced field]
   (let [ps (search-short from d traced field)
         o (case d (:u :d) 0 (:l :r) 1)]
-    (println "reach ps:")
-    (clojure.pprint/pprint ps)
-    (println "reach drawable?:")
-    (clojure.pprint/pprint
-     (map (fn [[y x]] (drawable? y x o traced field))
-          ps))
     (if (and ps
              (every? (fn [[y x]] (drawable? y x o traced field))
                      ps))
@@ -214,34 +182,10 @@
         traced (trace field y x 1)
         [d dop] (if (< y to) [:d :u] [:u :d])]
     (as-> field fld
-          (do (println "initial")
-              (clojure.pprint/pprint (format-field fld))
-              fld)
           (reach [to x0] dop traced fld)
-          (do (println "reach")
-              (clojure.pprint/pprint (format-field (nth fld 0)))
-              (clojure.pprint/pprint (format-field (nth fld 1)))
-              fld)
           (if (nth fld 1) (apply reach [to x1] dop fld))
-          (do (println "reach")
-              (clojure.pprint/pprint (format-field (nth fld 0)))
-              (clojure.pprint/pprint (format-field (nth fld 1)))
-              fld)
           (if (nth fld 1) (apply stumble [to x0] x1 1 fld))
-          (do (println "stumble")
-              (clojure.pprint/pprint (format-field (nth fld 0)))
-              (clojure.pprint/pprint (format-field (nth fld 1)))
-              fld)
           (if (nth fld 1) (debridge [y x0] x1 1 (nth fld 1)))
-          (do (println "debridge")
-              (clojure.pprint/pprint (format-field fld))
-              fld)
           (if fld (shave [y x0] to d fld))
-          (do (println "shave")
-              (clojure.pprint/pprint (format-field fld))
-              fld)
           (if fld (shave [y x1] to d fld))
-          (do (println "shave")
-              (clojure.pprint/pprint (format-field fld))
-              fld)
           )))
