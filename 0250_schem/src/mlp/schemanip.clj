@@ -143,6 +143,12 @@
 (defn reach [[y x :as from] d traced field]
   (let [ps (search-short from d traced field)
         o (case d (:u :d) 0 (:l :r) 1)]
+    (println "reach ps:")
+    (clojure.pprint/pprint ps)
+    (println "reach drawable?:")
+    (clojure.pprint/pprint
+     (map (fn [[y x]] (drawable? y x o traced field))
+          ps))
     (if (and ps
              (every? (fn [[y x]] (drawable? y x o traced field))
                      ps))
@@ -199,9 +205,9 @@
           (reach [y0 to] dop traced fld)
           (if (nth fld 1) (apply reach [y1 to] dop fld))
           (if (nth fld 1) (apply stumble [y0 to] y1 0 fld))
-          (debridge [y0 x] y1 0 (nth fld 1))
-          (shave [y0 x] to d fld)
-          (shave [y1 x] to d fld))))
+          (if (nth fld 1) (debridge [y0 x] y1 0 (nth fld 1)))
+          (if fld (shave [y0 x] to d fld))
+          (if fld (shave [y1 x] to d fld)))))
 
 (defn move-y [field [y x :as from] to]
   (let [[[_ x0] [_ x1]] (beam field from 1)
@@ -226,15 +232,15 @@
               (clojure.pprint/pprint (format-field (nth fld 0)))
               (clojure.pprint/pprint (format-field (nth fld 1)))
               fld)
-          (debridge [y x0] x1 1 (nth fld 1))
+          (if (nth fld 1) (debridge [y x0] x1 1 (nth fld 1)))
           (do (println "debridge")
               (clojure.pprint/pprint (format-field fld))
               fld)
-          (shave [y x0] to d fld)
+          (if fld (shave [y x0] to d fld))
           (do (println "shave")
               (clojure.pprint/pprint (format-field fld))
               fld)
-          (shave [y x1] to d fld)
+          (if fld (shave [y x1] to d fld))
           (do (println "shave")
               (clojure.pprint/pprint (format-field fld))
               fld)

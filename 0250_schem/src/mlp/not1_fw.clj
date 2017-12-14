@@ -91,7 +91,7 @@
                                  (vec x))
                                (re-seq #"\S+" row)))
                        (first schems))]
-      (when (or (< i 100) schem)
+      (when (and (< i 100) schem)
         (clojure.pprint/pprint (format-field schem))
         (recur (+ i 1) (fw2 schem))
         ))))
