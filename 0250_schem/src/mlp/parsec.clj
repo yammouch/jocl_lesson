@@ -5,7 +5,7 @@
     [:eos s]
     [nil s]))
 
-(defn char [pred]
+(defn ch1 [pred]
   (fn [s]
     (if (and (not (empty? s))
         (pred (first s)))

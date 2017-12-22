@@ -2,12 +2,12 @@
  (:require [clojure.pprint])
  (:require [mlp.parsec :as psc]))
 
-(def space1 (psc/char (set (seq " \t\r"))))
-(def comma (psc/char (partial = \,)))
+(def space1 (psc/ch1 (set (seq " \t\r"))))
+(def comma (psc/ch1 (partial = \,)))
 
 (defn cell [s]
   (let [f (psc/all (psc/times space1 0 nil)
-                   (psc/times (psc/char (comp not (set (seq "\n \t\r,"))))
+                   (psc/times (psc/ch1 (comp not (set (seq "\n \t\r,"))))
                               0 nil)
                    (psc/times space1 0 nil))
         [parsed remain] (f s)]
@@ -31,7 +31,7 @@
 
 (defn csv [s]
   (let [f (psc/all line
-                   (psc/times (psc/all (psc/char #{\newline}) line) 0 nil))
+                   (psc/times (psc/all (psc/ch1 #{\newline}) line) 0 nil))
         [[p ps :as parsed] remain] (f s)]
     (if parsed
       [(vec (cons p (map #(nth % 1) ps)))
