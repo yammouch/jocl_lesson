@@ -13,6 +13,14 @@
          [[\A \B]
           (seq "CD")])))
 
+(deftest test-oneof
+  (is (= ((psc/oneof (psc/char #{\A}) (psc/char #{\B})) "ABC")
+         [\A (seq "BC")]))
+  (is (= ((psc/oneof (psc/char #{\A}) (psc/char #{\B})) "BCA")
+         [\B (seq "CA")]))
+  (is (= ((psc/oneof (psc/char #{\A}) (psc/char #{\B})) "CAB")
+         [nil "CAB"])))
+
 (deftest test-times
   (is (= ((psc/times (psc/char #{\A \B}) 0 4) "ABABAB")
          [(seq "ABAB") (seq "AB")]))

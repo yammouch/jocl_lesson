@@ -1,21 +1,36 @@
 (ns mlp.parsec)
 
+(defn eos [s]
+  (if (empty? s)
+    [:eos s]
+    [nil s]))
+
 (defn char [pred]
-  (fn [str]
-    (if (and (not (empty? str))
-        (pred (first str)))
-      [(first str) (rest str)]
-      [nil str])))
+  (fn [s]
+    (if (and (not (empty? s))
+        (pred (first s)))
+      [(first s) (rest s)]
+      [nil s])))
 
 (defn all [& ps]
-  (fn [str]
-    (loop [[p & pr :as ps] ps, s str, acc []]
+  (fn [s]
+    (loop [[p & p2 :as ps] ps, s s, acc []]
       (if (empty? ps)
         [acc s]
         (let [[parsed remain] (p s)]
           (if parsed
-            (recur pr remain (conj acc parsed))
+            (recur p2 remain (conj acc parsed))
             [nil remain]))))))
+
+(defn oneof [& ps]
+  (fn [s]
+    (loop [[p & p2 :as ps] ps]
+      (if (empty? ps)
+        [nil s]
+        (let [[parsed remain] (p s)]
+          (if parsed
+            [parsed remain]
+            (recur p2)))))))
 
 (defn times [p lo up]
   (fn [str]
