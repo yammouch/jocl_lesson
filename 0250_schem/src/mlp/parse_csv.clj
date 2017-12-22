@@ -17,9 +17,7 @@
 
 (defn line [s]
   (let [f (psc/all cell
-                   (psc/times (psc/all comma cell) 0 nil)
-                   (psc/oneof (psc/char (partial = \newline))
-                              psc/eos))
+                   (psc/times (psc/all comma cell) 0 nil))
         [parsed remain] (f s)]
     (if parsed
       [(vec (cons (first parsed)
@@ -30,3 +28,13 @@
       [nil remain])))
 
 (def csv (psc/times line 0 nil))
+
+(defn csv [s]
+  (let [f (psc/all line
+                   (psc/times (psc/all (psc/char #{\newline}) line) 0 nil))
+        [[p ps :as parsed] remain] (f s)]
+    (if parsed
+      [(vec (cons p (map #(nth % 1) ps)))
+       remain]
+      [nil remain])))
+    

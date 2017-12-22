@@ -11,7 +11,7 @@
   (is (= (csv/line
 "A,B,C
 D,E,F"   )
-         [["A" "B" "C"] (seq "D,E,F")])))
+         [["A" "B" "C"] (seq "\nD,E,F")])))
 
 (deftest test-csv
   (is (= (csv/csv
