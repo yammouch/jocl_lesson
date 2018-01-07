@@ -90,8 +90,9 @@
                                  (take 6 x)
                                  (vec x))
                                (re-seq #"\S+" row)))
-                       (first schems))]
-      (when (and (< i 100) schem)
+                       (first schems))
+           schem-next (fw2 schem)]
+      (if (and (< i 100) schem-next)
+        (recur (+ i 1) schem-next (fw2 schem-next))
         (clojure.pprint/pprint (format-field schem))
-        (recur (+ i 1) (fw2 schem))
         ))))
