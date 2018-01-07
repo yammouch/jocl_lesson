@@ -166,11 +166,25 @@
             3       (assoc-in fld [y x 2] 1)
             4       fld))))))
 
+(defn move-element [field [y x :as from] d to]
+  (let [to (assoc from d to)
+        from-el (drop 3 (get-in field from))
+        to-el   (drop 3 (get-in field to  ))]
+    (if (every? zero? to-el)
+      (as-> field fld
+            (update-in fld to
+             (fn [v] (vec (concat (take 3 v) from-el))))
+            (update-in fld from
+             (fn [v] (vec (take (count v)
+                                (concat (take 3 v) (repeat 0))
+                                ))))))))
+
 (defn move-x [field [y x :as from] to]
   (let [[[y0 _] [y1 _]] (beam field from 0)
         traced (trace field y x 0)
         [d dop] (if (< x to) [:r :l] [:l :r])]
     (as-> field fld
+          (move-element fld from 1 to)
           (reach [y0 to] dop traced fld)
           (if (nth fld 1) (apply reach [y1 to] dop fld))
           (if (nth fld 1) (apply stumble [y0 to] y1 0 fld))
@@ -183,6 +197,7 @@
         traced (trace field y x 1)
         [d dop] (if (< y to) [:d :u] [:u :d])]
     (as-> field fld
+          (move-element fld from 0 to)
           (reach [to x0] dop traced fld)
           (if (nth fld 1) (apply reach [to x1] dop fld))
           (if (nth fld 1) (apply stumble [to x0] x1 1 fld))
