@@ -151,6 +151,7 @@
                         :r [:r :l :u :d :f]))]
         (if (and (or (= n [1 0 0 0 0])
                      (= n [1 0 1 1 0]))
+                 (every? zero? (drop 3 (get-in fld p)))
                  (not= (p o) to))
           (recur (prog d p)
                  (assoc-in fld
