@@ -93,8 +93,8 @@
       (clojure.pprint/pprint (format-field schem))
       )))
 
-(defn -main [param-fname schem-fname schem-num]
-  (let [schems (read-schem schem-fname (read-string schem-num))
+(defn -main [param-fname schem-fname & schem-nums]
+  (let [schems (read-schem schem-fname (read-string (first schem-nums)))
         [mlp-config params] (read-param param-fname)]
     (mlp/init mlp-config 0)
     (set-param params)
