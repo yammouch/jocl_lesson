@@ -15,11 +15,12 @@
   (mapcat #(take 6 (concat (radix %) (repeat 0)))
           (apply concat body)))
 
-(defn read-schem [fname num]
-  (->> (read-string (str "(" (slurp fname) ")"))
-       (partition 3)
-       (filter (comp #{num} first))
-       (map second)))
+(defn read-schem [fname nums]
+  (as-> (read-string (str "(" (slurp fname) ")")) x
+        (partition 3 x)
+        (group-by first x)
+        (map (fn [n] (second (first (get x n)))) nums)
+        ))
 
 (defn read-param [fname]
   (let [[x & xs] (read-string (str "(" (slurp fname) ")"))]
@@ -63,6 +64,7 @@
     ((case cmd 0 smp/move-x 1 smp/move-y) schem [from-y from-x] to)))
 
 (defn edit1 [schem]
+  (clojure.pprint/pprint schem)
   (loop [i 0
          schem (mapv (fn [row]
                        (mapv #(as-> % x
@@ -80,10 +82,11 @@
       )))
 
 (defn main-loop [schems]
-  (edit1 (first schems)))
+  (doseq [s schems]
+    (edit1 s)))
 
 (defn -main [param-fname schem-fname & schem-nums]
-  (let [schems (read-schem schem-fname (read-string (first schem-nums)))
+  (let [schems (read-schem schem-fname (map read-string schem-nums))
         [mlp-config params] (read-param param-fname)]
     (mlp/init mlp-config 0)
     (set-param params)
