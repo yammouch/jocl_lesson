@@ -45,20 +45,6 @@
 (defn parse-output-vector [l]
   (mapv decode-one-hot (split-output-vector [2 10 10 10] l)))
 
-(defn fw [schem]
-  (clojure.pprint/pprint schem)
-  (let [parsed (mapv (fn [row] (mapv #(Integer/parseInt % 16)
-                                     (re-seq #"\S+" row)))
-                     schem)]
-    (mlp/fw (float-array (mlp-input-field parsed)))
-    (clojure.pprint/pprint (parse-output-vector (:i (last @mlp/jk-mem))))
-    (loop [[x & xs] [2 10 10 10], l (:i (last @mlp/jk-mem))]
-      (when x
-        (println (apply str (interpose " " (map (partial format "%4.2f")
-                                                (take x l)))))
-        (recur xs (drop x l))
-        ))))
-
 (defn format-field [field]
   (mapv (fn [row]
           (as-> row r
@@ -70,7 +56,7 @@
                 (apply str r)))
         field))
 
-(defn fw2 [schem]
+(defn fw [schem]
   (mlp/fw (float-array (mapcat (partial apply concat) schem)))
   (let [[cmd from-x from-y to] (parse-output-vector (:i (last @mlp/jk-mem)))]
     (clojure.pprint/pprint [cmd from-x from-y to])
@@ -87,9 +73,9 @@
                                (vec x))
                              (re-seq #"\S+" row)))
                      schem)
-         schem-next (fw2 schem)]
+         schem-next (fw schem)]
     (if (and (< i 100) schem-next)
-      (recur (+ i 1) schem-next (fw2 schem-next))
+      (recur (+ i 1) schem-next (fw schem-next))
       (clojure.pprint/pprint (format-field schem))
       )))
 
