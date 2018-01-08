@@ -76,23 +76,26 @@
     (clojure.pprint/pprint [cmd from-x from-y to])
     ((case cmd 0 smp/move-x 1 smp/move-y) schem [from-y from-x] to)))
 
+(defn main-loop [schems]
+  (loop [i 0
+         schem (mapv (fn [row]
+                       (mapv #(as-> % x
+                               (Integer/parseInt x 16)
+                               (radix x)
+                               (concat x (repeat 0))
+                               (take 6 x)
+                               (vec x))
+                             (re-seq #"\S+" row)))
+                     (first schems))
+         schem-next (fw2 schem)]
+    (if (and (< i 100) schem-next)
+      (recur (+ i 1) schem-next (fw2 schem-next))
+      (clojure.pprint/pprint (format-field schem))
+      )))
+
 (defn -main [param-fname schem-fname schem-num]
   (let [schems (read-schem schem-fname (read-string schem-num))
         [mlp-config params] (read-param param-fname)]
     (mlp/init mlp-config 0)
     (set-param params)
-    (loop [i 0
-           schem (mapv (fn [row]
-                         (mapv #(as-> % x
-                                 (Integer/parseInt x 16)
-                                 (radix x)
-                                 (concat x (repeat 0))
-                                 (take 6 x)
-                                 (vec x))
-                               (re-seq #"\S+" row)))
-                       (first schems))
-           schem-next (fw2 schem)]
-      (if (and (< i 100) schem-next)
-        (recur (+ i 1) schem-next (fw2 schem-next))
-        (clojure.pprint/pprint (format-field schem))
-        ))))
+    (main-loop schems)))
