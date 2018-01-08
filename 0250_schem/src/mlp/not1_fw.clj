@@ -76,7 +76,7 @@
     (clojure.pprint/pprint [cmd from-x from-y to])
     ((case cmd 0 smp/move-x 1 smp/move-y) schem [from-y from-x] to)))
 
-(defn main-loop [schems]
+(defn edit1 [schem]
   (loop [i 0
          schem (mapv (fn [row]
                        (mapv #(as-> % x
@@ -86,12 +86,15 @@
                                (take 6 x)
                                (vec x))
                              (re-seq #"\S+" row)))
-                     (first schems))
+                     schem)
          schem-next (fw2 schem)]
     (if (and (< i 100) schem-next)
       (recur (+ i 1) schem-next (fw2 schem-next))
       (clojure.pprint/pprint (format-field schem))
       )))
+
+(defn main-loop [schems]
+  (edit1 (first schems)))
 
 (defn -main [param-fname schem-fname & schem-nums]
   (let [schems (read-schem schem-fname (read-string (first schem-nums)))
