@@ -23,18 +23,17 @@
         (update-in [:cmd :org 1] dec)))))
 
 (defn slide-lower-field [field empty]
-  (assoc field :body
-         (cons (repeat (count (nth (field :body) 0)) empty)
-               (butlast (field :body)))))
+  (cons (repeat (count (nth field 0)) empty)
+        (butlast field)))
 
 (defn slide-lower
  ([x] (slide-lower x 0))
  ([{field :field cmd :cmd :as x} empty]
-  (if (or (<= (count (:body field)) (get-in cmd [:org 1]))
+  (if (or (<= (count field) (get-in cmd [:org 1]))
           (and (= (:cmd cmd) :move-y)
-               (<= (count (:body field)) (:dst cmd)))
+               (<= (count field) (:dst cmd)))
           (some (partial not= empty)
-                (last (:body field))))
+                (last field)))
     nil
     (-> (if (= (:cmd cmd) :move-y)
           (update-in x [:cmd :dst] inc)
