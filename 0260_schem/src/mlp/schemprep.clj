@@ -3,10 +3,9 @@
 ; {:cmd :move-x :org [4 6] :dst 8}
 
 (defn slide-upper-field [field empty]
-  (assoc field :body
-         (concat (next (field :body))
-                 [(repeat (count (nth (field :body) 0)) empty)]
-                 )))
+  (concat (next field)
+          [(repeat (count (nth field 0)) empty)]
+          ))
 
 (defn slide-upper
  ([x] (slide-upper x 0))
@@ -15,7 +14,7 @@
           (and (= (:cmd cmd) :move-y)
                (= (:dst cmd) 0))
           (some (partial not= empty)
-                (first (:body field))))
+                (first field)))
     nil
     (-> (if (= (:cmd cmd) :move-y)
           (update-in x [:cmd :dst] dec)
