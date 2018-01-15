@@ -63,20 +63,17 @@
 
 (deftest test-slide-right
   (let [test-patterns
-        [{:arg  {:field {:size [2 3]
-                         :body [[0 0]
-                                [1 0]
-                                [0 0]]}
+        [{:arg  {:field [[0 0]
+                         [1 0]
+                         [0 0]]
                  :cmd {:cmd :move-x :org [0 1] :dst 0}}
-          :expc {:field {:size [2 3]
-                         :body [[0 0]
-                                [0 1]
-                                [0 0]]}
+          :expc {:field [[0 0]
+                         [0 1]
+                         [0 0]]
                  :cmd {:cmd :move-x :org [1 1] :dst 1}}}
-         {:arg  {:field {:size [2 3]
-                         :body [[0 0]
-                                [0 1]
-                                [0 0]]}
+         {:arg  {:field [[0 0]
+                         [0 1]
+                         [0 0]]
                  :cmd {:cmd :move-y :org [1 1] :dst 2}}
           :expc nil}]]
     (doseq [{arg :arg expc :expc} test-patterns]
@@ -92,8 +89,7 @@
         [{:f smp/slide-upper :expc   7}
          {:f smp/slide-lower :expc  11}
          {:f smp/slide-left  :expc   6}
-         ;{:f smp/slide-right :expc   6}
-         ]]
+         {:f smp/slide-right :expc   6}]]
     (doseq [{f :f expc :expc} test-patterns]
       (let [result (->> (iterate #(f % (repeat 7 0)) schem)
                         (take-while identity)
@@ -104,9 +100,8 @@
 (deftest test-expand
   (let [test-patterns
         [{:f smp/expand-v    :expc  17}
-         ;{:f smp/expand-h    :expc  11}
-         ;{:f smp/expand      :expc 187}
-         ]]
+         {:f smp/expand-h    :expc  11}
+         {:f smp/expand      :expc 187}]]
     (doseq [{f :f expc :expc} test-patterns]
       (let [result (->> (f schem (repeat 7 0))
                         (take-while identity)

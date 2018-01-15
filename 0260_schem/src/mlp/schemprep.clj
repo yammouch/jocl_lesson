@@ -61,18 +61,17 @@
         (update-in [:cmd :org 0] dec)))))
 
 (defn slide-right-field [field empty]
-  (assoc field :body
-         (map #(cons empty (butlast %))
-              (:body field))))
+  (map #(cons empty (butlast %))
+       field))
 
 (defn slide-right
  ([x] (slide-right x 0))
  ([{field :field cmd :cmd :as x} empty]
-  (if (or (<= (count (first (:body field))) (get-in cmd [:org 0]))
+  (if (or (<= (count (first field)) (get-in cmd [:org 0]))
           (and (= (:cmd cmd) :move-x)
-               (<= (count (first (:body field))) (:dst cmd)))
+               (<= (count (first field)) (:dst cmd)))
           (some (partial not= empty)
-                (map last (:body field))))
+                (map last field)))
     nil
     (-> (if (= (:cmd cmd) :move-x)
           (update-in x [:cmd :dst] inc)
