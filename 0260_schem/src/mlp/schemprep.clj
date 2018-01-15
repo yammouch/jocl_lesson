@@ -42,9 +42,8 @@
         (update-in [:cmd :org 1] inc)))))
 
 (defn slide-left-field [field empty]
-  (assoc field :body
-         (map #(concat (next %) [empty])
-              (:body field))))
+  (map #(concat (next %) [empty])
+       field))
 
 (defn slide-left
  ([x] (slide-left x 0))
@@ -53,7 +52,7 @@
           (and (= (:cmd cmd) :move-x)
                (= (:dst cmd) 0))
           (some (partial not= empty)
-                (map first (:body field))))
+                (map first field)))
     nil
     (-> (if (= (:cmd cmd) :move-x)
           (update-in x [:cmd :dst] dec)
