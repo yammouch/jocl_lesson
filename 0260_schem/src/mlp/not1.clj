@@ -2,7 +2,7 @@
 (ns mlp.not1
   (:gen-class)
   (:import  [java.util Date])
-  (:require [mlp.schemanip :as smp]
+  (:require [mlp.schemprep :as smp]
             [mlp.mlp-jk :as mlp]
             [clojure.pprint]
             [clojure.java.io]))
@@ -34,7 +34,7 @@
       (recur (quot x 2) (conj acc (rem x 2)))
       )))
 
-(defn mlp-input-field [{body :body}]
+(defn mlp-input-field [body]
   (mapcat #(take 6 (concat (radix %) (repeat 0)))
           (apply concat body)))
 
@@ -54,9 +54,9 @@
                      first))
        (#(do (print-training-data %) %))
        (map (fn [[_ field cmd]]
-              {:field {:body (mapv (fn [row] (mapv #(Integer/parseInt % 16)
-                                                   (re-seq #"\S+" row)))
-                                   field)}
+              {:field (mapv (fn [row] (mapv #(Integer/parseInt % 16)
+                                           (re-seq #"\S+" row)))
+                            field)
                :cmd cmd}))))
 
 (defn make-input-labels [schems seed]
