@@ -126,7 +126,7 @@
     (apply + (map #(let [diff (- %1 %2)] (* diff diff))
                   out lbl))))
 
-(defn fw-err-subbatch [inputs labels]
+(defn fw-err-minibatch [inputs labels]
   (apply + (map fw-err inputs labels)))
 
 (defn bw-dense [{bp :b} {i :i b :b p :p u :u [cr cc] :size} is-1st?]
