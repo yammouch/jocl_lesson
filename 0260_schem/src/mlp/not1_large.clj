@@ -1,4 +1,4 @@
-; lein run -m mlp.not1-large 1000 data/not1.dat data/hoge.dat 0
+; lein run -m mlp.not1-large 1000 10 10 data/not1.dat data/hoge.dat 0
 (ns mlp.not1-large
   (:gen-class)
   (:import  [java.util Date])
@@ -62,28 +62,28 @@
                             field)
                :cmd cmd}))))
 
-(defn padding [rows]
+(defn padding [rows h w]
   (let [empty 0]
     (as-> (concat rows (repeat [])) rows 
           (map (fn [row]
                  (as-> (repeat empty) x
                        (concat row x)
-                       (take 20 x)))
+                       (take w x)))
                rows)
-          (take 20 rows))))
+          (take h rows))))
 
-(defn make-input-labels [schems seed]
-  (let [schems (map (fn [schem] (update-in schem [:field] padding))
+(defn make-input-labels [schems h w seed]
+  (let [schems (map (fn [schem] (update-in schem [:field] padding h w))
                     schems)
         confs (map smp/expand schems)
         test-data (select confs seed)]
     [(mapv (comp float-array mlp-input-field :field)
            (apply concat confs))
-     (mapv (comp float-array #(smp/mlp-input-cmd % [20 20]) :cmd)
+     (mapv (comp float-array #(smp/mlp-input-cmd % [w h]) :cmd)
            (apply concat confs))
      (mapv (comp float-array mlp-input-field :field)
            (apply concat test-data))
-     (mapv (comp float-array #(smp/mlp-input-cmd % [20 20]) :cmd)
+     (mapv (comp float-array #(smp/mlp-input-cmd % [w h]) :cmd)
            (apply concat test-data))]))
 
 (defn make-minibatches [sb-size in-nd lbl-nd]
@@ -92,14 +92,14 @@
                                (mlp/xorshift 2 4 6 8)
                                ))))
 
-(defn make-mlp-config [cs cd]
+(defn make-mlp-config [cs cd h w]
   ; cs: conv size, cd: conv depth
   (let [cs-h (quot cs 2)
-        co-h (mapv (partial + 20) (if (even? cs) [1 2] [0 0]))
-        co-w (mapv (partial + 20) (if (even? cs) [1 2] [0 0]))]
+        co-h (mapv (partial + h) (if (even? cs) [1 2] [0 0]))
+        co-w (mapv (partial + w) (if (even? cs) [1 2] [0 0]))]
     [{:type :conv
       :size  [cs cs cd]
-      :isize [20 20 6]
+      :isize [h w 6]
       :pad [cs-h cs-h cs-h cs-h]}
      {:type :sigmoid       :size [(* cd (co-h 0) (co-w 0))]}
      {:type :conv
@@ -108,10 +108,10 @@
       :pad   [cs-h cs-h cs-h cs-h]}
      {:type :sigmoid       :size [(* cd (co-h 1) (co-w 1))]}
      {:type :dense         :size [(* cd (co-h 1) (co-w 1))
-                                  (+ 2 20 20 20)]}
-     {:type :offset        :size [(+ 2 20 20 20)]}
-     {:type :softmax       :size [   2 20 20 20 ]}
-     {:type :cross-entropy :size [(+ 2 20 20 20)]}]))
+                                  (+ 2 w h (max w h))]}
+     {:type :offset        :size [(+ 2 w h (max w h))]}
+     {:type :softmax       :size [   2 w h (max w h) ]}
+     {:type :cross-entropy :size [(+ 2 w h (max w h))]}]))
 
 (defn main-loop [iter learning-rate regu in-tr lbl-tr in-ts lbl-ts]
   (loop [i 0
@@ -141,14 +141,16 @@
             (recur (+ i 1) xs))
         :done))))
 
-(defn -main [iter schem param exclude]
+(defn -main [iter height width schem param exclude]
   (let [start-time (Date.)
         _ (println "start: " (.toString start-time))
         iter (read-string iter)
-        mlp-config (make-mlp-config 3 4)
+        height (read-string height)
+        width (read-string width)
+        mlp-config (make-mlp-config 3 4 height width)
         _ (mlp/init mlp-config 1)
         [in-tr lbl-tr in-ts lbl-ts]
-        (make-input-labels (read-schems schem exclude) 1)]
+        (make-input-labels (read-schems schem exclude) height width 1)]
     ;(dosync (ref-set mlp/debug true))
     (main-loop iter 0.1 0.9999 in-tr lbl-tr in-ts lbl-ts)
     (print-param param mlp-config @mlp/jk-mem)
