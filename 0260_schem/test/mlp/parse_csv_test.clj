@@ -28,7 +28,7 @@
          [nil ()])))
 (deftest test-cell
   (is (= (psc/cell "  ABC , DEF")
-         ["ABC" (seq ", DEF")])))
+         ["  ABC " (seq ", DEF")])))
 
 (deftest test-line
   (is (= (psc/line

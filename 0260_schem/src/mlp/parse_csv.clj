@@ -53,13 +53,11 @@
 (def comma (ch1 (partial = \,)))
 
 (defn cell [s]
-  (let [f (all (times space1 0 nil)
-               (times (ch1 (comp not (set (seq "\n \t\r,"))))
-                      0 nil)
-               (times space1 0 nil))
+  (let [f (times (ch1 (comp not (set (seq "\n,"))))
+                 0 nil)
         [parsed remain] (f s)]
     (if parsed
-      [(apply str (nth parsed 1)) remain]
+      [(apply str parsed) remain]
       [nil remain])))
 
 (defn line [s]
