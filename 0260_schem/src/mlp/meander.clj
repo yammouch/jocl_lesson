@@ -9,9 +9,7 @@
   (as-> (slurp "data/meander.csv") x
         (remove (partial = \return) x)
         (first (psc/csv x))
-        (iterate #(as-> (drop-while           is-delimiter?  %) y
-                        (drop-while (comp not is-delimiter?) y))
-                 x)
+        (iterate #(drop-while (comp not is-delimiter?) (rest %)) x)
         (take-while (comp not empty?) x)
         (map #(split-with (fn [row] (not= (ffirst row) \:)) %) x)
         (map (fn [[field cmd]]
