@@ -3,6 +3,7 @@
   (:gen-class)
   (:import  [java.util Date])
   (:require [mlp.schemprep :as smp]
+            [mlp.meander]
             [mlp.mlp-jk :as mlp]
             [clojure.pprint]
             [clojure.java.io]))
@@ -124,8 +125,8 @@
         (if (= (mod i 100) 0)
           (let [err (mlp/fw-err-minibatch in-ts lbl-ts)]
             (printf "i: %6d err: %10.6f\n" i (/ err (count in-ts))) (flush)
-            ;(if (every? (partial > 0.02) (cons err err-acc))
-            (if false
+            (if (every? (partial > 0.02) (cons err err-acc))
+            ;(if false
               :done
               (recur (+ i 1) bs (take 4 (cons err err-acc)))))
           (recur (+ i 1) bs err-acc))))))
@@ -150,7 +151,9 @@
         mlp-config (make-mlp-config 3 4 height width)
         _ (mlp/init mlp-config 1)
         [in-tr lbl-tr in-ts lbl-ts]
-        (make-input-labels (read-schems schem exclude) height width 1)]
+        (make-input-labels (concat (read-schems schem exclude)
+                                   (mlp.meander/read-file))
+                           height width 1)]
     ;(dosync (ref-set mlp/debug true))
     (main-loop iter 0.1 0.9999 in-tr lbl-tr in-ts lbl-ts)
     (print-param param mlp-config @mlp/jk-mem)
