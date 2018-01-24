@@ -1,4 +1,4 @@
-; lein run -m mlp.not1-large 1000 10 10 data/not1.dat data/hoge.dat 0
+; lein run -m mlp.not1-large 12000 14 14 data/not1.dat data/hoge.dat 0
 (ns mlp.not1-large
   (:gen-class)
   (:import  [java.util Date])
@@ -123,10 +123,16 @@
       (do
         (mlp/run-minibatch inputs labels learning-rate regu)
         (if (= (mod i 100) 0)
-          (let [err (mlp/fw-err-minibatch in-ts lbl-ts)]
-            (printf "i: %6d err: %10.6f\n" i (/ err (count in-ts))) (flush)
-            (if (every? (partial > 0.02) (cons err err-acc))
-            ;(if false
+          ;(let [err (mlp/fw-err-minibatch in-ts lbl-ts)]
+          (let [err (map mlp/fw-err in-ts lbl-ts)]
+            ;(printf "i: %6d err: %10.6f\n" i (/ err (count in-ts))) (flush)
+            (printf "i: %6d err-avg: %10.6f err-max: %10.6f\n"
+                    i
+                    (/ (apply + err) (count in-ts))
+                    (apply max err))
+            (flush)
+            ;(if (every? (partial > 0.02) (cons err err-acc))
+            (if false
               :done
               (recur (+ i 1) bs (take 4 (cons err err-acc)))))
           (recur (+ i 1) bs err-acc))))))
@@ -152,7 +158,7 @@
         _ (mlp/init mlp-config 1)
         [in-tr lbl-tr in-ts lbl-ts]
         (make-input-labels (concat (read-schems schem exclude)
-                                   (mlp.meander/read-file))
+                                   );(mlp.meander/read-file))
                            height width 1)]
     ;(dosync (ref-set mlp/debug true))
     (main-loop iter 0.1 0.9999 in-tr lbl-tr in-ts lbl-ts)

@@ -44,7 +44,8 @@
        first))
 
 (defn parse-output-vector [l]
-  (mapv decode-one-hot (split-output-vector [2 10 10 10] l)))
+  ;(mapv decode-one-hot (split-output-vector [2 10 10 10] l)))
+  (mapv decode-one-hot (split-output-vector [2 14 14 14] l)))
 
 (defn format-field [field]
   (mapv (fn [row]
@@ -89,6 +90,7 @@
                                    (re-seq #"\S+" row)))
                            s)
                      (padding s 14 14))
+                     ;(padding s 10 10))
          schem-next (fw schem)]
     (if (and (< i 100) schem-next)
       (recur (+ i 1) schem-next (fw schem-next))
