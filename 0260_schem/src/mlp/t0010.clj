@@ -159,7 +159,7 @@
         _ (mlp/init mlp-config 1)
         [in-tr lbl-tr in-ts lbl-ts]
         (make-input-labels (concat (read-schems schem)
-                                   (mlp.meander/read-file))
+                                   (mlp.meander/read-file "data/meander.csv"))
                            height width 1)]
     ;(dosync (ref-set mlp/debug true))
     (main-loop iter 0.1 0.9999 in-tr lbl-tr in-ts lbl-ts)

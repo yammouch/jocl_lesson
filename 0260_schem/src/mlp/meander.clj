@@ -10,8 +10,8 @@
 (defn is-delimiter? [row]
   (= (take 6 (first row)) (seq "#start")))
 
-(defn read-file []
-  (as-> (slurp "data/meander.csv") x
+(defn read-file [fname]
+  (as-> (slurp fname) x
         (remove (partial = \return) x)
         (first (psc/csv x))
         (iterate #(drop-while (comp not is-delimiter?) (rest %)) x)
