@@ -25,11 +25,8 @@
                     (drop (+ o 1) x)
                     (reverse x)
                     (reduce #(vec (repeat %2 %1)) 0 x))
-        fslide (if (< n 0)
-                 (fn [l] (vec (take (count l)
-                                    (concat (drop (- n) l)
-                                            (repeat empty)))))
-                 (fn [l] (vec (take (count l)
-                                    (concat (repeat n empty)
-                                            l)))))]
+        fslide (fn [l] (vec (take (count l)
+                                  (concat (repeat n empty)
+                                          (drop (- n) l)
+                                          (repeat empty)))))]
     (mapd fslide o field)))
