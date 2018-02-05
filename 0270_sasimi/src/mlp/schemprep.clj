@@ -1,4 +1,5 @@
-(ns mlp.schemprep)
+(ns mlp.schemprep
+  (:require [clojure.pprint]))
 
 (defn mapd [f d l & ls]
   (if (<= d 0)
@@ -19,9 +20,10 @@
 (defn slide [field n o]
   (let [empty (as-> field x
                     (iterate first x)
-                    (take-while seq? x)
+                    (take-while coll? x)
                     (map count x)
                     (drop (+ o 1) x)
+                    (reverse x)
                     (reduce #(vec (repeat %2 %1)) 0 x))
         fslide (if (< n 0)
                  (fn [l] (vec (take (count l)

@@ -18,8 +18,8 @@
 
 (defn parse-cell [cell]
   (as-> cell c
-        (clojure.string/trim c)
-        (if (empty? c) 0 (Integer/parseInt c 16))
+        (filter (set "0123456789ABCDEFabcdef") c)
+        (if (empty? c) 0 (Integer/parseInt (apply str c) 16))
         (iterate (fn [[_ q]] [(rem q 2) (quot q 2)]) [0 c])
         (mapv first (take 6 (rest c)))))
 
@@ -47,3 +47,23 @@
                    "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "])]
     (is (= (mlp.schemprep/room fld)
            [0 8 0 3]))))
+
+(deftest slide-test
+  (let [pattern
+        [".........." ".........." ".........." ".........." ".........."
+         ".........." ".........." ".........." "....221..." ".........."
+         ".........." ".........." ".........." "......1..." ".........."
+         "....221..." ".221......" "......221." "......1..." ".........."
+         "......1..." "...1......" "........1." ".........." "....221..."
+         "......1..." "...1......" "........1." ".........." "......1..."
+         ".........." ".........." ".........." ".........." "......1..."
+         ".........." ".........." ".........." ".........." ".........."]
+        [fld ex1 ex2 ex3 ex4]
+        (as-> pattern x
+              (map (partial mapv #(parse-cell (str %))) x)
+              (partition 5 x)
+              (apply map vector x))]
+    (is (= (mlp.schemprep/slide fld -3 1) ex1))
+    (is (= (mlp.schemprep/slide fld  2 1) ex2))
+    (is (= (mlp.schemprep/slide fld -2 0) ex3))
+    (is (= (mlp.schemprep/slide fld  1 0) ex4))))
