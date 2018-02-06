@@ -1,6 +1,7 @@
 (ns mlp.meander
   (:require [mlp.util :as utl]
-            [mlp.schemprep :as scp]))
+            [mlp.schemprep :as scp]
+            [clojure.pprint]))
 
 (defn range-2d [end from to o]
   (let [o (case o (:u :d) 0, (:l :r) 1, 0 0, 1 1)
@@ -89,3 +90,12 @@
                                (fn [fld] (scp/slide fld mv))))
                   m))
           ml)))
+
+(defn -main []
+  (as-> (meander-pos 4) x
+        (doseq [pos x]
+          (doseq [sequ pos]
+            (clojure.pprint/pprint
+             (scp/format-field (:field sequ)))
+            (clojure.pprint/pprint (:cmd sequ))
+            ))))

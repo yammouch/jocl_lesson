@@ -1,10 +1,17 @@
 (ns mlp.schemprep
-  (:require [clojure.pprint]))
+  (:require [mlp.util :as utl]
+            [clojure.pprint]))
 
-(defn mapd [f d l & ls]
-  (if (<= d 0)
-    (apply f l ls)
-    (apply mapv (partial mapd f (- d 1)) l ls)))
+(defn format-field [field]
+  (mapv (fn [row]
+          (as-> row r
+                (map #(->> (reverse %)
+                           (reduce (fn [acc x] (+ (* acc 2) x)))
+                           (format "%02X"))
+                     r)
+                (interpose " " r)
+                (apply str r)))
+        field))
 
 (defn count-empty-row-up [field]
   (as-> field fld
@@ -29,7 +36,7 @@
                                   (concat (repeat n empty)
                                           (drop (- n) l)
                                           (repeat empty)))))]
-    (mapd fslide o field)))
+    (utl/mapd fslide o field)))
 
 (defn slide [field v]
   (reduce (fn [fld [n o]] (slide-1d fld n o))

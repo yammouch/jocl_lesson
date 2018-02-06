@@ -1,4 +1,5 @@
-(ns mlp.util)
+(ns mlp.util
+  (:require [clojure.pprint]))
 
 (defn mapd [f d l & ls]
   (if (<= d 0)
@@ -31,7 +32,7 @@
   (as-> (rand-nodup (apply + ns) (count v) rs) x
         (map #(v %) x)
         (loop [x x, [n & ns] ns, acc []]
-          (if (empty? n)
+          (if (not n)
             acc
             (recur (drop n x) ns (conj acc (take n x)))
             ))))
