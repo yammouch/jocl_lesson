@@ -17,7 +17,7 @@
         r (reverse l)]
     (map count-empty-row-up [field b l r])))
 
-(defn slide [field n o]
+(defn slide-1d [field n o]
   (let [empty (as-> field x
                     (iterate first x)
                     (take-while coll? x)
@@ -30,3 +30,8 @@
                                           (drop (- n) l)
                                           (repeat empty)))))]
     (mapd fslide o field)))
+
+(defn slide [field v]
+  (reduce (fn [fld [n o]] (slide-1d fld n o))
+          field
+          (map vector v (range))))

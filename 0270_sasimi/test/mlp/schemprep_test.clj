@@ -48,7 +48,7 @@
     (is (= (mlp.schemprep/room fld)
            [0 8 0 3]))))
 
-(deftest slide-test
+(deftest slide-1d-test
   (let [pattern
         [".........." ".........." ".........." ".........." ".........."
          ".........." ".........." ".........." "....221..." ".........."
@@ -63,7 +63,7 @@
               (map (partial mapv #(parse-cell (str %))) x)
               (partition 5 x)
               (apply map vector x))]
-    (is (= (mlp.schemprep/slide fld -3 1) ex1))
-    (is (= (mlp.schemprep/slide fld  2 1) ex2))
-    (is (= (mlp.schemprep/slide fld -2 0) ex3))
-    (is (= (mlp.schemprep/slide fld  1 0) ex4))))
+    (is (= (mlp.schemprep/slide-1d fld -3 1) ex1))
+    (is (= (mlp.schemprep/slide-1d fld  2 1) ex2))
+    (is (= (mlp.schemprep/slide-1d fld -2 0) ex3))
+    (is (= (mlp.schemprep/slide-1d fld  1 0) ex4))))

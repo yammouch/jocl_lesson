@@ -1,4 +1,6 @@
-(ns mlp.meander)
+(ns mlp.meander
+  (:require [mlp.util :as utl]
+            [mlp.schemprep :as scp]))
 
 (defn range-2d [end from to o]
   (let [o (case o (:u :d) 0, (:l :r) 1, 0 0, 1 1)
@@ -74,3 +76,16 @@
           :dst (p4 0)}}))
 
 (def meander-0 (juxt meander-0-0 meander-0-1))
+
+(defn meander-pos [n]
+  (let [m (vec (meander-0 [4 2 2 2 4 2]))
+        [u d l r] (scp/room (get-in m [0 :field]))
+        ml (for [dy (range (- u) (+ d 1)) dx (range (- l) (+ r 1))]
+             [dy dx])
+        [ml] (utl/select (vec ml) [n] (utl/xorshift 2 4 6 8))]
+    (mapv (fn [mv] 
+            (mapv (fn [pair]
+                    (update-in pair [:field]
+                               (fn [fld] (scp/slide fld mv))))
+                  m))
+          ml)))
