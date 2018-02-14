@@ -36,3 +36,6 @@
             acc
             (recur (drop n x) ns (conj acc (take n x)))
             ))))
+
+(defn one-hot [val len]
+  (take len (concat (repeat val 0) [1] (repeat 0))))

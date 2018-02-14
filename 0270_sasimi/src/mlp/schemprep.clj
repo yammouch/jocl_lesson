@@ -42,3 +42,13 @@
   (reduce (fn [fld [n o]] (slide-1d fld n o))
           field
           (map vector v (range))))
+
+(defn padding [rows h w]
+  (let [empty 0]
+    (as-> (concat rows (repeat [])) rows
+          (map (fn [row]
+                 (as-> (repeat empty) x
+                       (concat row x)
+                       (take w x)))
+               rows)
+          (take h rows))))

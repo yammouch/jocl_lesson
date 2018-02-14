@@ -2,36 +2,24 @@
 (ns mlp.t0010
   (:gen-class)
   (:import  [java.util Date])
-  (:require [mlp.schemprep :as smp]
+  (:require [mlp.util :as utl]
+            [mlp.schemprep :as smp]
             [mlp.meander]
             [mlp.mlp-jk :as mlp]
             [clojure.pprint]
             [clojure.java.io]))
 
-(defn padding [rows h w]
-  (let [empty 0]
-    (as-> (concat rows (repeat [])) rows 
-          (map (fn [row]
-                 (as-> (repeat empty) x
-                       (concat row x)
-                       (take w x)))
-               rows)
-          (take h rows))))
-
-(defn one-hot [val len]
-  (take len (concat (repeat val 0) [1] (repeat 0))))
-
 (defn mlp-input-cmd [{cmd :cmd [x y] :org dst :dst} [cx cy]]
   (concat (case cmd :move-x [1 0] [0 1])
-          (one-hot x cx)
-          (one-hot y cy)
-          (one-hot dst (max cx cy))))
+          (utl/one-hot x cx)
+          (utl/one-hot y cy)
+          (utl/one-hot dst (max cx cy))))
 
 (defn make-input-labels [schems h w seed]
-  (let [schems (map (fn [schem] (update-in schem [:field] padding h w))
+  (let [schems (map (fn [schem] (update-in schem [:field] smp/padding h w))
                     schems)
-        confs schems;(map smp/expand schems)
-        test-data schems];(select confs seed)]
+        confs schems
+        test-data schems]
     [(mapv (comp float-array
                  (partial apply concat)
                  (partial apply concat)
@@ -50,7 +38,7 @@
 (defn make-minibatches [sb-size in-nd lbl-nd]
   (map (fn [idx] [(mapv in-nd idx) (mapv lbl-nd idx)])
        (partition sb-size (map #(mod % (count in-nd))
-                               (mlp/xorshift 2 4 6 8)
+                               (utl/xorshift 2 4 6 8)
                                ))))
 
 (defn make-mlp-config [cs cd h w]
@@ -94,17 +82,6 @@
               :done
               (recur (+ i 1) bs (take 4 (cons err err-acc)))))
           (recur (+ i 1) bs err-acc))))))
-
-(defn print-param [fname cfg m]
-  (with-open [o (clojure.java.io/writer fname)]
-    (clojure.pprint/pprint cfg o)
-    (loop [i 0 [x & xs] m]
-      (if x
-        (do (when (:p x)
-              (clojure.pprint/pprint i o)
-              (clojure.pprint/pprint (seq (:p x)) o))
-            (recur (+ i 1) xs))
-        :done))))
 
 (defn -main [iter]
   (let [start-time (Date.)

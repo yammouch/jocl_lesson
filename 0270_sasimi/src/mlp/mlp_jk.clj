@@ -1,18 +1,12 @@
 (ns mlp.mlp-jk
-  (:gen-class))
+  (:gen-class)
+  (:require [mlp.util :as utl]))
 
 (def debug (ref false))
 
-(defn xorshift [x y z w]
-  (let [t  (bit-xor x (bit-shift-left x 11))
-        wn (bit-and 0xFFFFFFFF
-                    (bit-xor w (bit-shift-right w 19)
-                             t (bit-shift-right t  8)))]
-    (cons w (lazy-seq (xorshift y z w wn)))))
-
 (defn initial-param [conf seed]
   (loop [[{t :type [h w d] :size [_ _ id] :isize :as c} & cs] conf
-         rnd (drop 64 (apply xorshift (range seed (+ seed 4))))
+         rnd (drop 64 (apply utl/xorshift (range seed (+ seed 4))))
          acc []]
     (if c
       (let [l (case t
