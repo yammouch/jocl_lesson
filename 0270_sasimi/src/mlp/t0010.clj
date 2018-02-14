@@ -6,38 +6,24 @@
             [mlp.schemprep :as smp]
             [mlp.meander]
             [mlp.mlp-jk :as mlp]
-            [clojure.pprint]
-            [clojure.java.io]))
+            [clojure.pprint]))
 
-(defn mlp-input-cmd [{cmd :cmd [x y] :org dst :dst} [cx cy]]
-  (concat (case cmd :move-x [1 0] [0 1])
-          (utl/one-hot x cx)
+(defn mlp-input-cmd [{cmd :cmd [y x] :org dst :dst} [cy cx]]
+  (concat (case cmd :move-y [1 0] :move-x [0 1])
           (utl/one-hot y cy)
-          (utl/one-hot dst (max cx cy))))
+          (utl/one-hot x cx)
+          (utl/one-hot dst (max cy cx))))
 
-(defn make-input-labels [schems h w seed]
-  (let [schems (map (fn [schem] (update-in schem [:field] smp/padding h w))
-                    schems)
-        confs schems
-        test-data schems]
-    [(mapv (comp float-array
-                 (partial apply concat)
-                 (partial apply concat)
-                 :field)
-           confs)
-     (mapv (comp float-array #(mlp-input-cmd % [w h]) :cmd)
-           confs)
-     (mapv (comp float-array
-                 (partial apply concat)
-                 (partial apply concat)
-                 :field)
-           test-data)
-     (mapv (comp float-array #(mlp-input-cmd % [w h]) :cmd)
-           test-data)]))
-
-(defn make-minibatches [sb-size in-nd lbl-nd]
-  (map (fn [idx] [(mapv in-nd idx) (mapv lbl-nd idx)])
-       (partition sb-size (map #(mod % (count in-nd))
+(defn make-input-label [pair h w]
+  (as-> pair p
+        (update-in p [:field] (comp float-array
+                                    (partial apply concat)
+                                    (partial apply concat)))
+        (update-in p [:cmd] (comp float-array #(mlp-input-cmd % [h w])))))
+                                  
+(defn make-minibatches [sb-size v]
+  (map (partial mapv v)
+       (partition sb-size (map #(mod % (count v))
                                (utl/xorshift 2 4 6 8)
                                ))))
 
@@ -62,19 +48,19 @@
      {:type :softmax       :size [   2 w h (max w h) ]}
      {:type :cross-entropy :size [(+ 2 w h (max w h))]}]))
 
-(defn main-loop [iter learning-rate regu in-tr lbl-tr in-ts lbl-ts]
+(defn main-loop [iter learning-rate regu tr ts]
   (loop [i 0
-         [[inputs labels] & bs] (make-minibatches 16 in-tr lbl-tr)
+         [b & bs] (make-minibatches 16 tr)
          err-acc (repeat 4 1.0)]
     (if (< iter i)
       :done
       (do
-        (mlp/run-minibatch inputs labels learning-rate regu)
+        (mlp/run-minibatch (map :field b) (map :cmd b) learning-rate regu)
         (if (= (mod i 100) 0)
-          (let [err (map mlp/fw-err in-ts lbl-ts)]
+          (let [err (map mlp/fw-err (map :field ts) (map :cmd ts))]
             (printf "i: %6d err-avg: %10.6f err-max: %10.6f\n"
                     i
-                    (/ (apply + err) (count in-ts))
+                    (/ (apply + err) (count ts))
                     (apply max err))
             (flush)
             ;(if (every? (partial > 0.02) (cons err err-acc))
@@ -90,10 +76,9 @@
         height 14, width 14
         mlp-config (make-mlp-config 3 4 height width)
         _ (mlp/init mlp-config 1)
-        [in-tr lbl-tr in-ts lbl-ts]
-        (make-input-labels (apply concat (mlp.meander/meander-pos 4))
-                           height width 1)]
-    (main-loop iter 0.1 0.9999 in-tr lbl-tr in-ts lbl-ts)
+        tr (mapv #(make-input-label % height width)
+                 (apply concat (mlp.meander/meander-pos 4)))]
+    (main-loop iter 0.1 0.9999 tr tr)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
       (printf "%d seconds elapsed\n"
