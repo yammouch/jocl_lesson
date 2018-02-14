@@ -59,7 +59,10 @@
         mlp-config (make-mlp-config 3 4 height width)
         _ (mlp/init mlp-config 1)
         tr (mapv #(mlp.schemmlp/make-input-label % height width)
-                 (apply concat (mlp.meander/meander-pos 4)))]
+                 ;(apply concat (mlp.meander/meander-pos 20)))
+                 (apply concat (mlp.meander/meander-pos 4)))
+        ;[tr ts] (map vec (utl/select tr [16 4] (utl/xorshift 2 4 6 8)))]
+        ];[tr ts] (map vec (utl/select tr [4 4] (utl/xorshift 2 4 6 8)))]
     (main-loop iter 0.1 0.9999 tr tr)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
