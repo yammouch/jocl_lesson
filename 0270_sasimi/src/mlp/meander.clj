@@ -86,8 +86,13 @@
         [ml] (utl/select (vec ml) [n] (utl/xorshift 2 4 6 8))]
     (mapv (fn [mv] 
             (mapv (fn [pair]
-                    (update-in pair [:field]
-                               (fn [fld] (scp/slide fld mv))))
+                    (as-> pair p
+                          (update-in p [:field     ] scp/slide mv)
+                          (update-in p [:cmd :org 0] + (mv 0))
+                          (update-in p [:cmd :org 1] + (mv 1))
+                          (update-in p [:cmd :dst  ] +
+                                     (mv (case (get-in pair [:cmd :cmd])
+                                           :move-y 0 :move-x 1)))))
                   m))
           ml)))
 
