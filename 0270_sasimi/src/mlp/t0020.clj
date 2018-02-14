@@ -1,4 +1,4 @@
-; lein run -m mlp.t0010 1000
+; lein run -m mlp.t0020 100000
 
 (ns mlp.t0020
   (:gen-class)
