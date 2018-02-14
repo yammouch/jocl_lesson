@@ -1,31 +1,13 @@
 ; lein run -m mlp.t0010 1000
+
 (ns mlp.t0010
   (:gen-class)
   (:import  [java.util Date])
   (:require [mlp.util :as utl]
-            [mlp.schemprep :as smp]
+            [mlp.schemmlp]
             [mlp.meander]
             [mlp.mlp-jk :as mlp]
             [clojure.pprint]))
-
-(defn mlp-input-cmd [{cmd :cmd [y x] :org dst :dst} [cy cx]]
-  (concat (case cmd :move-y [1 0] :move-x [0 1])
-          (utl/one-hot y cy)
-          (utl/one-hot x cx)
-          (utl/one-hot dst (max cy cx))))
-
-(defn make-input-label [pair h w]
-  (as-> pair p
-        (update-in p [:field] (comp float-array
-                                    (partial apply concat)
-                                    (partial apply concat)))
-        (update-in p [:cmd] (comp float-array #(mlp-input-cmd % [h w])))))
-                                  
-(defn make-minibatches [sb-size v]
-  (map (partial mapv v)
-       (partition sb-size (map #(mod % (count v))
-                               (utl/xorshift 2 4 6 8)
-                               ))))
 
 (defn make-mlp-config [cs cd h w]
   ; cs: conv size, cd: conv depth
@@ -50,7 +32,7 @@
 
 (defn main-loop [iter learning-rate regu tr ts]
   (loop [i 0
-         [b & bs] (make-minibatches 16 tr)
+         [b & bs] (mlp.schemmlp/make-minibatches 16 tr)
          err-acc (repeat 4 1.0)]
     (if (< iter i)
       :done
@@ -76,7 +58,7 @@
         height 14, width 14
         mlp-config (make-mlp-config 3 4 height width)
         _ (mlp/init mlp-config 1)
-        tr (mapv #(make-input-label % height width)
+        tr (mapv #(mlp.schemmlp/make-input-label % height width)
                  (apply concat (mlp.meander/meander-pos 4)))]
     (main-loop iter 0.1 0.9999 tr tr)
     (let [end-time (Date.)]
