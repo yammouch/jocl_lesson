@@ -8,56 +8,6 @@
             [clojure.pprint]
             [clojure.java.io]))
 
-(defn lift [[x & xs] n]
-  (cond (not x) n
-        (< n x) n
-        :else (recur xs (+ 1 n))
-        ))
-
-(defn rand-nodup [n lt rs]
-  (loop [acc (sorted-set)
-         [x & xs] (map rem rs (range lt (- lt n) -1))]
-    (if x
-      (recur (conj acc (lift (seq acc) x)) xs)
-      acc)))
-
-(defn select [expanded seed]
-  (let [rnd (apply mlp/xorshift
-             (take 4 (iterate (partial + 2) (+ seed 1))))]
-    (mapv (fn [rnd xs]
-            (as-> (rand-nodup (count rnd) (count xs) rnd) x
-                  (filter (comp x first) (map-indexed vector xs))
-                  (mapv second x)))
-          (partition 1 rnd)
-          expanded)))
-
-(defn radix [x]
-  (loop [x x acc []]
-    (if (<= x 0)
-      acc
-      (recur (quot x 2) (conj acc (rem x 2)))
-      )))
-
-(defn mlp-input-field [body]
-  (mapcat #(take 6 (concat (radix %) (repeat 0)))
-          (apply concat body)))
-
-(defn print-training-data [td]
-  (with-open [o (clojure.java.io/writer "training_data.dat")]
-    (doseq [s td]
-      (clojure.pprint/pprint s o))))
-
-(defn read-schems [fname]
-  (->> (read-string (str "(" (slurp fname) ")"))
-       (partition 3)
-       (filter (comp #{0 21} first))
-       (#(do (print-training-data %) %))
-       (map (fn [[_ field cmd]]
-              {:field (mapv (fn [row] (mapv #(Integer/parseInt % 16)
-                                           (re-seq #"\S+" row)))
-                            field)
-               :cmd cmd}))))
-
 (defn padding [rows h w]
   (let [empty 0]
     (as-> (concat rows (repeat [])) rows 
@@ -82,26 +32,18 @@
                     schems)
         confs schems;(map smp/expand schems)
         test-data schems];(select confs seed)]
-    [(mapv ;(comp float-array mlp-input-field :field)
-           (comp float-array
+    [(mapv (comp float-array
                  (partial apply concat)
                  (partial apply concat)
                  :field)
-           ;(apply concat confs))
            confs)
-     ;(mapv (comp float-array #(smp/mlp-input-cmd % [w h]) :cmd)
-     ;      (apply concat confs))
      (mapv (comp float-array #(mlp-input-cmd % [w h]) :cmd)
            confs)
-     (mapv ;(comp float-array mlp-input-field :field)
-           (comp float-array
+     (mapv (comp float-array
                  (partial apply concat)
                  (partial apply concat)
                  :field)
-           ;(apply concat test-data))
            test-data)
-     ;(mapv (comp float-array #(smp/mlp-input-cmd % [w h]) :cmd)
-     ;      (apply concat test-data))]))
      (mapv (comp float-array #(mlp-input-cmd % [w h]) :cmd)
            test-data)]))
 
@@ -141,9 +83,7 @@
       (do
         (mlp/run-minibatch inputs labels learning-rate regu)
         (if (= (mod i 100) 0)
-          ;(let [err (mlp/fw-err-minibatch in-ts lbl-ts)]
           (let [err (map mlp/fw-err in-ts lbl-ts)]
-            ;(printf "i: %6d err: %10.6f\n" i (/ err (count in-ts))) (flush)
             (printf "i: %6d err-avg: %10.6f err-max: %10.6f\n"
                     i
                     (/ (apply + err) (count in-ts))
@@ -171,18 +111,12 @@
         _ (println "start: " (.toString start-time))
         iter (read-string iter)
         height 14, width 14
-        schem "data/not1.dat"
         mlp-config (make-mlp-config 3 4 height width)
         _ (mlp/init mlp-config 1)
         [in-tr lbl-tr in-ts lbl-ts]
-        (make-input-labels ;(concat (read-schems schem)
-                           ;        (mlp.meander/read-file "data/meander.csv")
-                           ;        (mlp.meander/read-file "data/meander02.csv"))
-                           (apply concat (mlp.meander/meander-pos 4))
+        (make-input-labels (apply concat (mlp.meander/meander-pos 4))
                            height width 1)]
-    ;(dosync (ref-set mlp/debug true))
     (main-loop iter 0.1 0.9999 in-tr lbl-tr in-ts lbl-ts)
-    ;(print-param param mlp-config @mlp/jk-mem)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
       (printf "%d seconds elapsed\n"
