@@ -74,14 +74,19 @@
         height 14, width 14
         mlp-config (make-mlp-config 3 4 height width)
         _ (mlp/init mlp-config 2)
-        [tr0 ts0] (meander-0-pos [4 2 2 2 4 2])
-        [tr1 ts1] (meander-0-pos [5 2 3 2 4 2])
-        tr (mapv #(mlp.schemmlp/make-input-label % height width)
-                 (concat (apply concat tr0)
-                         (apply concat tr1)))
-        ts (mapv #(mlp.schemmlp/make-input-label % height width)
-                 (concat (apply concat ts0)
-                         (apply concat ts1)))]
+        p (for [g0 [2  ]
+                g1 [2  ]
+                g2 [2 3]
+                g3 [2  ]
+                g4 [2  ]
+                g5 [2  ]]
+            (meander-0-pos [(+ g0 g2) g1 g2 g3 g4 g5]))
+        [tr ts] (apply map (comp (partial apply concat)
+                                 (partial apply concat)
+                                 vector)
+                           p)
+        tr (mapv #(mlp.schemmlp/make-input-label % height width) tr)
+        ts (mapv #(mlp.schemmlp/make-input-label % height width) ts)]
     (main-loop iter 0.1 0.9999 tr ts)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
