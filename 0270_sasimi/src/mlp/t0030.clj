@@ -57,13 +57,15 @@
               (recur (+ i 1) bs (take 4 (cons err-reduced err-acc)))))
           (recur (+ i 1) bs err-acc))))))
 
-(defn meander-pos [n]
-  (let [m (vec (mlp.meander/meander-0 [4 2 2 2 4 2]))
+(defn meander-0-pos [g]
+  (let [m (vec (mlp.meander/meander-0 g))
         [u d l r] (spp/room (get-in m [0 :field]))
         ml (for [dy (range (- u) (+ d 1)) dx (range (- l) (+ r 1))]
              [dy dx])
-        [ml] (utl/select (vec ml) [n] (utl/xorshift 2 4 6 8))]
-    (mapv (partial mlp.schemmlp/slide-history m) ml)))
+        n (count ml)
+        [mtr mts] (utl/select (vec ml) [(- n 1) 1] (utl/xorshift 2 4 6 8))]
+    [(mapv (partial mlp.schemmlp/slide-history m) mtr)
+     (mapv (partial mlp.schemmlp/slide-history m) mts)]))
 
 (defn -main [iter]
   (let [start-time (Date.)
@@ -72,12 +74,14 @@
         height 14, width 14
         mlp-config (make-mlp-config 3 4 height width)
         _ (mlp/init mlp-config 2)
-        tr (meander-pos 40)
-        [tr ts] (map vec (utl/select tr [39 1] (utl/xorshift 2 4 6 8)))
+        [tr0 ts0] (meander-0-pos [4 2 2 2 4 2])
+        [tr1 ts1] (meander-0-pos [5 2 3 2 4 2])
         tr (mapv #(mlp.schemmlp/make-input-label % height width)
-                 (apply concat tr))
+                 (concat (apply concat tr0)
+                         (apply concat tr1)))
         ts (mapv #(mlp.schemmlp/make-input-label % height width)
-                 (apply concat ts))]
+                 (concat (apply concat ts0)
+                         (apply concat ts1)))]
     (main-loop iter 0.1 0.9999 tr ts)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
