@@ -85,10 +85,7 @@
         ml (for [dy (range (- u) (+ d 1)) dx (range (- l) (+ r 1))]
              [dy dx])
         [ml] (utl/select (vec ml) [n] (utl/xorshift 2 4 6 8))]
-    (mapv (fn [mv] 
-            (mapv #(scp/slide-policy % mv)
-                  m))
-          ml)))
+    (mapv (partial scp/slide-history m) ml)))
 
 (defn -main []
   (as-> (meander-pos 4) x

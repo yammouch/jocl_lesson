@@ -29,4 +29,5 @@
                      (mv (case (get-in p [:cmd :cmd])
                            :move-y 0 :move-x 1)))))
 
-;(defn slide-history [h] h)
+(defn slide-history [h mv]
+  (mapv #(slide-policy % mv) h))
