@@ -1,6 +1,7 @@
 (ns mlp.meander
   (:require [mlp.util :as utl]
-            [mlp.schemprep :as scp]
+            [mlp.schemprep :as smp]
+            [mlp.schemmlp  :as scp]
             [clojure.pprint]))
 
 (defn range-2d [end from to o]
@@ -80,19 +81,12 @@
 
 (defn meander-pos [n]
   (let [m (vec (meander-0 [4 2 2 2 4 2]))
-        [u d l r] (scp/room (get-in m [0 :field]))
+        [u d l r] (smp/room (get-in m [0 :field]))
         ml (for [dy (range (- u) (+ d 1)) dx (range (- l) (+ r 1))]
              [dy dx])
         [ml] (utl/select (vec ml) [n] (utl/xorshift 2 4 6 8))]
     (mapv (fn [mv] 
-            (mapv (fn [pair]
-                    (as-> pair p
-                          (update-in p [:field     ] scp/slide mv)
-                          (update-in p [:cmd :org 0] + (mv 0))
-                          (update-in p [:cmd :org 1] + (mv 1))
-                          (update-in p [:cmd :dst  ] +
-                                     (mv (case (get-in pair [:cmd :cmd])
-                                           :move-y 0 :move-x 1)))))
+            (mapv #(scp/slide-policy % mv)
                   m))
           ml)))
 
@@ -101,6 +95,6 @@
         (doseq [pos x]
           (doseq [sequ pos]
             (clojure.pprint/pprint
-             (scp/format-field (:field sequ)))
+             (smp/format-field (:field sequ)))
             (clojure.pprint/pprint (:cmd sequ))
             ))))
