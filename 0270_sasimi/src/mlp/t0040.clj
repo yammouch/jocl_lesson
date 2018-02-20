@@ -57,8 +57,8 @@
               (recur (+ i 1) bs (take 4 (cons err-reduced err-acc)))))
           (recur (+ i 1) bs err-acc))))))
 
-(defn meander-0-pos [g]
-  (let [m (vec (mlp.meander/meander-0 g))
+(defn meander-0-pos [size g]
+  (let [m (vec (mlp.meander/meander-0 size g))
         [u d l r] (spp/room (get-in m [0 :field]))
         ml (for [dy (range (- u) (+ d 1)) dx (range (- l) (+ r 1))]
              [dy dx])
@@ -80,7 +80,7 @@
                 g3 [2 3]
                 g4 [2 3]
                 g5 [2 3]]
-            (meander-0-pos [(+ g0 g2) g1 g2 g3 g4 g5]))
+            (meander-0-pos [height width] [(+ g0 g2) g1 g2 g3 g4 g5]))
         [tr ts] (apply map (comp (partial apply concat)
                                  (partial apply concat)
                                  vector)

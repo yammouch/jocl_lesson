@@ -32,7 +32,7 @@
 ;
 ;      |<- l4  ->|  |<- l5 ->|
 
-(defn meander-0-0 [l]
+(defn meander-0-0 [[h w] l]
   (let [p0 [0 0]
         p1 (update-in p0 [1] + (l 0))
         p2 (update-in p1 [0] + (l 1))
@@ -42,7 +42,7 @@
         p6 (update-in p5 [1] + 2)
         p7 (update-in p6 [1] + (l 5))]
    {:field
-    (as-> (reduce #(vec (repeat %2 %1)) 0 [6 14 14]) fld
+    (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
           (assoc-in fld (conj p0 3) 1)  ; in
           (line fld p0 (p1 1) 1)
           (line fld p1 (p2 0) 0)
@@ -57,7 +57,7 @@
                 (p1 1)]
           :dst (p3 1)}}))
 
-(defn meander-0-1 [l]
+(defn meander-0-1 [[h w] l]
   (let [p0 [0 0]
         p1 (update-in p0 [1] + (- (l 0) (l 2)))
         p4 (update-in p1 [0] + (+ (l 1) (l 3)))
@@ -65,7 +65,7 @@
         p6 (update-in p5 [1] + 2)
         p7 (update-in p6 [1] + (l 5))]
    {:field
-    (as-> (reduce #(vec (repeat %2 %1)) 0 [6 14 14]) fld
+    (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
           (assoc-in fld (conj p0 3) 1)  ; in
           (line fld p0 (p1 1) 1)
           (line fld p1 (p4 0) 0)
@@ -80,8 +80,9 @@
 (def meander-0 (juxt meander-0-0 meander-0-1))
 
 (defn meander-pos [n]
-  (let [m (vec (meander-0 [4 2 2 2 4 2]))
+  (let [m (vec (meander-0 [14 14] [4 2 2 2 4 2]))
         [u d l r] (smp/room (get-in m [0 :field]))
+        _ (println [u d l r])
         ml (for [dy (range (- u) (+ d 1)) dx (range (- l) (+ r 1))]
              [dy dx])
         [ml] (utl/select (vec ml) [n] (utl/xorshift 2 4 6 8))]

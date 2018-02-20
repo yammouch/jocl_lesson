@@ -1,6 +1,6 @@
-; lein run -m mlp.t0020 100000
+; lein run -m mlp.t0050 40000
 
-(ns mlp.t0030
+(ns mlp.t0050
   (:gen-class)
   (:import  [java.util Date])
   (:require [mlp.util :as utl]
@@ -71,15 +71,15 @@
   (let [start-time (Date.)
         _ (println "start: " (.toString start-time))
         iter (read-string iter)
-        height 14, width 14
+        height 15, width 15
         mlp-config (make-mlp-config 3 4 height width)
         _ (mlp/init mlp-config 2)
-        p (for [g0 [2 3]
+        p (for [g0 [2 3 4]
                 g1 [2 3 4]
                 g2 [2 3 4]
-                g3 [2 3]
-                g4 [2 3]
-                g5 [2 3]]
+                g3 [2 3 4]
+                g4 [2 3 4]
+                g5 [2 3 4]]
             (meander-0-pos [height width] [(+ g0 g2) g1 g2 g3 g4 g5]))
         [tr ts] (apply map (comp (partial apply concat)
                                  (partial apply concat)
