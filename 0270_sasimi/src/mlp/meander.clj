@@ -59,7 +59,8 @@
           :dst (p3 1)}}))
 
 (defn meander-0-1 [[h w] l]
-  (let [p0 [0 0]
+  (let [y0 (+ (l 1) (l 3))
+        p0 [(if (< y0 0) (- y0) 0) 0]
         p1 (update-in p0 [1] + (- (l 0) (l 2)))
         p4 (update-in p1 [0] + (+ (l 1) (l 3)))
         p5 (update-in p4 [1] + (l 4))
