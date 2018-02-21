@@ -33,7 +33,8 @@
 ;      |<- l4  ->|  |<- l5 ->|
 
 (defn meander-0-0 [[h w] l]
-  (let [p0 [0 0]
+  (let [y0 (+ (l 1) (l 3))
+        p0 [(if (< y0 0) (- y0) 0) 0]
         p1 (update-in p0 [1] + (l 0))
         p2 (update-in p1 [0] + (l 1))
         p3 (update-in p2 [1] - (l 2))

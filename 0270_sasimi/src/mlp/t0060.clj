@@ -68,9 +68,13 @@
      (mapv (partial mlp.schemmlp/slide-history m) mts)]))
 
 (defn test-pattern [size]
-  (for [g0 [2    ] g1 [2 3 4] g2 [2 3 4]
-        g3 [2    ] g4 [2    ] g5 [2    ]]
-    (meander-0-pos size [(+ g0 g2) g1 g2 g3 g4 g5])))
+  (as-> (concat (for [g0 [2    ] g1 [2 3 4] g2 [2 3 4]
+                      g3 [2    ] g4 [2    ] g5 [2    ]]
+                  (meander-0-pos size [(+ g0 g2) g1 g2 g3 g4 g5]))
+                (for [g0 [ 2    ] g1 [-4 -3 -2] g2 [2 3 4]
+                      g3 [-2    ] g4 [2       ] g5 [2    ]]
+                  (meander-0-pos size [(+ g0 g2) g1 g2 g3 g4 g5]))) s
+        (apply map vector s)))
 
 (defn -main [iter]
   (let [start-time (Date.)
