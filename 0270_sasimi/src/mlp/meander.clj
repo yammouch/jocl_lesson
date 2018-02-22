@@ -90,6 +90,93 @@
         [ml] (utl/select (vec ml) [n] (utl/xorshift 2 4 6 8))]
     (mapv (partial scp/slide-history m) ml)))
 
+;    |<-  l0  ->|
+;   _            p1
+;  |_>----------+  -
+;    p0         |  ^
+;               |  l1
+;     p4        |  v     |\            _
+;      +--------+--------| >o---------|_>
+;      |<- l3 ->|  ^   p5|/  p6     p7
+;      |        |  l2
+;      |p3    p2|  v
+;      +--------+
+;                <- l4 ->    <- l5 ->
+
+(defn ring-0-0 [[h w] l]
+  (let [y0 (+ (l 1) (l 2))
+        x0 (- (l 0) (l 3))
+        p0 [(if (< y0 0) (- y0) 0)
+            (if (< x0 0) (- x0) 0)]
+        p1 (update-in p0 [1] + (l 0))
+        p2 (update-in p1 [0] + (l 1) (l 2))
+        p3 (update-in p2 [1] - (l 3))
+        p4 (update-in p3 [0] - (l 2))
+        p5 (update-in p4 [1] + (l 3) (l 4))
+        p6 (update-in p5 [1] + 2)
+        p7 (update-in p6 [1] + (l 5))]
+   {:field
+    (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
+          (assoc-in fld (conj p0 3) 1)  ; in
+          (line fld p0 (p1 1) 1)
+          (line fld p1 (p2 0) 0)
+          (line fld p2 (p3 1) 1)
+          (line fld p3 (p4 0) 0)
+          (line fld p4 (p5 1) 1)
+          (assoc-in fld (conj p5 5) 1)  ; not
+          (line fld p6 (p7 1) 1)
+          (assoc-in fld (conj p7 4) 1)) ; out
+    :cmd {:cmd :move-y
+          :org [(p2 0)
+                (quot (+ (p2 1) (p3 1)) 2)]
+          :dst (p4 0)}}))
+
+(defn ring-0-1 [[h w] l]
+  (let [y0 (+ (l 1) (l 2))
+        x0 (- (l 0) (l 3))
+        p0 [(if (< y0 0) (- y0) 0)
+            (if (< x0 0) (- x0) 0)]
+        p1 (update-in p0 [1] + (l 0))
+        p4 (mapv + p1 [(l 1) (- (l 3))])
+        p5 (update-in p4 [1] + (l 3) (l 4))
+        p6 (update-in p5 [1] + 2)
+        p7 (update-in p6 [1] + (l 5))]
+   {:field
+    (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
+          (assoc-in fld (conj p0 3) 1)  ; in
+          (line fld p0 (p1 1) 1)
+          (line fld p1 (p4 0) 0)
+          (line fld p4 (p5 1) 1)
+          (assoc-in fld [(p4 0) (p1 1) 2] 1) ; fanout point
+          (assoc-in fld (conj p5 5) 1)  ; not
+          (line fld p6 (p7 1) 1)
+          (assoc-in fld (conj p7 4) 1)) ; out
+    :cmd {:cmd :move-x
+          :org p4
+          :dst (p1 1)}}))
+
+(defn ring-0-2 [[h w] l]
+  (let [y0 (+ (l 1) (l 2))
+        x0 (- (l 0) (l 3))
+        p0 [(if (< y0 0) (- y0) 0)
+            (if (< x0 0) (- x0) 0)]
+        p1 (update-in p0 [1] + (l 0))
+        p5 (mapv + p1 [(l 1) (l 4)])
+        p6 (update-in p5 [1] + 2)
+        p7 (update-in p6 [1] + (l 5))]
+   {:field
+    (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
+          (assoc-in fld (conj p0 3) 1)  ; in
+          (line fld p0 (p1 1) 1)
+          (line fld p1 (p5 0) 0)
+          (line fld [(p5 0) (p1 1)] (p5 1) 1)
+          (assoc-in fld (conj p5 5) 1)  ; not
+          (line fld p6 (p7 1) 1)
+          (assoc-in fld (conj p7 4) 1)) ; out
+    :cmd {:cmd :move-y
+          :org p0
+          :dst (p5 0)}}))
+
 (defn -main []
   (as-> (meander-pos 4) x
         (doseq [pos x]
