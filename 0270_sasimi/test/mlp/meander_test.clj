@@ -48,7 +48,7 @@
     ;(clojure.pprint/pprint
     ; (format-field
     ;  (:field (mlp.meander/meander-0-0 [4 3 2 2 3 3]))))
-    (is (= (mlp.meander/meander-0-0 [4 3 2 2 3 3])
+    (is (= (mlp.meander/meander-0-0 [14 14] [4 3 2 2 3 3])
            {:field exp
             :cmd {:cmd :move-x :org [1 4] :dst 2}}))))
 
@@ -69,6 +69,27 @@
                    "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
                    "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
                    "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "])]
-    (is (= (mlp.meander/meander-0-1 [4 3 2 2 3 3])
+    (is (= (mlp.meander/meander-0-1 [14 14] [4 3 2 2 3 3])
            {:field exp
             :cmd {:cmd :move-y :org [0 0] :dst 5}}))))
+
+(deftest ring-0-0-test
+  (let [exp (mapv parse-line
+                  ;  0              5             10
+                  ["  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  " ; 0
+                   "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,03,02,02,01,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,01,  ,  ,01,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,02,02,02,03,02,20,  ,02,02,10,  "
+                   "  ,  ,  ,  ,  ,  ,01,  ,  ,  ,  ,  ,  ,  " ; 5
+                   "  ,  ,  ,  ,  ,  ,01,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,  ,  ,  ,01,  ,  ,  ,  ,  ,  ,  "
+                   "0A,02,02,02,02,02,  ,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  " ; 10
+                   "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "])]
+    (is (= (mlp.meander/ring-0-0 [14 14] [6 -4 -2 3 2 2])
+           {:field exp
+            :cmd {:cmd :move-y :org [1 4] :dst 3}}))))
