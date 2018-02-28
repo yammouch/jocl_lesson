@@ -8,11 +8,11 @@
 (defn format-field [field]
   (mapv (fn [row]
           (as-> row r
-                (map #(->> (reverse %)
-                           (reduce (fn [acc x] (+ (* acc 2) x)))
-                           (format "%02X"))
+                (map #(as-> (reverse %) y
+                            (reduce (fn [acc x] (+ (* acc 2) x)) y)
+                            (if (= y 0) "  " (format "%02X" y)))
                      r)
-                (interpose " " r)
+                (interpose "," r)
                 (apply str r)))
         field))
 
@@ -76,20 +76,23 @@
 (deftest ring-0-0-test
   (let [exp (mapv parse-line
                   ;  0              5             10
-                  ["  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  " ; 0
-                   "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
-                   "  ,  ,  ,03,02,02,01,  ,  ,  ,  ,  ,  ,  "
+                  ["  ,  ,  ,03,02,02,01,  ,  ,  ,  ,  ,  ,  " ; 0
                    "  ,  ,  ,01,  ,  ,01,  ,  ,  ,  ,  ,  ,  "
                    "  ,  ,  ,02,02,02,03,02,20,  ,02,02,10,  "
+                   "  ,  ,  ,  ,  ,  ,01,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,  ,  ,  ,01,  ,  ,  ,  ,  ,  ,  "
                    "  ,  ,  ,  ,  ,  ,01,  ,  ,  ,  ,  ,  ,  " ; 5
-                   "  ,  ,  ,  ,  ,  ,01,  ,  ,  ,  ,  ,  ,  "
-                   "  ,  ,  ,  ,  ,  ,01,  ,  ,  ,  ,  ,  ,  "
                    "0A,02,02,02,02,02,  ,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
+                   "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
                    "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
                    "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  " ; 10
                    "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
                    "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "
                    "  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  ,  "])]
+    ;(clojure.pprint/pprint
+    ; (format-field 
+    ;  (:field (mlp.meander/ring-0-0 [14 14] [6 -4 -2 3 2 2]))))
     (is (= (mlp.meander/ring-0-0 [14 14] [6 -4 -2 3 2 2])
            {:field exp
-            :cmd {:cmd :move-y :org [1 4] :dst 3}}))))
+            :cmd {:cmd :move-y :org [0 4] :dst 2}}))))
