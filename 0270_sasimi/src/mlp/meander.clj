@@ -177,11 +177,12 @@
           :org p0
           :dst (p5 0)}}))
 
+(def ring-0 (juxt ring-0-0 ring-0-1 ring-0-2))
+
 (defn -main []
-  (as-> (meander-pos 4) x
-        (doseq [pos x]
-          (doseq [sequ pos]
-            (clojure.pprint/pprint
-             (smp/format-field (:field sequ)))
-            (clojure.pprint/pprint (:cmd sequ))
-            ))))
+  ;(doseq [sequ (ring-0 [14 14] [4 -2 -3 3 2 2])]
+  (doseq [sequ (meander-0 [14 14] [4 2 2 2 4 2])]
+    (clojure.pprint/pprint
+     (smp/format-field (:field sequ)))
+    (clojure.pprint/pprint (:cmd sequ))
+    ))

@@ -5,11 +5,11 @@
 (defn format-field [field]
   (mapv (fn [row]
           (as-> row r
-                (map #(->> (reverse %)
-                           (reduce (fn [acc x] (+ (* acc 2) x)))
-                           (format "%02X"))
+                (map #(as-> (reverse %) c
+                            (reduce (fn [acc x] (+ (* acc 2) x)) c)
+                            (if (= c 0) "  " (format "%02X" c)))
                      r)
-                (interpose " " r)
+                (interpose "," r)
                 (apply str r)))
         field))
 
