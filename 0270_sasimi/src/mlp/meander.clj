@@ -32,7 +32,7 @@
 ;
 ;      |<- l4  ->|  |<- l5 ->|
 
-(defn meander-0-0 [[h w] l]
+(defn meander-0-points [l]
   (let [y0 (+ (l 1) (l 3))
         p0 [(if (< y0 0) (- y0) 0) 0]
         p1 (update-in p0 [1] + (l 0))
@@ -42,6 +42,10 @@
         p5 (update-in p4 [1] + (l 4))
         p6 (update-in p5 [1] + 2)
         p7 (update-in p6 [1] + (l 5))]
+    [y0 p0 p1 p2 p3 p4 p5 p6 p7]))
+
+(defn meander-0-0 [[h w] l]
+  (let [[y0 p0 p1 p2 p3 p4 p5 p6 p7] (meander-0-points l)]
    {:field
     (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
           (assoc-in fld (conj p0 3) 1)  ; in
