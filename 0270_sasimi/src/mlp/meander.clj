@@ -63,19 +63,13 @@
           :dst (p3 1)}}))
 
 (defn meander-0-1 [[h w] l]
-  (let [y0 (+ (l 1) (l 3))
-        p0 [(if (< y0 0) (- y0) 0) 0]
-        p1 (update-in p0 [1] + (- (l 0) (l 2)))
-        p4 (update-in p1 [0] + (+ (l 1) (l 3)))
-        p5 (update-in p4 [1] + (l 4))
-        p6 (update-in p5 [1] + 2)
-        p7 (update-in p6 [1] + (l 5))]
+  (let [[y0 p0 _ _ _ p4 p5 p6 p7] (meander-0-points l)]
    {:field
     (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
           (assoc-in fld (conj p0 3) 1)  ; in
-          (line fld p0 (p1 1) 1)
-          (line fld p1 (p4 0) 0)
-          (line fld p4 (p5 1) 1)
+          (line fld   p0            (p4 1) 1)
+          (line fld [(p0 0) (p4 1)] (p4 0) 0)
+          (line fld   p4            (p5 1) 1)
           (assoc-in fld (conj p5 5) 1)  ; not
           (line fld p6 (p7 1) 1)
           (assoc-in fld (conj p7 4) 1)) ; out
