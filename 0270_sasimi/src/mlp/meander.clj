@@ -121,15 +121,9 @@
   (let [[p0 p1 p2 p3 p4 p5 p6 p7] (ring-0-points l)]
    {:field
     (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
-          (assoc-in fld (conj p0 3) 1)  ; in
-          (line fld p0 (p1 1) 1)
-          (line fld p1 (p2 0) 0)
-          (line fld p2 (p3 1) 1)
-          (line fld p3 (p4 0) 0)
-          (line fld p4 (p5 1) 1)
-          (assoc-in fld (conj p5 5) 1)  ; not
-          (line fld p6 (p7 1) 1)
-          (assoc-in fld (conj p7 4) 1)) ; out
+          (add-elements fld [[p0 3] [p5 5] [p7 4]])
+          (lines fld p0 [[p1 1] [p2 0] [p3 1] [p4 0] [p5 1]])
+          (line fld p6 (p7 1) 1))
     :cmd {:cmd :move-y
           :org [(p2 0)
                 (quot (+ (p2 1) (p3 1)) 2)]
@@ -139,14 +133,9 @@
   (let [[p0 p1 _ _ p4 p5 p6 p7] (ring-0-points l)]
    {:field
     (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
-          (assoc-in fld (conj p0 3) 1)  ; in
-          (line fld p0 (p1 1) 1)
-          (line fld p1 (p4 0) 0)
-          (line fld p4 (p5 1) 1)
-          (assoc-in fld [(p4 0) (p1 1) 2] 1) ; fanout point
-          (assoc-in fld (conj p5 5) 1)  ; not
-          (line fld p6 (p7 1) 1)
-          (assoc-in fld (conj p7 4) 1)) ; out
+          (add-elements fld [[p0 3] [p5 5] [p7 4] [[(p4 0) (p1 1)] 2]])
+          (lines fld p0 [[p1 1] [p4 0] [p5 1]])
+          (line fld p6 (p7 1) 1))
     :cmd {:cmd :move-x
           :org p4
           :dst (p1 1)}}))
@@ -155,13 +144,10 @@
   (let [[p0 p1 _ _ _ p5 p6 p7] (ring-0-points l)]
    {:field
     (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
-          (assoc-in fld (conj p0 3) 1)  ; in
-          (line fld p0 (p1 1) 1)
-          (line fld p1 (p5 0) 0)
+          (add-elements fld [[p0 3] [p5 5] [p7 4]])
+          (lines fld p0 [[p1 1] [p5 0]])
           (line fld [(p5 0) (p1 1)] (p5 1) 1)
-          (assoc-in fld (conj p5 5) 1)  ; not
-          (line fld p6 (p7 1) 1)
-          (assoc-in fld (conj p7 4) 1)) ; out
+          (line fld p6 (p7 1) 1))
     :cmd {:cmd :move-y
           :org p0
           :dst (p5 0)}}))
@@ -201,23 +187,17 @@
   (let [[p0 p1 p2 p3 p4 p5 p6 p7] (ring-1-points l)]
    {:field
     (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
-          (assoc-in fld (conj p0 3) 1)  ; in
+          (add-elements fld [[p0 3] [p5 5] [p7 4]])
           (line fld p0 (p1 1) 1)
-          (assoc-in fld (conj p1 5) 1)  ; not
-          (line fld p2 (p3 1) 1)
-          (line fld p3 (p4 0) 0)
-          (line fld p4 (p5 1) 1)
-          (line fld p5 (p6 0) 0)
-          (line fld p6 (p7 1) 1)
-          (assoc-in fld (conj p7 4) 1)) ; out
+          (lines fld p2 [[p3 1] [p4 0] [p5 1] [p6 0] [p7 1]]))
     :cmd {:cmd :move-y
           :org [(p4 0)
                 (quot (+ (p4 1) (p5 1)) 2)]
           :dst (p6 0)}}))
 
 (defn -main []
-  ;(doseq [sequ (ring-0 [14 14] [4 -2 -3 3 2 2])]
-  (doseq [sequ (meander-0 [14 14] [4 2 2 2 4 2])]
+  (doseq [sequ (ring-0 [14 14] [4 -2 -3 3 2 2])]
+  ;(doseq [sequ (meander-0 [14 14] [4 2 2 2 4 2])]
     (clojure.pprint/pprint
      (smp/format-field (:field sequ)))
     (clojure.pprint/pprint (:cmd sequ))
