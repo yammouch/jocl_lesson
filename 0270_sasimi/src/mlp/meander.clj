@@ -145,8 +145,7 @@
    {:field
     (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
           (add-elements fld [[p0 3] [p5 5] [p7 4]])
-          (lines fld p0 [[p1 1] [p5 0]])
-          (line fld [(p5 0) (p1 1)] (p5 1) 1)
+          (lines fld p0 [[p1 1] [[(p5 0) (p1 1)] 0] [p5 1]])
           (line fld p6 (p7 1) 1))
     :cmd {:cmd :move-y
           :org p0
@@ -180,14 +179,14 @@
         p4 (update-in p3 [0] + (l 2) (l 3))
         p5 (update-in p4 [1] - (l 4))
         p6 (update-in p5 [0] - (l 3))
-        p7 (update-in p5 [1] + (l 4) (l 5))]
+        p7 (update-in p6 [1] + (l 4) (l 5))]
     [p0 p1 p2 p3 p4 p5 p6 p7]))
 
 (defn ring-1-0 [[h w] l]
   (let [[p0 p1 p2 p3 p4 p5 p6 p7] (ring-1-points l)]
    {:field
     (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
-          (add-elements fld [[p0 3] [p5 5] [p7 4]])
+          (add-elements fld [[p0 3] [p1 5] [p7 4]])
           (line fld p0 (p1 1) 1)
           (lines fld p2 [[p3 1] [p4 0] [p5 1] [p6 0] [p7 1]]))
     :cmd {:cmd :move-y
@@ -195,8 +194,33 @@
                 (quot (+ (p4 1) (p5 1)) 2)]
           :dst (p6 0)}}))
 
+(defn ring-1-1 [[h w] l]
+  (let [[p0 p1 p2 p3 p4 p5 p6 p7] (ring-1-points l)]
+   {:field
+    (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
+          (add-elements fld [[p0 3] [p1 5] [p7 4] [[(p6 0) (p3 1)] 2]])
+          (line fld p0 (p1 1) 1)
+          (lines fld p2 [[p3 1] [p6 0] [p7 1]]))
+    :cmd {:cmd :move-x
+          :org p6
+          :dst (p3 1)}}))
+
+(defn ring-1-2 [[h w] l]
+  (let [[p0 p1 p2 p3 p4 p5 p6 p7] (ring-1-points l)]
+   {:field
+    (as-> (reduce #(vec (repeat %2 %1)) 0 [6 w h]) fld
+          (add-elements fld [[p0 3] [p1 5] [p7 4]])
+          (line fld p0 (p1 1) 1)
+          (lines fld p2 [[p3 1] [[(p6 0) (p3 1)] 0] [p7 1]]))
+    :cmd {:cmd :move-y
+          :org p7
+          :dst (p3 0)}}))
+
+(def ring-1 (juxt ring-1-0 ring-1-1 ring-1-2))
+
 (defn -main []
-  (doseq [sequ (ring-0 [14 14] [4 -2 -3 3 2 2])]
+  ;(doseq [sequ (ring-0 [14 14] [4 -2 -3 3 2 2])]
+  (doseq [sequ (ring-1 [14 14] [2 2 -2 -3 3 2])]
   ;(doseq [sequ (meander-0 [14 14] [4 2 2 2 4 2])]
     (clojure.pprint/pprint
      (smp/format-field (:field sequ)))
