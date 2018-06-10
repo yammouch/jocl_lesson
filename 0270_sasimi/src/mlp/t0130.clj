@@ -107,12 +107,17 @@
         mlp-config (make-mlp-config 5 8 height width)
         _ (mlp/init mlp-config 2)
         p (test-pattern [height width])
+        _ (clojure.pprint/pprint p (clojure.java.io/writer "p.txt"))
         [tr ts] (apply map (comp (partial apply concat)
                                  (partial apply concat)
                                  vector)
                            p)
+        _ (clojure.pprint/pprint tr (clojure.java.io/writer "tr1.txt"))
+        _ (clojure.pprint/pprint ts (clojure.java.io/writer "ts1.txt"))
         tr (mapv #(mlp.schemmlp/make-input-label % height width) tr)
         ts (mapv #(mlp.schemmlp/make-input-label % height width) ts)]
+    (clojure.pprint/pprint tr (clojure.java.io/writer "tr2.txt"))
+    (clojure.pprint/pprint ts (clojure.java.io/writer "ts2.txt"))
     (main-loop iter 0.1 0.9999 tr ts)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
