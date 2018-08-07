@@ -94,10 +94,18 @@
   (as-> (concat (meander-0-geometry-variation size)
                 (ring-0-geometry-variation size)
                 (ring-1-geometry-variation size)) s
+        ; [h h ...]
         (mapv (fn [geom]
                 (position-variation geom (utl/xorshift 2 4 6 8)))
               s)
-        (apply map vector s)))
+        ; [ [[h h ...] [h h ...]]
+        ;   [[h h ...] [h h ...]]
+        ;   ... ]
+
+        (apply map vector s)
+        ; [ [[h h ...] [h h ...] ...]
+        ;   [[h h ...] [h h ...] ...] ]
+        ))
 
 (defn -main [iter]
   (let [start-time (Date.)
@@ -107,15 +115,28 @@
         mlp-config (make-mlp-config 5 8 height width)
         _ (mlp/init mlp-config 2)
         p (test-pattern [height width])
-        _ (clojure.pprint/pprint p (clojure.java.io/writer "p.txt"))
-        [tr ts] (apply map (comp (partial apply concat)
-                                 (partial apply concat)
-                                 vector)
-                           p)
+        ;_ (clojure.pprint/pprint p (clojure.java.io/writer "p.txt"))
+        ;[tr ts] (apply map (comp (partial apply concat)
+        ;                         (partial apply concat)
+        ;                         vector)
+        ;                   p)
+        [tr ts] (map (comp (partial apply concat)
+                           (partial apply concat))
+                     p)
+        _ (as-> (iterate first p) x
+                (take-while coll? x)
+                (map count x)
+                (println x))
         _ (clojure.pprint/pprint tr (clojure.java.io/writer "tr1.txt"))
         _ (clojure.pprint/pprint ts (clojure.java.io/writer "ts1.txt"))
         tr (mapv #(mlp.schemmlp/make-input-label % height width) tr)
         ts (mapv #(mlp.schemmlp/make-input-label % height width) ts)]
+    (println (as-> (iterate first tr) x
+                   (take-while coll? x)
+                   (map count x)))
+    (println (as-> (iterate first ts) x
+                   (take-while coll? x)
+                   (map count x)))
     (clojure.pprint/pprint tr (clojure.java.io/writer "tr2.txt"))
     (clojure.pprint/pprint ts (clojure.java.io/writer "ts2.txt"))
     (main-loop iter 0.1 0.9999 tr ts)
