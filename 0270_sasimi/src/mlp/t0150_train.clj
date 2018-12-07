@@ -1,4 +1,4 @@
-; lein run -m mlp.t0150-train 100000 data/t0150_train.dat
+; lein run -m mlp.t0150-train 100000 data/t0150_tr.dat data/t0150_pr.dat
 
 (ns mlp.t0150-train
   (:gen-class)
@@ -61,7 +61,18 @@
                (update-in x [:cmd  ] float-array))
         pairs))
 
-(defn -main [iter tr-file-name]
+(defn print-param [fname cfg m]
+  (with-open [o (clojure.java.io/writer fname)]
+    (clojure.pprint/pprint cfg o)
+    (loop [i 0 [x & xs] m]
+      (if x
+        (do (when (:p x)
+              (clojure.pprint/pprint i o)
+              (clojure.pprint/pprint (seq (:p x)) o))
+            (recur (+ i 1) xs))
+        :done))))
+
+(defn -main [iter tr-file-name pr-file-name]
   (let [start-time (Date.)
         _ (println "start: " (.toString start-time))
         iter (read-string iter)
@@ -71,6 +82,7 @@
         [tr ts] (read-string (str "(" (slurp tr-file-name) ")"))
         [tr ts] (map parse-float-array [tr ts])]
     (main-loop iter 0.1 0.9999 tr ts)
+    (print-param pr-file-name mlp-config @mlp/jk-mem)
     (let [end-time (Date.)]
       (println "end  : " (.toString end-time))
       (printf "%d seconds elapsed\n"
