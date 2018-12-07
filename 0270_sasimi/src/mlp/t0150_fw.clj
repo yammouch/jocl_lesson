@@ -47,9 +47,9 @@
 
 (defn fw [schem]
   (mlp/fw (float-array (mapcat (partial apply concat) schem)))
-  (let [[cmd from-x from-y to] (parse-output-vector (:i (last @mlp/jk-mem)))]
-    (clojure.pprint/pprint [cmd from-x from-y to])
-    ((case cmd 0 smp/move-x 1 smp/move-y) schem [from-y from-x] to)))
+  (let [[cmd from-y from-x to] (parse-output-vector (:i (last @mlp/jk-mem)))]
+    (clojure.pprint/pprint [cmd from-y from-x to])
+    ((case cmd 1 smp/move-x 0 smp/move-y) schem [from-y from-x] to)))
 
 (defn edit1 [schem]
   (clojure.pprint/pprint schem)
